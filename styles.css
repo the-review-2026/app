@@ -1796,7 +1796,7 @@ button {
   }
 
   .review-coin-icon {
-    width: 68px;
+    width: 0.95rem;
   }
 
   .review-coin-value {
@@ -1804,7 +1804,7 @@ button {
   }
 
   .app-logo {
-    width: min(250px, 62vw);
+    width: min(170px, 46vw);
     height: auto;
     position: static;
     left: auto;
