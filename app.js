@@ -98,6 +98,7 @@ const DAILY_TRY_QUESTIONS = [
 const AUTH0_CONFIG = normalizeAuth0Config(window.AUTH0_CONFIG);
 
 const elements = {
+  appLoader: document.getElementById("appLoader"),
   navButtons: Array.from(document.querySelectorAll("[data-screen]")),
   mypageNavButton: document.querySelector('[data-screen="mypage"]'),
   mypageSubmenu: document.getElementById("mypageSubmenu"),
@@ -156,10 +157,14 @@ let selfcheckTimerIntervalId = null;
 let calendarViewDate = new Date(CALENDAR_INITIAL_YEAR, CALENDAR_INITIAL_MONTH_INDEX, 1);
 let auth0Client = null;
 
-init().catch((error) => {
-  console.error("App initialization failed:", error);
-  showStatus("初期化でエラーが発生しました。画面を再読み込みしてください。");
-});
+init()
+  .catch((error) => {
+    console.error("App initialization failed:", error);
+    showStatus("初期化でエラーが発生しました。画面を再読み込みしてください。");
+  })
+  .finally(() => {
+    hideAppLoader();
+  });
 
 async function init() {
   ensureInitialCoinGrant();
@@ -173,6 +178,18 @@ async function init() {
   startHomeGreetingTicker();
   renderAll();
   activateScreen(activeScreen);
+}
+
+function hideAppLoader() {
+  if (!elements.appLoader) {
+    return;
+  }
+  elements.appLoader.classList.add("is-hidden");
+  const removeLoader = () => {
+    elements.appLoader?.remove();
+  };
+  elements.appLoader.addEventListener("transitionend", removeLoader, { once: true });
+  window.setTimeout(removeLoader, 500);
 }
 
 function ensureInitialCoinGrant() {
