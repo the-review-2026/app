@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Review</title>
+    <link rel="icon" type="image/png" href="./assets/favicon/favicon.png" />
+    <link rel="apple-touch-icon" href="./assets/favicon/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Sora:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-theme="sea">
+    <div class="aurora aurora-left"></div>
+    <div class="aurora aurora-right"></div>
+
+    <header class="app-header">
+      <img class="app-logo" src="./assets/logos/original.png" alt="The Review" />
+      <div class="header-menu-block">
+        <div class="review-coin-board" aria-label="Review Coin">
+          <img class="review-coin-icon" src="./assets/icons/coin.png" alt="Review Coin" />
+          <strong id="reviewCoinValue" class="review-coin-value">0</strong>
+        </div>
+
+        <nav class="top-nav" aria-label="モード切替">
+          <button class="top-nav-item is-active" type="button" data-screen="home">
+            <img class="menu-icon" src="./assets/icons/menu.svg" alt="" aria-hidden="true" />
+            <span>ホーム</span>
+          </button>
+          <button
+            class="top-nav-item"
+            type="button"
+            data-screen="mypage"
+            aria-haspopup="menu"
+            aria-controls="mypageSubmenu"
+            aria-expanded="false"
+          >
+            <img class="menu-icon" src="./assets/icons/menu.svg" alt="" aria-hidden="true" />
+            <span>マイページ</span>
+          </button>
+          <div id="mypageSubmenu" class="mypage-submenu" role="menu" aria-label="マイページサブメニュー">
+            <button class="mypage-submenu-item is-current" type="button" data-mypage-target="top" role="menuitem">
+              トップ
+            </button>
+            <button class="mypage-submenu-item" type="button" data-mypage-target="selfcheck" role="menuitem">
+              セルフチェック
+            </button>
+            <button class="mypage-submenu-item" type="button" data-mypage-target="settings" role="menuitem">
+              設定
+            </button>
+          </div>
+          <button class="top-nav-item" type="button" data-screen="notice">
+            <img class="menu-icon" src="./assets/icons/menu.svg" alt="" aria-hidden="true" />
+            <span>お知らせ</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="screens">
+      <section id="screen-home" class="screen is-active">
+        <p id="homeGreeting" class="home-greeting home-inline-greeting" aria-live="polite">こんにちは。</p>
+        <div class="home-grid">
+          <section class="panel home-card-wide">
+            <h2>デイリーログイン</h2>
+            <p id="dailyLoginText" class="hint-text" aria-live="polite">あなたは0日ログインしています。</p>
+          </section>
+
+          <section class="panel home-card-wide">
+            <h2>この問題にTRY!</h2>
+            <p id="dailyTryPrompt" class="hint-text"></p>
+            <div id="dailyTryChoiceList" class="choice-list"></div>
+            <p id="dailyTryFeedback" class="feedback"></p>
+            <div class="action-row">
+              <button id="dailyTrySubmitBtn" class="primary" type="button">回答する</button>
+            </div>
+          </section>
+
+          <section class="panel home-card-wide">
+            <h2>りびゅーくん（キャラクター）の豆知識</h2>
+            <p id="reviewKunTrivia" class="hint-text">りびゅーくんの豆知識は準備中です。後ほど追加します。</p>
+          </section>
+        </div>
+      </section>
+
+      <section id="screen-login" class="screen">
+        <section class="panel auth-panel">
+          <h2>ログイン</h2>
+          <p class="hint-text">マイページを使うには Auth0 ログインが必要です。</p>
+          <div class="action-row">
+            <button id="authLoginBtn" class="primary" type="button">Auth0でログイン</button>
+          </div>
+          <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
+            auth0-config.js の domain と clientId を設定してください。
+          </p>
+        </section>
+      </section>
+
+      <section id="screen-mypage" class="screen">
+        <section id="mypage-top" class="panel mypage-subpage is-active" data-mypage-page="top">
+          <h2>マイページ</h2>
+          <p class="hint-text">リビューコイン</p>
+          <p id="mypageCoinValue" class="mypage-coin-value">0枚</p>
+        </section>
+
+        <section id="mypage-selfcheck" class="mypage-subpage mypage-selfcheck-page" data-mypage-page="selfcheck" hidden>
+          <section class="panel selfcheck-section">
+            <h2>カレンダー</h2>
+            <div class="selfcheck-section-content">
+              <div class="calendar-head">
+                <button id="calendarPrevMonthBtn" class="calendar-nav-btn" type="button" aria-label="Previous month">
+                  &lt;
+                </button>
+                <p id="calendarMonthLabel" class="calendar-month selfcheck-month"></p>
+                <button id="calendarNextMonthBtn" class="calendar-nav-btn" type="button" aria-label="Next month">
+                  &gt;
+                </button>
+              </div>
+              <div class="calendar-weekdays">
+                <span>日</span>
+                <span>月</span>
+                <span>火</span>
+                <span>水</span>
+                <span>木</span>
+                <span>金</span>
+                <span>土</span>
+              </div>
+              <div id="calendarGrid" class="calendar-grid"></div>
+            </div>
+          </section>
+
+          <section class="panel selfcheck-section">
+            <h2>タイマー</h2>
+            <div class="selfcheck-section-content">
+              <p id="selfcheckTimerDisplay" class="timer-display">25:00</p>
+              <div class="timer-controls">
+                <button id="selfcheckTimerStartBtn" class="primary" type="button">開始</button>
+                <button id="selfcheckTimerPauseBtn" class="secondary" type="button">一時停止</button>
+                <button id="selfcheckTimerResetBtn" class="secondary" type="button">リセット</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="mypage-settings" class="mypage-subpage mypage-settings-page" data-mypage-page="settings" hidden>
+          <section class="panel settings-section">
+            <h2>ログイン状況</h2>
+            <div class="settings-section-content">
+              <div class="setting-row">
+                <span>メールアドレス</span>
+                <strong id="authEmailText">未設定</strong>
+              </div>
+              <div class="setting-row">
+                <span>ログインステータス</span>
+                <strong id="authStatusText">未ログイン</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel settings-section">
+            <h2>カラーテーマ</h2>
+            <div class="settings-section-content">
+              <div id="themeCardList" class="theme-card-list" role="radiogroup" aria-label="カラーテーマ">
+                <button class="theme-card" type="button" data-theme-choice="sea" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-sea" aria-hidden="true"></span>
+                  <span class="theme-card-name">Sea</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="slate" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-slate" aria-hidden="true"></span>
+                  <span class="theme-card-name">Slate</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="midnight" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-midnight" aria-hidden="true"></span>
+                  <span class="theme-card-name">Midnight</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="blueberry" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-blueberry" aria-hidden="true"></span>
+                  <span class="theme-card-name">Blueberry</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="forest" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-forest" aria-hidden="true"></span>
+                  <span class="theme-card-name">Forest</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="aojiru" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-aojiru" aria-hidden="true"></span>
+                  <span class="theme-card-name">Aojiru</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="lemonade" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-lemonade" aria-hidden="true"></span>
+                  <span class="theme-card-name">Lemonade</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="banana-cake" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-banana-cake" aria-hidden="true"></span>
+                  <span class="theme-card-name">Banana Cake</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="sunset" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-sunset" aria-hidden="true"></span>
+                  <span class="theme-card-name">Sunset</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="strawberry" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-strawberry" aria-hidden="true"></span>
+                  <span class="theme-card-name">Strawberry</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="the-paper" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-the-paper" aria-hidden="true"></span>
+                  <span class="theme-card-name">The Paper</span>
+                </button>
+                <button class="theme-card" type="button" data-theme-choice="the-black" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-the-black" aria-hidden="true"></span>
+                  <span class="theme-card-name">The Black</span>
+                </button>
+                <button class="theme-card theme-card-premium" type="button" data-theme-choice="kagiko" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-kagiko">
+                    <span class="theme-card-lock" data-theme-lock-label>
+                      <img class="theme-card-lock-icon" src="./assets/icons/coin.png" alt="" aria-hidden="true" />
+                      <span data-theme-lock-cost>50</span>
+                    </span>
+                  </span>
+                  <span class="theme-card-name">KAGIKO</span>
+                </button>
+                <button class="theme-card theme-card-premium" type="button" data-theme-choice="city" role="radio" aria-checked="false">
+                  <span class="theme-swatch theme-swatch-city">
+                    <span class="theme-card-lock" data-theme-lock-label>
+                      <img class="theme-card-lock-icon" src="./assets/icons/coin.png" alt="" aria-hidden="true" />
+                      <span data-theme-lock-cost>50</span>
+                    </span>
+                  </span>
+                  <span class="theme-card-name">City</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel settings-section">
+            <h2>アクセシビリティ</h2>
+            <div class="settings-section-content">
+              <div class="color-mode-grid">
+                <div class="setting-row">
+                  <span>ハイコントラスト</span>
+                  <label class="toggle-switch" for="highContrastToggle">
+                    <input id="highContrastToggle" type="checkbox" />
+                    <span class="toggle-slider" aria-hidden="true"></span>
+                  </label>
+                </div>
+                <div class="setting-row">
+                  <span>モノクロ</span>
+                  <label class="toggle-switch" for="monochromeToggle">
+                    <input id="monochromeToggle" type="checkbox" />
+                    <span class="toggle-slider" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="text-setting-list">
+                <div class="setting-stack">
+                  <div class="setting-stack-head">
+                    <span>文字の大きさ</span>
+                    <strong id="textSizeValue">100%</strong>
+                  </div>
+                  <input id="textSizeRange" type="range" min="85" max="130" step="1" value="100" />
+                </div>
+                <div class="setting-stack">
+                  <div class="setting-stack-head">
+                    <span>文字の太さ</span>
+                    <strong id="textWeightValue">500</strong>
+                  </div>
+                  <input id="textWeightRange" type="range" min="400" max="800" step="100" value="500" />
+                </div>
+                <div class="setting-stack">
+                  <div class="setting-stack-head">
+                    <span>文字の間隔</span>
+                    <strong id="textSpacingValue">0.00em</strong>
+                  </div>
+                  <input id="textSpacingRange" type="range" min="0" max="0.12" step="0.01" value="0" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel settings-section">
+            <h2>通知</h2>
+            <div class="settings-section-content">
+              <div class="setting-row">
+                <span>デイリーログイン通知</span>
+                <label class="toggle-switch" for="notifyDailyLoginToggle">
+                  <input id="notifyDailyLoginToggle" type="checkbox" />
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <span>この問題にTRY!通知</span>
+                <label class="toggle-switch" for="notifyDailyTryToggle">
+                  <input id="notifyDailyTryToggle" type="checkbox" />
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+              <div class="setting-row">
+                <span>お知らせ通知</span>
+                <label class="toggle-switch" for="notifyNoticeToggle">
+                  <input id="notifyNoticeToggle" type="checkbox" />
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel settings-section is-danger">
+            <h2>各種リセット</h2>
+            <div class="settings-section-content">
+              <div class="setting-row">
+                <span>ログアウト</span>
+                <button id="logoutBtn" class="secondary" type="button">ログアウト</button>
+              </div>
+              <div class="setting-row">
+                <span>文字の設定のリセット</span>
+                <button id="textResetDialogOpenBtn" class="secondary" type="button">リセット項目を選ぶ</button>
+              </div>
+              <div class="setting-row">
+                <span>アカウントを削除（進捗リセット）</span>
+                <button id="deleteAccountBtn" class="danger" type="button">削除する</button>
+              </div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section id="screen-notice" class="screen">
+        <section class="panel">
+          <h2>お知らせ</h2>
+          <ul class="notice-list">
+            <li>ホームでデイリー問題に挑戦できます。</li>
+            <li>マイページでリビューコイン枚数を確認できます。</li>
+            <li>メニューはホーム・マイページ・お知らせの3つです。</li>
+          </ul>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="textResetDialog" class="text-reset-dialog" aria-labelledby="textResetDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="textResetDialogTitle">文字設定のリセット</h3>
+        <p>実行する項目を選んでください。</p>
+        <div class="text-reset-actions">
+          <button class="secondary" type="button" data-text-reset-action="size">文字の大きさのリセット</button>
+          <button class="secondary" type="button" data-text-reset-action="weight">文字の太さのリセット</button>
+          <button class="secondary" type="button" data-text-reset-action="spacing">文字の間隔のリセット</button>
+          <button class="danger" type="button" data-text-reset-action="all">文字の設定をすべてリセット</button>
+        </div>
+        <button class="secondary" value="cancel" type="submit">閉じる</button>
+      </form>
+    </dialog>
+
+    <p id="statusMessage" class="status-message" role="status" aria-live="polite"></p>
+
+    <script src="./auth0-config.js"></script>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,4 @@
+node_modules/
+/private/
+.env
+auth0-config.js
