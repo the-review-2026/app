@@ -1171,10 +1171,10 @@ button:disabled {
   margin-top: 0.7rem;
 }
 
-.mypage-top-page,
-.mypage-selfcheck-page,
-.mypage-customize-page,
-.mypage-settings-page {
+.mypage-top-page.is-active,
+.mypage-selfcheck-page.is-active,
+.mypage-customize-page.is-active,
+.mypage-settings-page.is-active {
   display: grid;
   gap: 0.94rem;
 }
