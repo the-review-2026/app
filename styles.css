@@ -1,6 +1,6 @@
 ﻿@font-face {
   font-family: "cinecaption226";
-  src: url("./assets/fonts/cinecaption226.ttf") format("truetype");
+  src: url("./assets/fonts/cinecaption226.ttf?v=20260326-1") format("truetype");
   font-display: swap;
 }
 
@@ -506,7 +506,7 @@ body[data-theme="kagiko"] .aurora {
 
 body[data-theme="kagiko"] .aurora-left,
 body[data-theme="kagiko"] .aurora-right {
-  background: url("./assets/themes/ST.png?v=3") center / 84% auto no-repeat;
+  background: url("./assets/themes/ST.png?v=20260326-1") center / 84% auto no-repeat;
 }
 
 body[data-theme="kagiko"] .aurora-left {
@@ -1494,7 +1494,7 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 }
 
 .theme-swatch-kagiko {
-  background: url("./assets/themes/ST.png?v=3") center / 78% auto no-repeat;
+  background: url("./assets/themes/ST.png?v=20260326-1") center / 78% auto no-repeat;
 }
 
 .theme-swatch-city {
@@ -1774,21 +1774,25 @@ button {
   }
 
   .app-header {
+    position: relative;
+    align-items: center;
     justify-content: center;
-    padding: 2.5rem 0.78rem;
+    min-height: 76px;
+    padding: 1.12rem 0.72rem;
   }
 
   .header-menu-block {
-    position: static;
-    top: auto;
-    right: auto;
-    transform: none;
-    justify-items: center;
-    width: 100%;
+    position: absolute;
+    right: 0.72rem;
+    top: 50%;
+    transform: translateY(-50%);
+    justify-items: end;
+    width: auto;
+    gap: 0;
   }
 
   .review-coin-board {
-    padding: 0.28rem 0.5rem;
+    padding: 0.24rem 0.44rem;
   }
 
   .review-coin-label {
@@ -1804,12 +1808,12 @@ button {
   }
 
   .app-logo {
-    width: min(170px, 46vw);
+    width: min(148px, 40vw);
     height: auto;
-    position: static;
-    left: auto;
-    transform: none;
-    margin-inline: auto;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
   }
 
   .top-nav {
