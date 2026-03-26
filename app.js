@@ -43,7 +43,7 @@ const LEGACY_THEME_ALIASES = {
 };
 const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
-const MYPAGE_PAGE_IDS = ["top", "selfcheck", "settings"];
+const MYPAGE_PAGE_IDS = ["top", "selfcheck", "customize", "settings"];
 const SCREEN_IDS = ["home", "login", "mypage", "notice"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const DEFAULT_TEXT_SETTINGS = {

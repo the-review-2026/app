@@ -49,6 +49,9 @@
             <button class="mypage-submenu-item" type="button" data-mypage-target="selfcheck" role="menuitem">
               セルフチェック
             </button>
+            <button class="mypage-submenu-item" type="button" data-mypage-target="customize" role="menuitem">
+              カスタマイズ
+            </button>
             <button class="mypage-submenu-item" type="button" data-mypage-target="settings" role="menuitem">
               設定
             </button>
@@ -97,10 +100,15 @@
       </section>
 
       <section id="screen-mypage" class="screen">
-        <section id="mypage-top" class="panel mypage-subpage is-active" data-mypage-page="top">
-          <h2>マイページ</h2>
-          <p class="hint-text">リビューコイン</p>
-          <p id="mypageCoinValue" class="mypage-coin-value">0枚</p>
+        <section id="mypage-top" class="mypage-subpage mypage-top-page is-active" data-mypage-page="top">
+          <section class="panel">
+            <h2>フラッシュカード</h2>
+            <p class="hint-text">未作成</p>
+          </section>
+          <section class="panel">
+            <h2>クエスト</h2>
+            <p class="hint-text">未作成</p>
+          </section>
         </section>
 
         <section id="mypage-selfcheck" class="mypage-subpage mypage-selfcheck-page" data-mypage-page="selfcheck" hidden>
@@ -142,18 +150,18 @@
           </section>
         </section>
 
-        <section id="mypage-settings" class="mypage-subpage mypage-settings-page" data-mypage-page="settings" hidden>
+        <section id="mypage-customize" class="mypage-subpage mypage-customize-page" data-mypage-page="customize" hidden>
           <section class="panel settings-section">
-            <h2>ログイン状況</h2>
+            <h2>リビューコイン</h2>
             <div class="settings-section-content">
-              <div class="setting-row">
-                <span>メールアドレス</span>
-                <strong id="authEmailText">未設定</strong>
-              </div>
-              <div class="setting-row">
-                <span>ログインステータス</span>
-                <strong id="authStatusText">未ログイン</strong>
-              </div>
+              <p id="mypageCoinValue" class="mypage-coin-value">0枚</p>
+            </div>
+          </section>
+
+          <section class="panel settings-section">
+            <h2>アバター</h2>
+            <div class="settings-section-content">
+              <p class="hint-text">未作成</p>
             </div>
           </section>
 
@@ -227,6 +235,22 @@
                   </span>
                   <span class="theme-card-name">City</span>
                 </button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="mypage-settings" class="mypage-subpage mypage-settings-page" data-mypage-page="settings" hidden>
+          <section class="panel settings-section">
+            <h2>ログイン状況</h2>
+            <div class="settings-section-content">
+              <div class="setting-row">
+                <span>メールアドレス</span>
+                <strong id="authEmailText">未設定</strong>
+              </div>
+              <div class="setting-row">
+                <span>ログインステータス</span>
+                <strong id="authStatusText">未ログイン</strong>
               </div>
             </div>
           </section>

@@ -1171,7 +1171,10 @@ button:disabled {
   margin-top: 0.7rem;
 }
 
-.mypage-selfcheck-page {
+.mypage-top-page,
+.mypage-selfcheck-page,
+.mypage-customize-page,
+.mypage-settings-page {
   display: grid;
   gap: 0.94rem;
 }
@@ -1348,11 +1351,6 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
   padding-left: 1.2rem;
   color: #365344;
   line-height: 1.7;
-}
-
-.mypage-settings-page {
-  display: grid;
-  gap: 0.94rem;
 }
 
 .settings-section-content {
