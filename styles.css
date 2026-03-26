@@ -842,7 +842,8 @@ body[data-theme="strawberry"] .aurora-right {
 }
 
 .mypage-subpage.is-active {
-  display: block;
+  display: grid;
+  gap: 0.94rem;
 }
 
 .panel {
@@ -1169,14 +1170,6 @@ button:disabled {
 
 .story-quiz {
   margin-top: 0.7rem;
-}
-
-.mypage-top-page.is-active,
-.mypage-selfcheck-page.is-active,
-.mypage-customize-page.is-active,
-.mypage-settings-page.is-active {
-  display: grid;
-  gap: 0.94rem;
 }
 
 .selfcheck-section-content {

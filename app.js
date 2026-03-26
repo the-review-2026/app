@@ -948,6 +948,7 @@ function setMypagePage(page) {
     const isActive = section.dataset.mypagePage === normalizedPage;
     section.classList.toggle("is-active", isActive);
     section.hidden = !isActive;
+    section.style.display = isActive ? "grid" : "none";
   });
 
   if (normalizedPage === "selfcheck") {
