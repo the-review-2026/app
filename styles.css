@@ -1285,6 +1285,7 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 
 .mypage-coin-number {
   font-size: clamp(3.4rem, 9.8vw, 5.7rem);
+  font-weight: 500;
 }
 
 .mypage-coin-unit {
