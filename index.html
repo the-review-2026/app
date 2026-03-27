@@ -27,7 +27,7 @@
     <header class="app-header">
       <img class="app-logo" src="./assets/logos/original.png?v=20260326-1" alt="The Review" />
       <div class="header-menu-block">
-        <div class="review-coin-board" aria-label="Review Coin">
+        <div id="reviewCoinBoard" class="review-coin-board" role="button" tabindex="0" aria-label="リビューコイン枚数へ移動">
           <img class="review-coin-icon" src="./assets/icons/coin.png?v=20260326-1" alt="Review Coin" />
           <strong id="reviewCoinValue" class="review-coin-value">0</strong>
         </div>
@@ -196,9 +196,12 @@
 
         <section id="mypage-customize" class="mypage-subpage mypage-customize-page" data-mypage-page="customize" hidden>
           <section class="panel settings-section">
-            <h2>リビューコイン</h2>
+            <h2>リビューコイン枚数</h2>
             <div class="settings-section-content">
-              <p id="mypageCoinValue" class="mypage-coin-value">0枚</p>
+              <p class="mypage-coin-value">
+                <span id="mypageCoinValueNumber" class="mypage-coin-number">0</span>
+                <span class="mypage-coin-unit">枚</span>
+              </p>
             </div>
           </section>
 

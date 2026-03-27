@@ -105,6 +105,7 @@ const elements = {
   mypageSubmenuItems: Array.from(document.querySelectorAll("[data-mypage-target]")),
   screens: Array.from(document.querySelectorAll(".screen")),
   mypagePages: Array.from(document.querySelectorAll("[data-mypage-page]")),
+  reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
   calendarNextMonthBtn: document.getElementById("calendarNextMonthBtn"),
@@ -114,7 +115,7 @@ const elements = {
   selfcheckTimerPauseBtn: document.getElementById("selfcheckTimerPauseBtn"),
   selfcheckTimerResetBtn: document.getElementById("selfcheckTimerResetBtn"),
   reviewCoinValue: document.getElementById("reviewCoinValue"),
-  mypageCoinValue: document.getElementById("mypageCoinValue"),
+  mypageCoinValueNumber: document.getElementById("mypageCoinValueNumber"),
   authEmailText: document.getElementById("authEmailText"),
   authStatusText: document.getElementById("authStatusText"),
   authLoginBtn: document.getElementById("authLoginBtn"),
@@ -214,6 +215,17 @@ function bindBeforeUnloadPrompt() {
 }
 
 function bindEvents() {
+  if (elements.reviewCoinBoard) {
+    elements.reviewCoinBoard.addEventListener("click", openMypageCustomizeFromCoinBoard);
+    elements.reviewCoinBoard.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      openMypageCustomizeFromCoinBoard();
+    });
+  }
+
   elements.navButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const screen = button.dataset.screen;
@@ -622,10 +634,20 @@ function renderCoinBoard() {
 }
 
 function renderMypageCoin() {
-  if (!elements.mypageCoinValue) {
+  if (!elements.mypageCoinValueNumber) {
     return;
   }
-  elements.mypageCoinValue.textContent = `${state.reviewCoin}枚`;
+  elements.mypageCoinValueNumber.textContent = String(state.reviewCoin);
+}
+
+function openMypageCustomizeFromCoinBoard() {
+  closeMypageSubmenu();
+  if (!state.auth.isLoggedIn) {
+    promptLoginForMypage();
+    return;
+  }
+  activateScreen("mypage");
+  setMypagePage("customize");
 }
 
 function renderMypageSettings() {

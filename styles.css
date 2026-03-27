@@ -640,6 +640,12 @@ body[data-theme="strawberry"] .aurora-right {
   background: rgba(255, 255, 255, 0.08);
   max-width: 100%;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.review-coin-board:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
 }
 
 .review-coin-label {
@@ -1259,11 +1265,26 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 .mypage-coin-value {
-  margin: 0.5rem 0 0;
+  margin: 0.56rem 0 0;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.08rem;
   font-family: var(--number-font);
-  font-size: clamp(1.55rem, 3.5vw, 2.05rem);
   font-weight: 800;
+  line-height: 0.84;
+  letter-spacing: -0.03em;
   color: var(--text-main);
+}
+
+.mypage-coin-number {
+  font-size: clamp(3.4rem, 9.8vw, 5.7rem);
+}
+
+.mypage-coin-unit {
+  display: inline-block;
+  font-size: clamp(1.62rem, 4.9vw, 2.75rem);
+  font-weight: 700;
+  transform: translateY(-0.2rem);
 }
 
 .unit-path {
