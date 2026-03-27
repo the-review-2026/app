@@ -945,6 +945,276 @@ h3 {
   grid-column: span 2;
 }
 
+.daily-login-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.daily-login-card {
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--panel-line);
+  background: var(--panel);
+  color: #ffffff;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+.daily-login-card-head {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  min-height: 2.36rem;
+  padding: 0.46rem 1rem;
+  background: var(--primary);
+  color: #ffffff;
+  font-family: "Sora", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.daily-login-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 0.56rem 0.98rem;
+  align-items: end;
+  padding: 0.62rem 1rem 0.74rem;
+}
+
+.daily-login-count-wrap {
+  min-width: 0;
+}
+
+.daily-login-count {
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.08rem;
+  font-family: var(--number-font);
+  font-weight: 800;
+  line-height: 0.84;
+  letter-spacing: -0.03em;
+}
+
+#dailyLoginCount {
+  font-size: clamp(3.8rem, 11vw, 7.1rem);
+}
+
+.daily-login-unit {
+  display: inline-block;
+  font-size: clamp(1.95rem, 4vw, 3rem);
+  font-weight: 700;
+  transform: translateY(-0.24rem);
+}
+
+.daily-login-progress-area {
+  min-width: 0;
+  position: relative;
+  --daily-login-axis-left-pad: clamp(0.16rem, 0.6vw, 0.34rem);
+  --daily-login-axis-right-pad: clamp(1.46rem, 3.1vw, 2.24rem);
+}
+
+.daily-login-progress-area::after {
+  content: "…";
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: var(--number-font);
+  font-size: clamp(1.1rem, 2.4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.daily-login-scale {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  position: relative;
+  height: 1.46em;
+  width: calc(100% - var(--daily-login-axis-left-pad) - var(--daily-login-axis-right-pad));
+  margin-left: var(--daily-login-axis-left-pad);
+  font-family: var(--number-font);
+  font-size: clamp(1.1rem, 2.4vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.daily-login-scale li {
+  position: absolute;
+  top: 0;
+  left: calc((var(--scale-index) / 6) * 100%);
+  min-width: 0;
+  white-space: nowrap;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.88);
+  transform: translateX(-50%);
+  transition: color 0.2s ease;
+}
+
+.daily-login-scale li:nth-child(1) {
+  --scale-index: 0;
+}
+
+.daily-login-scale li:nth-child(2) {
+  --scale-index: 1;
+}
+
+.daily-login-scale li:nth-child(3) {
+  --scale-index: 2;
+}
+
+.daily-login-scale li:nth-child(4) {
+  --scale-index: 3;
+}
+
+.daily-login-scale li:nth-child(5) {
+  --scale-index: 4;
+}
+
+.daily-login-scale li:nth-child(6) {
+  --scale-index: 5;
+}
+
+.daily-login-scale li:nth-child(7) {
+  --scale-index: 6;
+}
+
+.daily-login-scale li.is-active {
+  color: #4bc8e1;
+}
+
+.daily-login-track {
+  margin-top: 0.22rem;
+  position: relative;
+  width: calc(100% - var(--daily-login-axis-left-pad) - var(--daily-login-axis-right-pad));
+  margin-left: var(--daily-login-axis-left-pad);
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.daily-login-track-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: inherit;
+  background: #ffffff;
+  transition: width 0.35s ease;
+}
+
+.daily-login-current-node {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  background: #4bc8e1;
+  box-shadow: 0 0 0 2px rgba(75, 200, 225, 0.2);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.daily-login-node {
+  position: absolute;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  background: var(--panel);
+  transform: translate(-50%, -50%);
+  transition: background-color 0.2s ease;
+}
+
+.daily-login-node.milestone-3 {
+  left: 33.333%;
+}
+
+.daily-login-node.milestone-7 {
+  left: 100%;
+}
+
+.daily-login-rewards {
+  margin-top: 0.3rem;
+  position: relative;
+  width: calc(100% - var(--daily-login-axis-left-pad) - var(--daily-login-axis-right-pad));
+  margin-left: var(--daily-login-axis-left-pad);
+  height: 1.38rem;
+}
+
+.daily-login-reward {
+  position: absolute;
+  top: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.14rem;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.76);
+  font-family: var(--number-font);
+  font-weight: 800;
+  font-size: 1.14rem;
+  transition: color 0.2s ease;
+}
+
+.daily-login-reward img {
+  width: clamp(1rem, 2.2vw, 1.45rem);
+  height: clamp(1rem, 2.2vw, 1.45rem);
+  object-fit: contain;
+}
+
+.daily-login-reward.reward-3 {
+  left: 33.333%;
+  transform: translateX(-50%);
+}
+
+.daily-login-reward.reward-7 {
+  left: 100%;
+  transform: translateX(-50%);
+  color: #ffffff;
+}
+
+.daily-login-script {
+  margin: 0.12rem 0 0;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: "cinecaption226", "Sora", sans-serif;
+  font-size: clamp(1.9rem, 4.6vw, 3rem);
+  letter-spacing: 0.02em;
+  line-height: 0.94;
+}
+
+.daily-try-script {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.56rem;
+  margin: 0;
+  text-align: right;
+  color: var(--text-main);
+  opacity: 0.25;
+  font-family: "cinecaption226", "Sora", sans-serif;
+  font-size: clamp(1.9rem, 4.6vw, 3rem);
+  letter-spacing: 0.02em;
+  line-height: 0.94;
+  pointer-events: none;
+}
+
+.daily-try-panel {
+  position: relative;
+}
+
+.daily-login-card.is-reward-10-ready .daily-login-reward.reward-3,
+.daily-login-card.is-reward-20-ready .daily-login-reward.reward-7 {
+  color: #ffd45f;
+}
+
 .mypage-coin-value {
   margin: 0.5rem 0 0;
   font-family: var(--number-font);
@@ -1773,6 +2043,59 @@ button {
     padding: 0 var(--page-pad-x) calc(5.8rem + env(safe-area-inset-bottom));
   }
 
+  .daily-login-progress-area {
+    --daily-login-axis-left-pad: 0.1rem;
+    --daily-login-axis-right-pad: clamp(1.9rem, 12vw, 2.6rem);
+  }
+
+  .daily-login-card-body {
+    grid-template-columns: 1fr;
+    gap: 0.48rem;
+    padding: 0.58rem 0.82rem 0.7rem;
+  }
+
+  #dailyLoginCount {
+    font-size: clamp(3.4rem, 24vw, 5.4rem);
+  }
+
+  .daily-login-unit {
+    font-size: clamp(1.58rem, 7vw, 2.25rem);
+    transform: translateY(-0.2rem);
+  }
+
+  .daily-login-scale {
+    font-size: clamp(0.98rem, 5.4vw, 1.45rem);
+  }
+
+  .daily-login-node {
+    width: 18px;
+    height: 18px;
+    border-width: 3px;
+  }
+
+  .daily-login-current-node {
+    width: 13px;
+    height: 13px;
+    border-width: 2px;
+  }
+
+  .daily-login-rewards {
+    height: 1.16rem;
+  }
+
+  .daily-login-reward {
+    top: 0;
+    font-size: 0.92rem;
+  }
+
+  .daily-login-script {
+    font-size: clamp(1.35rem, 8.4vw, 2.1rem);
+  }
+
+  .daily-try-script {
+    font-size: clamp(1.35rem, 8.4vw, 2.1rem);
+  }
+
   .app-header {
     position: relative;
     align-items: center;
@@ -1911,11 +2234,26 @@ button {
     padding: 0.82rem;
   }
 
+  .daily-login-panel {
+    padding: 0;
+  }
+
   .panel > h2 {
     margin: -0.82rem -0.82rem 0.62rem;
     padding: 0.42rem 0.82rem;
     min-height: 2.2rem;
     font-size: 1.02rem;
+  }
+
+  .daily-login-card-head {
+    min-height: 2.2rem;
+    padding: 0.42rem 0.82rem;
+    font-size: 1.02rem;
+  }
+
+  .daily-try-script {
+    right: 0.82rem;
+    bottom: 0.46rem;
   }
 
   .calendar-day {

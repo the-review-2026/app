@@ -138,7 +138,11 @@ const elements = {
   textResetDialog: document.getElementById("textResetDialog"),
   textResetActionButtons: Array.from(document.querySelectorAll("[data-text-reset-action]")),
   homeGreeting: document.getElementById("homeGreeting"),
-  dailyLoginText: document.getElementById("dailyLoginText"),
+  dailyLoginCard: document.getElementById("dailyLoginCard"),
+  dailyLoginCount: document.getElementById("dailyLoginCount"),
+  dailyLoginScaleNumbers: Array.from(document.querySelectorAll("#dailyLoginScale li")),
+  dailyLoginProgressFill: document.getElementById("dailyLoginProgressFill"),
+  dailyLoginCurrentNode: document.getElementById("dailyLoginCurrentNode"),
   dailyTryPrompt: document.getElementById("dailyTryPrompt"),
   dailyTryChoiceList: document.getElementById("dailyTryChoiceList"),
   dailyTryFeedback: document.getElementById("dailyTryFeedback"),
@@ -1123,7 +1127,35 @@ function markDailyLogin() {
 
 function renderDailyLogin() {
   const count = Object.keys(state.loginDays).length;
-  elements.dailyLoginText.textContent = `あなたは${count}日ログインしています。`;
+  const scaleStart = count > 0 ? Math.floor((count - 1) / 7) * 7 + 1 : 1;
+  const currentSlot = count > 0 ? count - scaleStart : 0;
+  const cycleDay = count > 0 ? currentSlot + 1 : 0;
+  const progressPercent = count > 0 ? (currentSlot / 6) * 100 : 0;
+
+  if (elements.dailyLoginCount) {
+    elements.dailyLoginCount.textContent = String(count);
+  }
+
+  if (elements.dailyLoginScaleNumbers.length > 0) {
+    elements.dailyLoginScaleNumbers.forEach((label, index) => {
+      label.textContent = String(scaleStart + index);
+      label.classList.toggle("is-active", count > 0 && index === currentSlot);
+    });
+  }
+
+  if (elements.dailyLoginProgressFill) {
+    elements.dailyLoginProgressFill.style.width = `${progressPercent}%`;
+  }
+
+  if (elements.dailyLoginCurrentNode) {
+    elements.dailyLoginCurrentNode.style.left = `${progressPercent}%`;
+    elements.dailyLoginCurrentNode.hidden = count === 0;
+  }
+
+  if (elements.dailyLoginCard) {
+    elements.dailyLoginCard.classList.toggle("is-reward-10-ready", cycleDay >= 3);
+    elements.dailyLoginCard.classList.toggle("is-reward-20-ready", cycleDay >= 7);
+  }
 }
 
 function createDailyTryRun() {

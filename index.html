@@ -74,12 +74,49 @@
       <section id="screen-home" class="screen is-active">
         <p id="homeGreeting" class="home-greeting home-inline-greeting" aria-live="polite">こんにちは。</p>
         <div class="home-grid">
-          <section class="panel home-card-wide">
-            <h2>デイリーログイン</h2>
-            <p id="dailyLoginText" class="hint-text" aria-live="polite">あなたは0日ログインしています。</p>
+          <section class="panel home-card-wide daily-login-panel">
+            <div id="dailyLoginCard" class="daily-login-card">
+              <div class="daily-login-card-head">リビュー日数</div>
+              <div class="daily-login-card-body">
+                <div class="daily-login-count-wrap">
+                  <p class="daily-login-count" aria-live="polite">
+                    <span id="dailyLoginCount">0</span>
+                    <span class="daily-login-unit">日</span>
+                  </p>
+                </div>
+                <div class="daily-login-progress-area" aria-hidden="true">
+                  <ol id="dailyLoginScale" class="daily-login-scale">
+                    <li>1</li>
+                    <li>2</li>
+                    <li>3</li>
+                    <li>4</li>
+                    <li>5</li>
+                    <li>6</li>
+                    <li>7</li>
+                  </ol>
+                  <div class="daily-login-track">
+                    <div id="dailyLoginProgressFill" class="daily-login-track-fill"></div>
+                    <span id="dailyLoginCurrentNode" class="daily-login-current-node" hidden></span>
+                    <span class="daily-login-node milestone-3"></span>
+                    <span class="daily-login-node milestone-7"></span>
+                  </div>
+                  <div class="daily-login-rewards">
+                    <span class="daily-login-reward reward-3">
+                      <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+                      <span>10</span>
+                    </span>
+                    <span class="daily-login-reward reward-7">
+                      <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+                      <span>20</span>
+                    </span>
+                  </div>
+                  <p class="daily-login-script">Review Period</p>
+                </div>
+              </div>
+            </div>
           </section>
 
-          <section class="panel home-card-wide">
+          <section class="panel home-card-wide daily-try-panel">
             <h2>この問題にTRY!</h2>
             <p id="dailyTryPrompt" class="hint-text"></p>
             <div id="dailyTryChoiceList" class="choice-list"></div>
@@ -87,6 +124,7 @@
             <div class="action-row">
               <button id="dailyTrySubmitBtn" class="primary" type="button">回答する</button>
             </div>
+            <p class="daily-try-script">Review Mission</p>
           </section>
 
         </div>
