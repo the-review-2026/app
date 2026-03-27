@@ -1220,6 +1220,39 @@ h3 {
   position: relative;
 }
 
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-card {
+  color: #1d1d1d;
+}
+
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-card-head {
+  background: #1d1d1d;
+}
+
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-progress-area::after,
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li,
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-reward,
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-reward.reward-7,
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-script {
+  color: #1d1d1d;
+}
+
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li.is-active {
+  color: #1d1d1d;
+}
+
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-track-fill {
+  background: #1d1d1d;
+}
+
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-node {
+  border-color: #1d1d1d;
+}
+
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-current-node {
+  background: #1d1d1d;
+  box-shadow: 0 0 0 2px rgba(29, 29, 29, 0.2);
+}
+
 .daily-login-card.is-reward-10-ready .daily-login-reward.reward-3,
 .daily-login-card.is-reward-20-ready .daily-login-reward.reward-7 {
   color: #ffd45f;
