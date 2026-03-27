@@ -314,6 +314,10 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
   color: #f5f8ff;
 }
 
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"]) .daily-login-count {
+  color: #ffffff;
+}
+
 body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"]) .setting-row {
   border-color: rgba(255, 255, 255, 0.24);
   background: rgba(255, 255, 255, 0.06);
@@ -1254,7 +1258,10 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   color: #1d1d1d;
 }
 
-body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li,
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li {
+  color: #1d1d1d;
+}
+
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li.is-active {
   color: var(--primary);
 }
