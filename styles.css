@@ -1703,8 +1703,8 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .calendar-mark.is-check {
-  background: #1d1d1d;
-  border-color: #1d1d1d;
+  background: #27a45f;
+  border-color: #27a45f;
   color: #ffffff;
 }
 
