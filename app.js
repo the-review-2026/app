@@ -1373,16 +1373,13 @@ function renderHomeGreeting() {
 
 function getHomeGreetingMessage(date) {
   const hour = date.getHours();
-  if (hour === 16 && isJapaneseBusinessDay(date)) {
-    return "学校お疲れさまでした。";
-  }
+  let greeting = "こんばんは。";
   if (hour >= 5 && hour < 11) {
-    return "おはようございます。";
+    greeting = "おはようございます。";
+  } else if (hour >= 11 && hour < 18) {
+    greeting = "こんにちは。";
   }
-  if (hour >= 11 && hour < 18) {
-    return "こんにちは。";
-  }
-  return "こんばんは。";
+  return `${greeting}\nいつも勉強お疲れさまです。`;
 }
 
 function isJapaneseBusinessDay(date) {
@@ -1772,8 +1769,12 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function showStatus(message) {
-  elements.statusMessage.textContent = message;
+function showStatus(_message) {
+  if (!elements.statusMessage) {
+    return;
+  }
+  elements.statusMessage.textContent = "";
+  elements.statusMessage.hidden = true;
 }
 
 function todayKey() {

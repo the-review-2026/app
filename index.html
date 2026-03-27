@@ -72,9 +72,16 @@
 
     <main class="screens">
       <section id="screen-home" class="screen is-active">
-        <p id="homeGreeting" class="home-greeting home-inline-greeting" aria-live="polite">こんにちは。</p>
-        <div class="home-grid">
-          <section class="panel home-card-wide daily-login-panel">
+        <div class="home-top-row">
+          <div class="home-greeting-hero">
+            <div class="home-greeting-bubble">
+              <p id="homeGreeting" class="home-greeting" aria-live="polite">こんにちは。</p>
+            </div>
+            <div class="home-greeting-character" aria-hidden="true">
+              <img src="./private/avatar/learn/らーん1-1.png" alt="" />
+            </div>
+          </div>
+          <section class="panel daily-login-panel">
             <div id="dailyLoginCard" class="daily-login-card">
               <div class="daily-login-card-head">リビュー日数</div>
               <div class="daily-login-card-body">
@@ -115,7 +122,9 @@
               </div>
             </div>
           </section>
+        </div>
 
+        <div class="home-grid">
           <section class="panel home-card-wide daily-try-panel">
             <h2>この問題にTRY!</h2>
             <p id="dailyTryPrompt" class="hint-text"></p>
