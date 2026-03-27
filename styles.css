@@ -1653,6 +1653,19 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
   line-height: 1.7;
 }
 
+.notice-shortcuts {
+  margin-top: 0.62rem;
+  display: grid;
+  gap: 0.24rem;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.notice-shortcuts p {
+  margin: 0;
+}
+
 .settings-section-content {
   margin-top: 0.62rem;
 }
