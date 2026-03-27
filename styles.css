@@ -994,6 +994,7 @@ h3 {
   display: flex;
   align-items: flex-end;
   gap: 0.08rem;
+  color: var(--primary);
   font-family: var(--number-font);
   font-weight: 800;
   line-height: 0.84;
@@ -1109,7 +1110,7 @@ h3 {
   bottom: 0;
   width: 0;
   border-radius: inherit;
-  background: var(--text-main);
+  background: var(--primary);
   transition: width 0.35s ease;
 }
 
@@ -1238,20 +1239,11 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li.is-active {
-  color: #1d1d1d;
-}
-
-body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-track-fill {
-  background: #1d1d1d;
+  color: var(--primary);
 }
 
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-node {
   border-color: #1d1d1d;
-}
-
-body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-current-node {
-  background: #1d1d1d;
-  box-shadow: 0 0 0 2px rgba(29, 29, 29, 0.2);
 }
 
 .daily-login-card.is-reward-10-ready .daily-login-reward.reward-3,
