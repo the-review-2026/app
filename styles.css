@@ -1243,22 +1243,25 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   color: #1d1d1d;
 }
 
-body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-count,
-body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li.is-active {
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-count {
   color: #1d1d1d;
 }
 
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-progress-area::after,
-body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li,
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-reward,
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-reward.reward-7,
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-script {
   color: #1d1d1d;
 }
 
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li,
+body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-scale li.is-active {
+  color: var(--primary);
+}
+
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-track-fill,
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-current-node {
-  background: #1d1d1d;
+  background: var(--primary);
 }
 
 body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])) .daily-login-node {
@@ -2355,4 +2358,3 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-
