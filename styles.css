@@ -371,6 +371,13 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 
 html {
   font-size: calc(16px * var(--app-font-scale));
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
 }
 
 body {
