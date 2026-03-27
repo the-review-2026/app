@@ -56,6 +56,10 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   dailyTry: true,
   notice: true,
 };
+const COIN_COUNT_MIN_ANIMATION_MS = 420;
+const COIN_COUNT_MAX_ANIMATION_MS = 1200;
+const COIN_COUNT_DURATION_PER_STEP_MS = 0.22;
+const REVIEW_COIN_FORMATTER = new Intl.NumberFormat("ja-JP");
 
 const DAILY_TRY_QUESTIONS = [
   {
@@ -161,6 +165,7 @@ let selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
 let selfcheckTimerIntervalId = null;
 let calendarViewDate = new Date(CALENDAR_INITIAL_YEAR, CALENDAR_INITIAL_MONTH_INDEX, 1);
 let auth0Client = null;
+let reviewCoinAnimationFrameId = null;
 
 init()
   .catch((error) => {
@@ -616,7 +621,7 @@ function deleteAccountAndResetProgress() {
 }
 
 function renderAll() {
-  renderCoinBoard();
+  renderCoinBoard({ fromZero: true });
   renderMypageCoin();
   renderMypageSettings();
   renderAuthPanel();
@@ -629,15 +634,85 @@ function renderAll() {
   renderDailyTryPanel();
 }
 
-function renderCoinBoard() {
-  elements.reviewCoinValue.textContent = String(state.reviewCoin);
+function renderCoinBoard(options = {}) {
+  if (!elements.reviewCoinValue) {
+    return;
+  }
+  const targetValue = normalizeCoinAmount(state.reviewCoin);
+  const fromValue = options.fromZero ? 0 : readCoinAmountFromElement(elements.reviewCoinValue);
+  animateReviewCoinValue(fromValue, targetValue);
 }
 
 function renderMypageCoin() {
   if (!elements.mypageCoinValueNumber) {
     return;
   }
-  elements.mypageCoinValueNumber.textContent = String(state.reviewCoin);
+  elements.mypageCoinValueNumber.textContent = formatCoinAmount(state.reviewCoin);
+}
+
+function formatCoinAmount(value) {
+  return REVIEW_COIN_FORMATTER.format(normalizeCoinAmount(value));
+}
+
+function normalizeCoinAmount(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0;
+  }
+  return Math.floor(parsed);
+}
+
+function readCoinAmountFromElement(element) {
+  if (!element) {
+    return 0;
+  }
+  const rawText = String(element.textContent ?? "");
+  const digitsOnly = rawText.replace(/[^\d]/g, "");
+  if (!digitsOnly) {
+    return 0;
+  }
+  const parsed = Number(digitsOnly);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function animateReviewCoinValue(fromValue, toValue) {
+  if (!elements.reviewCoinValue) {
+    return;
+  }
+  if (reviewCoinAnimationFrameId !== null) {
+    window.cancelAnimationFrame(reviewCoinAnimationFrameId);
+    reviewCoinAnimationFrameId = null;
+  }
+
+  const startValue = normalizeCoinAmount(fromValue);
+  const targetValue = normalizeCoinAmount(toValue);
+  const shouldReduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (startValue === targetValue || shouldReduceMotion) {
+    elements.reviewCoinValue.textContent = formatCoinAmount(targetValue);
+    return;
+  }
+
+  const diff = Math.abs(targetValue - startValue);
+  const duration = Math.min(
+    COIN_COUNT_MAX_ANIMATION_MS,
+    Math.max(COIN_COUNT_MIN_ANIMATION_MS, diff * COIN_COUNT_DURATION_PER_STEP_MS)
+  );
+  const startTime = performance.now();
+
+  const tick = (now) => {
+    const progress = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - (1 - progress) ** 3;
+    const currentValue = Math.round(startValue + (targetValue - startValue) * eased);
+    elements.reviewCoinValue.textContent = formatCoinAmount(currentValue);
+
+    if (progress < 1) {
+      reviewCoinAnimationFrameId = window.requestAnimationFrame(tick);
+      return;
+    }
+    reviewCoinAnimationFrameId = null;
+  };
+
+  reviewCoinAnimationFrameId = window.requestAnimationFrame(tick);
 }
 
 function openMypageCustomizeFromCoinBoard() {
