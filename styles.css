@@ -1089,7 +1089,7 @@ h3 {
 
 .daily-login-unit {
   display: inline-block;
-  font-size: clamp(1.95rem, 4vw, 3rem);
+  font-size: clamp(1.53rem, 3.3vw, 1.73rem);
   font-weight: 700;
   transform: translateY(-0.24rem);
 }
@@ -1132,14 +1132,22 @@ h3 {
 .daily-login-scale li {
   position: absolute;
   top: 0;
-  left: calc((var(--scale-index) / 6) * 100%);
+  left: calc((var(--scale-index) / var(--daily-login-scale-denominator, 4)) * 100%);
   min-width: 0;
   white-space: nowrap;
   text-align: center;
   color: var(--text-main);
-  opacity: 0.86;
+  opacity: 0;
   transform: translateX(-50%);
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.daily-login-scale li.is-visible {
+  opacity: 1;
+}
+
+.daily-login-scale li.is-faded {
+  opacity: 0.45;
 }
 
 .daily-login-scale li:nth-child(1) {
@@ -1182,6 +1190,17 @@ h3 {
   margin-left: var(--daily-login-axis-left-pad);
   height: 8px;
   border-radius: 999px;
+  background: transparent;
+}
+
+.daily-login-track::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--daily-login-track-start, 0%);
+  width: calc(var(--daily-login-track-end, 100%) - var(--daily-login-track-start, 0%));
+  border-radius: inherit;
   background: var(--panel-line);
 }
 
@@ -1193,7 +1212,7 @@ h3 {
   width: 0;
   border-radius: inherit;
   background: var(--primary);
-  transition: width 0.35s ease;
+  transition: left 0.35s ease, width 0.35s ease;
 }
 
 .daily-login-current-node {
@@ -1212,21 +1231,22 @@ h3 {
 .daily-login-node {
   position: absolute;
   top: 50%;
-  width: 24px;
-  height: 24px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 4px solid var(--text-main);
-  background: var(--panel);
+  border: 2px solid var(--panel);
+  background: var(--text-main);
   transform: translate(-50%, -50%);
-  transition: background-color 0.2s ease;
+  transition: opacity 0.2s ease;
+  z-index: 1;
 }
 
-.daily-login-node.milestone-3 {
-  left: 33.333%;
+.daily-login-node.is-faded {
+  opacity: 0.45;
 }
 
-.daily-login-node.milestone-7 {
-  left: 100%;
+.daily-login-node[hidden] {
+  display: none;
 }
 
 .daily-login-rewards {
@@ -1252,6 +1272,10 @@ h3 {
   transition: color 0.2s ease;
 }
 
+.daily-login-reward[hidden] {
+  display: none !important;
+}
+
 .daily-login-reward img {
   width: clamp(1rem, 2.2vw, 1.45rem);
   height: clamp(1rem, 2.2vw, 1.45rem);
@@ -1259,12 +1283,10 @@ h3 {
 }
 
 .daily-login-reward.reward-3 {
-  left: 33.333%;
   transform: translateX(-50%);
 }
 
 .daily-login-reward.reward-7 {
-  left: 100%;
   transform: translateX(-50%);
   color: var(--text-main);
 }
@@ -2226,6 +2248,13 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+@media (min-width: 981px) {
+  .daily-login-progress-area {
+    --daily-login-axis-left-pad: clamp(1.06rem, 2.2vw, 1.72rem);
+    --daily-login-axis-right-pad: clamp(2.3rem, 4.2vw, 3.5rem);
+  }
+}
+
 @media (max-width: 980px) {
   .home-top-row {
     grid-template-columns: 1fr;
@@ -2297,18 +2326,18 @@ button {
   }
 
   .daily-login-unit {
-    font-size: clamp(1.58rem, 7vw, 2.25rem);
+    font-size: clamp(1.44rem, 4.2vw, 1.62rem);
     transform: translateY(-0.2rem);
   }
 
   .daily-login-scale {
-    font-size: clamp(0.98rem, 5.4vw, 1.45rem);
+    font-size: clamp(0.9rem, 4.8vw, 1.28rem);
   }
 
   .daily-login-node {
-    width: 18px;
-    height: 18px;
-    border-width: 3px;
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
   }
 
   .daily-login-current-node {

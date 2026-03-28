@@ -56,6 +56,9 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   dailyTry: true,
   notice: true,
 };
+const DAILY_LOGIN_DESKTOP_WINDOW_RADIUS = 2;
+const DAILY_LOGIN_MOBILE_WINDOW_RADIUS = 3;
+const DAILY_LOGIN_MOBILE_BREAKPOINT_PX = 760;
 const COIN_COUNT_MIN_ANIMATION_MS = 420;
 const COIN_COUNT_MAX_ANIMATION_MS = 1200;
 const COIN_COUNT_DURATION_PER_STEP_MS = 0.22;
@@ -145,9 +148,19 @@ const elements = {
   homeGreeting: document.getElementById("homeGreeting"),
   dailyLoginCard: document.getElementById("dailyLoginCard"),
   dailyLoginCount: document.getElementById("dailyLoginCount"),
+  dailyLoginScale: document.getElementById("dailyLoginScale"),
   dailyLoginScaleNumbers: Array.from(document.querySelectorAll("#dailyLoginScale li")),
+  dailyLoginTrack: document.querySelector(".daily-login-track"),
   dailyLoginProgressFill: document.getElementById("dailyLoginProgressFill"),
+  dailyLoginPrevOuterNode: document.getElementById("dailyLoginPrevOuterNode"),
+  dailyLoginPrevFarNode: document.getElementById("dailyLoginPrevFarNode"),
+  dailyLoginPrevNearNode: document.getElementById("dailyLoginPrevNearNode"),
   dailyLoginCurrentNode: document.getElementById("dailyLoginCurrentNode"),
+  dailyLoginNextNearNode: document.getElementById("dailyLoginNextNearNode"),
+  dailyLoginNextFarNode: document.getElementById("dailyLoginNextFarNode"),
+  dailyLoginNextOuterNode: document.getElementById("dailyLoginNextOuterNode"),
+  dailyLoginReward3: document.getElementById("dailyLoginReward3"),
+  dailyLoginReward7: document.getElementById("dailyLoginReward7"),
   dailyTryPrompt: document.getElementById("dailyTryPrompt"),
   dailyTryChoiceList: document.getElementById("dailyTryChoiceList"),
   dailyTryFeedback: document.getElementById("dailyTryFeedback"),
@@ -392,6 +405,10 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeMypageSubmenu();
     }
+  });
+
+  window.addEventListener("resize", () => {
+    renderDailyLogin();
   });
 }
 
@@ -1222,32 +1239,115 @@ function markDailyLogin() {
   }
 }
 
+function getDailyLoginWindowRadius() {
+  if (window.matchMedia(`(max-width: ${DAILY_LOGIN_MOBILE_BREAKPOINT_PX}px)`).matches) {
+    return DAILY_LOGIN_MOBILE_WINDOW_RADIUS;
+  }
+  return DAILY_LOGIN_DESKTOP_WINDOW_RADIUS;
+}
+
+function dailyLoginSlotToPercent(slotIndex, windowSize) {
+  const denominator = Math.max(1, windowSize - 1);
+  return (slotIndex / denominator) * 100;
+}
+
+function renderDailyLoginNode(node, slot, windowSize) {
+  if (!node) {
+    return;
+  }
+  const shouldShow = Boolean(slot && slot.day != null);
+  node.hidden = !shouldShow;
+  if (!shouldShow) {
+    return;
+  }
+  node.style.left = `${dailyLoginSlotToPercent(slot.index, windowSize)}%`;
+  node.classList.toggle("is-faded", Boolean(slot.isFaded));
+}
+
+function renderDailyLoginReward(rewardElement, rewardDay, slots, windowSize) {
+  if (!rewardElement) {
+    return;
+  }
+  const slot = slots.find((item) => item.day === rewardDay) ?? null;
+  const shouldShow = Boolean(slot);
+  rewardElement.hidden = !shouldShow;
+  rewardElement.style.display = shouldShow ? "inline-flex" : "none";
+  if (!shouldShow) {
+    rewardElement.style.removeProperty("left");
+  }
+  if (!slot) {
+    return;
+  }
+  rewardElement.style.left = `${dailyLoginSlotToPercent(slot.index, windowSize)}%`;
+}
+
 function renderDailyLogin() {
   const count = Object.keys(state.loginDays).length;
-  const scaleStart = count > 0 ? Math.floor((count - 1) / 7) * 7 + 1 : 1;
-  const currentSlot = count > 0 ? count - scaleStart : 0;
-  const cycleDay = count > 0 ? currentSlot + 1 : 0;
-  const progressPercent = count > 0 ? (currentSlot / 6) * 100 : 0;
+  const displayCount = Math.max(1, count);
+  const cycleDay = ((displayCount - 1) % 7) + 1;
+  const windowRadius = getDailyLoginWindowRadius();
+  const windowSize = windowRadius * 2 + 1;
+  const currentSlot = windowRadius;
+  const anchorDay = cycleDay;
+  const slots = Array.from({ length: windowSize }, (_, index) => {
+    const day = anchorDay + index - windowRadius;
+    return {
+      index,
+      day: day >= 1 && day <= 7 ? day : null,
+      isCurrent: index === currentSlot,
+      isFaded: Math.abs(index - currentSlot) === windowRadius,
+    };
+  });
+
+  const visibleSlots = slots.filter((slot) => slot.day !== null);
+  const lineStartSlot = visibleSlots[0] ?? slots[currentSlot];
+  const lineEndSlot = visibleSlots[visibleSlots.length - 1] ?? slots[currentSlot];
+  const lineStartPercent = dailyLoginSlotToPercent(lineStartSlot.index, windowSize);
+  const lineEndPercent = dailyLoginSlotToPercent(lineEndSlot.index, windowSize);
+  const currentPercent = dailyLoginSlotToPercent(currentSlot, windowSize);
+  const progressWidth = Math.max(0, currentPercent - lineStartPercent);
 
   if (elements.dailyLoginCount) {
-    elements.dailyLoginCount.textContent = String(count);
+    elements.dailyLoginCount.textContent = String(displayCount);
+  }
+
+  if (elements.dailyLoginScale) {
+    elements.dailyLoginScale.style.setProperty("--daily-login-scale-denominator", String(Math.max(1, windowSize - 1)));
   }
 
   if (elements.dailyLoginScaleNumbers.length > 0) {
     elements.dailyLoginScaleNumbers.forEach((label, index) => {
-      label.textContent = String(scaleStart + index);
-      label.classList.toggle("is-active", count > 0 && index === currentSlot);
+      const slot = slots[index] ?? null;
+      label.textContent = slot && slot.day != null ? String(slot.day) : "";
+      label.classList.toggle("is-visible", Boolean(slot && slot.day != null));
+      label.classList.toggle("is-active", Boolean(slot?.isCurrent));
+      label.classList.toggle("is-faded", Boolean(slot?.isFaded && slot.day !== null));
     });
   }
 
+  if (elements.dailyLoginTrack) {
+    elements.dailyLoginTrack.style.setProperty("--daily-login-track-start", `${lineStartPercent}%`);
+    elements.dailyLoginTrack.style.setProperty("--daily-login-track-end", `${lineEndPercent}%`);
+  }
+
   if (elements.dailyLoginProgressFill) {
-    elements.dailyLoginProgressFill.style.width = `${progressPercent}%`;
+    elements.dailyLoginProgressFill.style.left = `${lineStartPercent}%`;
+    elements.dailyLoginProgressFill.style.width = `${progressWidth}%`;
   }
 
   if (elements.dailyLoginCurrentNode) {
-    elements.dailyLoginCurrentNode.style.left = `${progressPercent}%`;
-    elements.dailyLoginCurrentNode.hidden = count === 0;
+    elements.dailyLoginCurrentNode.style.left = `${currentPercent}%`;
+    elements.dailyLoginCurrentNode.hidden = false;
   }
+
+  renderDailyLoginNode(elements.dailyLoginPrevOuterNode, slots[currentSlot - 3], windowSize);
+  renderDailyLoginNode(elements.dailyLoginPrevFarNode, slots[currentSlot - 2], windowSize);
+  renderDailyLoginNode(elements.dailyLoginPrevNearNode, slots[currentSlot - 1], windowSize);
+  renderDailyLoginNode(elements.dailyLoginNextNearNode, slots[currentSlot + 1], windowSize);
+  renderDailyLoginNode(elements.dailyLoginNextFarNode, slots[currentSlot + 2], windowSize);
+  renderDailyLoginNode(elements.dailyLoginNextOuterNode, slots[currentSlot + 3], windowSize);
+  renderDailyLoginReward(elements.dailyLoginReward3, 3, slots, windowSize);
+  renderDailyLoginReward(elements.dailyLoginReward7, 7, slots, windowSize);
 
   if (elements.dailyLoginCard) {
     elements.dailyLoginCard.classList.toggle("is-reward-10-ready", cycleDay >= 3);
