@@ -4,6 +4,12 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Corinthia-Regular";
+  src: url("./assets/fonts/Corinthia-Regular.ttf?v=20260326-1") format("truetype");
+  font-display: swap;
+}
+
 :root {
   --number-font: "Noto Sans", "Noto Sans JP", sans-serif;
   --app-font-scale: 1;
@@ -1299,10 +1305,11 @@ h3 {
   text-align: right;
   color: var(--text-main);
   opacity: 0.25;
-  font-family: "cinecaption226", "Sora", sans-serif;
+  font-family: "Corinthia-Regular", "Sora", sans-serif;
   font-size: clamp(1.9rem, 4.6vw, 3rem);
   letter-spacing: 0.02em;
   line-height: 0.94;
+  transform: translateY(0.75rem);
   pointer-events: none;
 }
 
@@ -1314,10 +1321,11 @@ h3 {
   text-align: right;
   color: var(--text-main);
   opacity: 0.25;
-  font-family: "cinecaption226", "Sora", sans-serif;
+  font-family: "Corinthia-Regular", "Sora", sans-serif;
   font-size: clamp(1.9rem, 4.6vw, 3rem);
   letter-spacing: 0.02em;
   line-height: 0.94;
+  transform: translateY(0.75rem);
   pointer-events: none;
 }
 
@@ -1466,6 +1474,11 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   color: var(--text-soft);
 }
 
+#dailyTryPrompt {
+  font-family: "cinecaption226", "Noto Sans JP", sans-serif;
+  font-size: 1.15rem;
+}
+
 .home-greeting {
   margin: 0;
   font-family: "cinecaption226", "Noto Sans JP", sans-serif;
@@ -1517,6 +1530,17 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.daily-try-action-row {
+  align-items: center;
+}
+
+.daily-try-feedback {
+  margin: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 button {
@@ -2531,6 +2555,10 @@ button {
     margin: -0.82rem -0.82rem 0.62rem;
     padding: 0.42rem 0.82rem;
     min-height: 2.2rem;
+    font-size: 1.02rem;
+  }
+
+  #dailyTryPrompt {
     font-size: 1.02rem;
   }
 
