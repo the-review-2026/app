@@ -1,0 +1,72 @@
+﻿<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Review | Login</title>
+    <link rel="icon" type="image/png" href="./assets/favicon/favicon.png?v=20260326-1" />
+    <link rel="apple-touch-icon" href="./assets/favicon/favicon.png?v=20260326-1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./app.css?v=20260403-5" />
+    <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
+    <style>
+      body.login-page {
+        padding-bottom: 2rem;
+      }
+
+      .login-shell {
+        width: min(560px, 100%);
+        margin: 4rem auto 0;
+      }
+
+      .login-brand {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+      }
+
+      .login-brand img {
+        width: min(380px, 85vw);
+        height: auto;
+      }
+    </style>
+  </head>
+  <body class="login-page" data-theme="sea">
+    <div id="appLoader" class="app-loader" role="status" aria-live="polite" aria-label="読み込み中">
+      <div class="loader-inner ball-scale" aria-hidden="true">
+        <div></div>
+      </div>
+    </div>
+    <div class="aurora aurora-left"></div>
+    <div class="aurora aurora-right"></div>
+
+    <main class="screens login-shell">
+      <div class="login-brand" aria-hidden="true">
+        <img src="./assets/logos/original.png?v=20260326-1" alt="" />
+      </div>
+
+      <section class="panel auth-panel">
+        <h2>ログイン</h2>
+        <p class="hint-text">マイページを使うには Google ログインまたはゲストモードが必要です。</p>
+        <div class="action-row">
+          <button id="authLoginGoogleBtn" class="primary" data-auth-provider="google" type="button">Googleでログイン</button>
+          <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">ゲストで続ける</button>
+        </div>
+        <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
+          auth0-config.js の domain / clientId / googleConnection を確認してください。
+        </p>
+      </section>
+    </main>
+
+    <p id="statusMessage" class="status-message" role="status" aria-live="polite" hidden></p>
+
+    <script src="./auth0-config.js?v=20260326-1"></script>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
+    <script src="./app.js?v=20260404-1"></script>
+  </body>
+</html>

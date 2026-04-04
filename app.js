@@ -36,8 +36,6 @@ const THEME_DISPLAY_NAMES = {
 };
 const PREMIUM_THEMES = ["kagiko", "city"];
 const THEME_UNLOCK_COST = 50;
-const CALENDAR_INITIAL_YEAR = 2026;
-const CALENDAR_INITIAL_MONTH_INDEX = 2;
 const LEGACY_THEME_ALIASES = {
   deepsea: "sea",
 };
@@ -63,6 +61,65 @@ const COIN_COUNT_MIN_ANIMATION_MS = 420;
 const COIN_COUNT_MAX_ANIMATION_MS = 1200;
 const COIN_COUNT_DURATION_PER_STEP_MS = 0.22;
 const REVIEW_COIN_FORMATTER = new Intl.NumberFormat("ja-JP");
+const FLASHCARD_DEFAULT_SERIES = {
+  id: "reboot-1st-edition",
+  label: "Reboot 1st Edition",
+};
+const FLASHCARD_REVIEW_2ND_SERIES = {
+  id: "review-2nd-edition",
+  label: "Review 2nd Edition",
+};
+const FLASHCARD_DATASET_SOURCES = [
+  {
+    id: "public",
+    label: "公共",
+    resolve: () => (typeof DEFAULT_DATA !== "undefined" ? DEFAULT_DATA : null),
+  },
+  {
+    id: "math1",
+    label: "数学I",
+    resolve: () => (typeof MATH1_DATA !== "undefined" ? MATH1_DATA : null),
+  },
+  {
+    id: "physics-basic",
+    label: "物理基礎",
+    resolve: () => (typeof PHYSICS_BASIC_DATA !== "undefined" ? PHYSICS_BASIC_DATA : null),
+  },
+  {
+    id: "logic",
+    label: "情報と論理",
+    resolve: () => (typeof LOGIC_DATA !== "undefined" ? LOGIC_DATA : null),
+  },
+  {
+    id: "health",
+    label: "保健",
+    resolve: () => (typeof HEALTH_DATA !== "undefined" ? HEALTH_DATA : null),
+  },
+  {
+    id: "ec1",
+    label: "経済",
+    resolve: () => (typeof EC1_DATA !== "undefined" ? EC1_DATA : null),
+  },
+  {
+    id: "bio",
+    label: "生物基礎",
+    resolve: () => (typeof BIO_DATA !== "undefined" ? BIO_DATA : null),
+  },
+  {
+    id: "week-test-8",
+    label: "週テスト8",
+    seriesId: FLASHCARD_REVIEW_2ND_SERIES.id,
+    seriesLabel: FLASHCARD_REVIEW_2ND_SERIES.label,
+    resolve: () => (typeof WEEK_TEST8_DATA !== "undefined" ? WEEK_TEST8_DATA : null),
+  },
+  {
+    id: "week-test-9",
+    label: "週テスト9",
+    seriesId: FLASHCARD_REVIEW_2ND_SERIES.id,
+    seriesLabel: FLASHCARD_REVIEW_2ND_SERIES.label,
+    resolve: () => (typeof WEEK_TEST9_DATA !== "undefined" ? WEEK_TEST9_DATA : null),
+  },
+];
 
 const DAILY_TRY_QUESTIONS = [
   {
@@ -121,11 +178,12 @@ const elements = {
   selfcheckTimerStartBtn: document.getElementById("selfcheckTimerStartBtn"),
   selfcheckTimerPauseBtn: document.getElementById("selfcheckTimerPauseBtn"),
   selfcheckTimerResetBtn: document.getElementById("selfcheckTimerResetBtn"),
+  selfcheckTimerFullscreenBtn: document.getElementById("selfcheckTimerFullscreenBtn"),
   reviewCoinValue: document.getElementById("reviewCoinValue"),
   mypageCoinValueNumber: document.getElementById("mypageCoinValueNumber"),
   authEmailText: document.getElementById("authEmailText"),
   authStatusText: document.getElementById("authStatusText"),
-  authLoginBtn: document.getElementById("authLoginBtn"),
+  authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
   logoutBtn: document.getElementById("logoutBtn"),
   deleteAccountBtn: document.getElementById("deleteAccountBtn"),
@@ -165,6 +223,28 @@ const elements = {
   dailyTryChoiceList: document.getElementById("dailyTryChoiceList"),
   dailyTryFeedback: document.getElementById("dailyTryFeedback"),
   dailyTrySubmitBtn: document.getElementById("dailyTrySubmitBtn"),
+  flashcardSummary: document.getElementById("flashcardSummary"),
+  flashcardSeriesButtons: document.getElementById("flashcardSeriesButtons"),
+  flashcardSubjectGroup: document.getElementById("flashcardSubjectGroup"),
+  flashcardSubjectButtons: document.getElementById("flashcardSubjectButtons"),
+  flashcardFullscreenBtn: document.getElementById("flashcardFullscreenBtn"),
+  mypageTopPage: document.getElementById("mypage-top"),
+  mypageSelfcheckPage: document.getElementById("mypage-selfcheck"),
+  mypageFlashcardPanel: document.getElementById("mypageFlashcardPanel"),
+  mypageTimerPanel: document.getElementById("mypageTimerPanel"),
+  flashcardToolbar: document.getElementById("flashcardToolbar"),
+  flashcardUnitSelect: document.getElementById("flashcardUnitSelect"),
+  flashcardCard: document.getElementById("flashcardCard"),
+  flashcardQuestion: document.getElementById("flashcardQuestion"),
+  flashcardImageWrap: document.getElementById("flashcardImageWrap"),
+  flashcardImage: document.getElementById("flashcardImage"),
+  flashcardRevealBtn: document.getElementById("flashcardRevealBtn"),
+  flashcardAnswerArea: document.getElementById("flashcardAnswerArea"),
+  flashcardAnswerList: document.getElementById("flashcardAnswerList"),
+  flashcardPrevBtn: document.getElementById("flashcardPrevBtn"),
+  flashcardShuffleBtn: document.getElementById("flashcardShuffleBtn"),
+  flashcardNextBtn: document.getElementById("flashcardNextBtn"),
+  flashcardActions: document.getElementById("flashcardActions"),
   statusMessage: document.getElementById("statusMessage"),
 };
 
@@ -176,31 +256,173 @@ let themeFadeTimerId = null;
 let activeMypagePage = "top";
 let selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
 let selfcheckTimerIntervalId = null;
-let calendarViewDate = new Date(CALENDAR_INITIAL_YEAR, CALENDAR_INITIAL_MONTH_INDEX, 1);
+let calendarViewDate = getCurrentMonthStartDate();
 let auth0Client = null;
 let reviewCoinAnimationFrameId = null;
+let flashcardState = createInitialFlashcardState();
+let isFlashcardFocusMode = false;
+let isSelfcheckTimerFocusMode = false;
+const IS_LOGIN_PAGE = isCurrentLoginPage();
 
-init()
-  .catch((error) => {
-    console.error("App initialization failed:", error);
-    showStatus("初期化でエラーが発生しました。画面を再読み込みしてください。");
-  })
-  .finally(() => {
-    hideAppLoader();
-  });
+if (IS_LOGIN_PAGE) {
+  initLoginPage()
+    .catch((error) => {
+      console.error("Login page initialization failed:", error);
+      showStatus("ログイン画面の初期化に失敗しました。時間をおいて再試行してください。");
+    })
+    .finally(() => {
+      hideAppLoader();
+    });
+} else {
+  init()
+    .catch((error) => {
+      console.error("App initialization failed:", error);
+      showStatus("初期化でエラーが発生しました。画面を再読み込みしてください。");
+    })
+    .finally(() => {
+      hideAppLoader();
+    });
+}
+
+function isCurrentLoginPage() {
+  const pathname = String(window.location.pathname || "").toLowerCase();
+  if (/(^|[\\/])login\.html$/.test(pathname)) {
+    return true;
+  }
+  return Boolean(document.body?.classList.contains("login-page"));
+}
 
 async function init() {
   ensureInitialCoinGrant();
   await initializeAuth();
+  if (redirectToLoginPageIfNeeded()) {
+    return;
+  }
   applyTheme(state.settings.theme);
   applyAccessibilityModes();
   applyTypographySettings();
+  injectTabScriptLabels();
   bindBeforeUnloadPrompt();
   markDailyLogin();
   bindEvents();
+  initializeFlashcards();
   startHomeGreetingTicker();
   renderAll();
   activateScreen(activeScreen);
+}
+
+async function initLoginPage() {
+  if (state.auth.isLoggedIn) {
+    redirectToIndexPage();
+    return;
+  }
+
+  bindLoginPageAuthEvents();
+  await initializeAuth();
+  renderAuthPanel();
+
+  if (state.auth.isLoggedIn) {
+    redirectToIndexPage();
+  }
+}
+
+function redirectToLoginPageIfNeeded() {
+  if (IS_LOGIN_PAGE) {
+    return false;
+  }
+  if (state.auth.isLoggedIn) {
+    return false;
+  }
+  window.location.replace("./login.html");
+  return true;
+}
+
+function redirectToIndexPage() {
+  window.location.replace("./index.html");
+}
+
+function bindLoginPageAuthEvents() {
+  elements.authLoginButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const provider = normalizeAuthLoginProvider(button.dataset.authProvider);
+      if (!provider) {
+        return;
+      }
+      if (provider === "guest") {
+        loginAsGuest({
+          targetScreen: "mypage",
+          targetMypagePage: "top",
+        });
+        redirectToIndexPage();
+        return;
+      }
+      await loginWithAuth0(
+        {
+          targetScreen: "mypage",
+          targetMypagePage: "top",
+        },
+        { provider }
+      );
+    });
+  });
+}
+
+function injectTabScriptLabels() {
+  const panelsWithLabels = [
+    {
+      selector: "#screen-login .auth-panel",
+      label: "Login",
+    },
+    {
+      selector: "#mypageFlashcardPanel",
+      label: "Flashcards",
+    },
+    {
+      selector: "#mypageQuestPanel",
+      label: "Quest",
+    },
+    {
+      selector: "#screen-notice .panel",
+      label: "Information",
+    },
+  ];
+
+  panelsWithLabels.forEach(({ selector, label }) => {
+    const panel = document.querySelector(selector);
+    appendTabScriptLabel(panel, label);
+  });
+
+  const selfcheckSections = Array.from(document.querySelectorAll("#mypage-selfcheck .selfcheck-section"));
+  appendTabScriptLabel(selfcheckSections[0] ?? null, "Calender");
+  appendTabScriptLabel(selfcheckSections[1] ?? null, "Timer");
+
+  const customizeSections = Array.from(document.querySelectorAll("#mypage-customize .settings-section"));
+  const customizeLabels = ["Number of Review Coins", "Avatar", "Color Schemes"];
+  customizeLabels.forEach((label, index) => {
+    appendTabScriptLabel(customizeSections[index] ?? null, label);
+  });
+
+  const settingsSections = Array.from(document.querySelectorAll("#mypage-settings .settings-section"));
+  const settingsLabels = ["Login Status", "Accessibility", "Notice", "Reset"];
+  settingsLabels.forEach((label, index) => {
+    appendTabScriptLabel(settingsSections[index] ?? null, label);
+  });
+}
+
+function appendTabScriptLabel(panel, label) {
+  if (!panel || !label) {
+    return;
+  }
+  panel.classList.add("tab-script-panel");
+  const existingScript = panel.querySelector(".tab-script");
+  if (existingScript) {
+    existingScript.textContent = label;
+    return;
+  }
+  const script = document.createElement("p");
+  script.className = "tab-script";
+  script.textContent = label;
+  panel.appendChild(script);
 }
 
 function hideAppLoader() {
@@ -267,17 +489,116 @@ function bindEvents() {
     });
   });
 
-  if (elements.authLoginBtn) {
-    elements.authLoginBtn.addEventListener("click", async () => {
-      await loginWithAuth0({
-        targetScreen: "mypage",
-        targetMypagePage: "top",
-      });
+  elements.authLoginButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const provider = normalizeAuthLoginProvider(button.dataset.authProvider);
+      if (!provider) {
+        return;
+      }
+      if (provider === "guest") {
+        loginAsGuest({
+          targetScreen: "mypage",
+          targetMypagePage: "top",
+        });
+        return;
+      }
+      await loginWithAuth0(
+        {
+          targetScreen: "mypage",
+          targetMypagePage: "top",
+        },
+        { provider }
+      );
     });
-  }
+  });
 
   if (elements.dailyTrySubmitBtn) {
     elements.dailyTrySubmitBtn.addEventListener("click", submitDailyTryAnswer);
+  }
+
+  if (elements.flashcardSeriesButtons) {
+    elements.flashcardSeriesButtons.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-flashcard-series-id]");
+      if (!button) {
+        return;
+      }
+      const nextSeriesId = normalizeFlashcardText(button.dataset.flashcardSeriesId);
+      if (!nextSeriesId || nextSeriesId === flashcardState.selectedSeriesId) {
+        return;
+      }
+      flashcardState.selectedSeriesId = nextSeriesId;
+      flashcardState.selectedDeckId = "";
+      flashcardState.selectedUnitId = "";
+      flashcardState.cardIndex = 0;
+      flashcardState.answerVisible = false;
+      renderFlashcardPanel();
+    });
+  }
+
+  if (elements.flashcardSubjectButtons) {
+    elements.flashcardSubjectButtons.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-flashcard-deck-id]");
+      if (!button) {
+        return;
+      }
+      const nextDeckId = normalizeFlashcardText(button.dataset.flashcardDeckId);
+      if (!nextDeckId || nextDeckId === flashcardState.selectedDeckId) {
+        return;
+      }
+      flashcardState.selectedDeckId = nextDeckId;
+      flashcardState.selectedUnitId = "";
+      flashcardState.cardIndex = 0;
+      flashcardState.answerVisible = false;
+      renderFlashcardPanel();
+    });
+  }
+
+  if (elements.flashcardUnitSelect) {
+    elements.flashcardUnitSelect.addEventListener("change", () => {
+      flashcardState.selectedUnitId = elements.flashcardUnitSelect.value;
+      flashcardState.cardIndex = 0;
+      flashcardState.answerVisible = false;
+      renderFlashcardPanel();
+    });
+  }
+
+  if (elements.flashcardCard) {
+    elements.flashcardCard.addEventListener("click", (event) => {
+      const actionElement = event.target.closest("[data-flashcard-action]");
+      if (!actionElement || actionElement.dataset.flashcardAction !== "toggle-answer") {
+        return;
+      }
+      toggleFlashcardAnswer();
+    });
+  }
+
+  if (elements.flashcardPrevBtn) {
+    elements.flashcardPrevBtn.addEventListener("click", () => {
+      shiftFlashcardIndex(-1);
+    });
+  }
+
+  if (elements.flashcardNextBtn) {
+    elements.flashcardNextBtn.addEventListener("click", () => {
+      shiftFlashcardIndex(1);
+    });
+  }
+
+  if (elements.flashcardShuffleBtn) {
+    elements.flashcardShuffleBtn.addEventListener("click", () => {
+      jumpToRandomFlashcard();
+    });
+  }
+
+  if (elements.flashcardFullscreenBtn) {
+    elements.flashcardFullscreenBtn.addEventListener("click", () => {
+      toggleFlashcardFocusMode();
+    });
+  }
+  if (elements.selfcheckTimerFullscreenBtn) {
+    elements.selfcheckTimerFullscreenBtn.addEventListener("click", () => {
+      toggleSelfcheckTimerFocusMode();
+    });
   }
 
   if (elements.logoutBtn) {
@@ -404,6 +725,10 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeMypageSubmenu();
+      if (isFlashcardFocusMode || isSelfcheckTimerFocusMode) {
+        setFlashcardFocusMode(false);
+        setSelfcheckTimerFocusMode(false);
+      }
     }
   });
 
@@ -426,36 +751,79 @@ function activateScreen(screen) {
   } else {
     closeMypageSubmenu();
   }
+  renderFlashcardFocusMode();
 }
 
 function promptLoginForMypage() {
   activateScreen("login");
-  showStatus("マイページを見るにはログインが必要です。");
+  showStatus("マイページを見るにはGoogleログインまたはゲストモードが必要です。");
 }
 
-async function loginWithAuth0(appState) {
+function loginAsGuest(appState = {}) {
+  state.auth = normalizeAuthState({
+    isLoggedIn: true,
+    provider: "guest",
+    displayName: "ゲスト",
+    email: null,
+  });
+  saveState();
+  applyAuthRedirectState(appState);
+  closeMypageSubmenu();
+  renderMypageSettings();
+  renderAuthPanel();
+  activateScreen(normalizeScreen(appState?.targetScreen));
+  if (normalizeScreen(appState?.targetScreen) === "mypage") {
+    setMypagePage(normalizeMypagePage(appState?.targetMypagePage));
+  }
+  markDailyLogin();
+  renderDailyLogin();
+  showStatus("ゲストモードで開始しました。");
+}
+
+async function loginWithAuth0(appState, options = {}) {
+  if (normalizeAuthLoginProvider(options.provider) === "guest") {
+    loginAsGuest(appState);
+    return;
+  }
   if (!auth0Client) {
     showStatus("Auth0設定が未完了です。auth0-config.js を確認してください。");
     renderAuthPanel();
     return;
   }
+  const provider = normalizeAuthLoginProvider(options.provider);
+  const providerLabel = provider ? formatAuthProviderLabel(provider) : "Auth0";
+  const connection = provider ? getAuthConnectionForProvider(provider) : "";
+  if (provider && !connection) {
+    showStatus(`${providerLabel}ログインの接続設定が見つかりません。auth0-config.js を確認してください。`);
+    renderAuthPanel();
+    return;
+  }
   try {
-    await auth0Client.loginWithRedirect({
+    const loginOptions = {
       appState: {
         targetScreen: "mypage",
         targetMypagePage: "top",
         ...appState,
       },
-    });
+    };
+    if (connection) {
+      loginOptions.authorizationParams = { connection };
+    }
+    await auth0Client.loginWithRedirect(loginOptions);
   } catch (error) {
     console.error("Auth0 login failed:", error);
-    showStatus("Auth0ログインに失敗しました。設定を確認して再試行してください。");
+    showStatus(`${providerLabel}ログインに失敗しました。設定を確認して再試行してください。`);
   }
 }
 
 async function logoutAccount() {
   if (!state.auth.isLoggedIn) {
     showStatus("すでにログアウトしています。");
+    return;
+  }
+  if (state.auth.provider === "guest") {
+    applyLoggedOutState();
+    showStatus("ゲストモードを終了しました。");
     return;
   }
   if (auth0Client) {
@@ -477,17 +845,22 @@ async function logoutAccount() {
 }
 
 async function initializeAuth() {
+  const shouldPreserveGuest = state.auth.isLoggedIn && state.auth.provider === "guest";
   if (!isAuth0SdkAvailable()) {
     auth0Client = null;
-    setLoggedOutAuthState();
-    saveState();
-    showStatus("Auth0 SDKの読み込みに失敗しました。ネットワーク接続を確認してください。");
+    if (!shouldPreserveGuest) {
+      setLoggedOutAuthState();
+      saveState();
+      showStatus("Auth0 SDKの読み込みに失敗しました。ネットワーク接続を確認してください。");
+    }
     return;
   }
   if (!isAuth0Configured()) {
     auth0Client = null;
-    setLoggedOutAuthState();
-    saveState();
+    if (!shouldPreserveGuest) {
+      setLoggedOutAuthState();
+      saveState();
+    }
     return;
   }
 
@@ -504,7 +877,7 @@ async function initializeAuth() {
     clearAuth0CallbackParamsFromUrl();
   }
 
-  await syncAuthStateFromAuth0();
+  await syncAuthStateFromAuth0({ preserveGuest: shouldPreserveGuest });
   if (appStateFromRedirect) {
     applyAuthRedirectState(appStateFromRedirect);
   }
@@ -536,6 +909,46 @@ function buildAuth0AuthorizationParams() {
   return params;
 }
 
+function normalizeAuthLoginProvider(value) {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (normalized === "google" || normalized === "guest") {
+    return normalized;
+  }
+  return null;
+}
+
+function formatAuthProviderLabel(provider) {
+  if (provider === "google") {
+    return "Google";
+  }
+  if (provider === "guest") {
+    return "ゲスト";
+  }
+  return "Auth0";
+}
+
+function getAuthConnectionForProvider(provider) {
+  if (provider === "google") {
+    return AUTH0_CONFIG.googleConnection;
+  }
+  if (provider === "guest") {
+    return "local-guest";
+  }
+  return "";
+}
+
+function detectAuthProviderFromUser(user) {
+  const subject = typeof user?.sub === "string" ? user.sub.trim() : "";
+  if (!subject) {
+    return "auth0";
+  }
+  const [providerToken] = subject.split("|");
+  if (providerToken === "google-oauth2") {
+    return "google";
+  }
+  return providerToken || "auth0";
+}
+
 function hasAuth0CallbackParams() {
   const params = new URLSearchParams(window.location.search);
   return params.has("code") && params.has("state");
@@ -546,8 +959,12 @@ function clearAuth0CallbackParamsFromUrl() {
   window.history.replaceState({}, document.title, cleanUrl);
 }
 
-async function syncAuthStateFromAuth0() {
+async function syncAuthStateFromAuth0(options = {}) {
+  const preserveGuest = Boolean(options.preserveGuest);
   if (!auth0Client) {
+    if (preserveGuest && state.auth.isLoggedIn && state.auth.provider === "guest") {
+      return;
+    }
     setLoggedOutAuthState();
     saveState();
     return;
@@ -555,6 +972,9 @@ async function syncAuthStateFromAuth0() {
 
   const isAuthenticated = await auth0Client.isAuthenticated();
   if (!isAuthenticated) {
+    if (preserveGuest && state.auth.isLoggedIn && state.auth.provider === "guest") {
+      return;
+    }
     setLoggedOutAuthState();
     saveState();
     return;
@@ -563,7 +983,7 @@ async function syncAuthStateFromAuth0() {
   const user = await auth0Client.getUser();
   state.auth = normalizeAuthState({
     isLoggedIn: true,
-    provider: "auth0",
+    provider: detectAuthProviderFromUser(user),
     displayName:
       (typeof user?.name === "string" && user.name.trim()) ||
       (typeof user?.nickname === "string" && user.nickname.trim()) ||
@@ -642,6 +1062,7 @@ function renderAll() {
   renderMypageCoin();
   renderMypageSettings();
   renderAuthPanel();
+  renderFlashcardPanel();
   setMypagePage(activeMypagePage);
   renderSelfcheckCalendar();
   renderSelfcheckTimerDisplay();
@@ -649,6 +1070,566 @@ function renderAll() {
   renderHomeGreeting();
   renderDailyLogin();
   renderDailyTryPanel();
+}
+
+function createInitialFlashcardState() {
+  return {
+    decks: [],
+    selectedSeriesId: "",
+    selectedDeckId: "",
+    selectedUnitId: "",
+    cardIndex: 0,
+    answerVisible: false,
+  };
+}
+
+function initializeFlashcards() {
+  flashcardState = {
+    ...createInitialFlashcardState(),
+    decks: collectFlashcardDecks(),
+  };
+  clampFlashcardState();
+}
+
+function collectFlashcardDecks() {
+  return FLASHCARD_DATASET_SOURCES.map((source) => normalizeFlashcardDeck(source, source.resolve())).filter(Boolean);
+}
+
+function normalizeFlashcardDeck(source, dataset) {
+  if (!dataset || typeof dataset !== "object" || Array.isArray(dataset)) {
+    return null;
+  }
+
+  const units = Object.entries(dataset)
+    .map(([unitName, cards], unitIndex) => normalizeFlashcardUnit(source.id, unitName, cards, unitIndex))
+    .filter(Boolean);
+  if (units.length === 0) {
+    return null;
+  }
+
+  return {
+    id: source.id,
+    label: source.label,
+    seriesId: normalizeFlashcardText(source.seriesId) || FLASHCARD_DEFAULT_SERIES.id,
+    seriesLabel: normalizeFlashcardText(source.seriesLabel) || FLASHCARD_DEFAULT_SERIES.label,
+    units,
+    totalCards: units.reduce((sum, unit) => sum + unit.cards.length, 0),
+  };
+}
+
+function normalizeFlashcardUnit(sourceId, unitName, rawCards, unitIndex) {
+  if (!Array.isArray(rawCards)) {
+    return null;
+  }
+  const cards = rawCards
+    .map((rawCard, cardIndex) => normalizeFlashcardCard(rawCard, sourceId, unitIndex, cardIndex))
+    .filter(Boolean);
+  if (cards.length === 0) {
+    return null;
+  }
+
+  const normalizedUnitName = normalizeFlashcardText(unitName);
+  return {
+    id: `${sourceId}-unit-${unitIndex + 1}`,
+    label: normalizedUnitName || `章${unitIndex + 1}`,
+    cards,
+  };
+}
+
+function normalizeFlashcardCard(rawCard, sourceId, unitIndex, cardIndex) {
+  if (!rawCard || typeof rawCard !== "object") {
+    return null;
+  }
+  const prompt = normalizeFlashcardText(rawCard.q ?? rawCard.question ?? rawCard.prompt);
+  if (!prompt) {
+    return null;
+  }
+
+  const answers = normalizeFlashcardAnswers(rawCard);
+  return {
+    id: `${sourceId}-u${unitIndex + 1}-c${cardIndex + 1}`,
+    prompt,
+    imageSrc: resolveFlashcardImageSrc(rawCard.i ?? rawCard.image ?? rawCard.img),
+    imageAlt: normalizeFlashcardText(rawCard.iAlt ?? rawCard.imageAlt ?? rawCard.alt),
+    answers,
+  };
+}
+
+function normalizeFlashcardAnswers(rawCard) {
+  let sourceAnswers = [];
+  if (Array.isArray(rawCard.a)) {
+    sourceAnswers = rawCard.a;
+  } else if (Array.isArray(rawCard.answers)) {
+    sourceAnswers = rawCard.answers;
+  } else if (rawCard.a != null) {
+    sourceAnswers = [rawCard.a];
+  } else if (rawCard.answer != null) {
+    sourceAnswers = [rawCard.answer];
+  }
+
+  const answers = sourceAnswers.map((answer) => normalizeFlashcardText(answer)).filter(Boolean);
+  if (answers.length > 0) {
+    return answers;
+  }
+  return ["（答えデータなし）"];
+}
+
+function normalizeFlashcardText(value) {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return "";
+}
+
+function resolveFlashcardImageSrc(value) {
+  const rawPath = normalizeFlashcardText(value);
+  if (!rawPath) {
+    return "";
+  }
+  const normalized = rawPath.replaceAll("\\", "/");
+  if (/^(?:https?:)?\/\//.test(normalized) || normalized.startsWith("./") || normalized.startsWith("/")) {
+    return normalized;
+  }
+  if (normalized.startsWith("data/")) {
+    return `./${normalized}`;
+  }
+  return `./data/${normalized}`;
+}
+
+function getFlashcardSeriesList() {
+  if (!Array.isArray(flashcardState.decks) || flashcardState.decks.length === 0) {
+    return [];
+  }
+
+  const seenSeriesIds = new Set();
+  return flashcardState.decks.reduce((seriesList, deck) => {
+    const seriesId = normalizeFlashcardText(deck.seriesId) || FLASHCARD_DEFAULT_SERIES.id;
+    if (seenSeriesIds.has(seriesId)) {
+      return seriesList;
+    }
+    seenSeriesIds.add(seriesId);
+    seriesList.push({
+      id: seriesId,
+      label: normalizeFlashcardText(deck.seriesLabel) || FLASHCARD_DEFAULT_SERIES.label,
+    });
+    return seriesList;
+  }, []);
+}
+
+function getFlashcardDecksInSeries(seriesId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  if (!normalizedSeriesId) {
+    return [];
+  }
+  return flashcardState.decks.filter((deck) => deck.seriesId === normalizedSeriesId);
+}
+
+function getActiveFlashcardSeries() {
+  const seriesList = getFlashcardSeriesList();
+  return seriesList.find((series) => series.id === flashcardState.selectedSeriesId) ?? null;
+}
+
+function clampFlashcardState() {
+  if (!Array.isArray(flashcardState.decks) || flashcardState.decks.length === 0) {
+    flashcardState.selectedSeriesId = "";
+    flashcardState.selectedDeckId = "";
+    flashcardState.selectedUnitId = "";
+    flashcardState.cardIndex = 0;
+    flashcardState.answerVisible = false;
+    return;
+  }
+
+  const seriesList = getFlashcardSeriesList();
+  const activeSeries = seriesList.find((item) => item.id === flashcardState.selectedSeriesId) ?? null;
+  if (!activeSeries) {
+    flashcardState.selectedSeriesId = "";
+    flashcardState.selectedDeckId = "";
+    flashcardState.selectedUnitId = "";
+    flashcardState.cardIndex = 0;
+    flashcardState.answerVisible = false;
+    return;
+  }
+
+  const decksInSeries = getFlashcardDecksInSeries(activeSeries.id);
+  if (decksInSeries.length === 0) {
+    flashcardState.selectedDeckId = "";
+    flashcardState.selectedUnitId = "";
+    flashcardState.cardIndex = 0;
+    flashcardState.answerVisible = false;
+    return;
+  }
+
+  const deck = decksInSeries.find((item) => item.id === flashcardState.selectedDeckId) ?? null;
+  if (!deck) {
+    flashcardState.selectedDeckId = "";
+    flashcardState.selectedUnitId = "";
+    flashcardState.cardIndex = 0;
+    flashcardState.answerVisible = false;
+    return;
+  }
+
+  const unit = deck.units.find((item) => item.id === flashcardState.selectedUnitId) ?? deck.units[0];
+  flashcardState.selectedUnitId = unit.id;
+
+  const maxIndex = Math.max(0, unit.cards.length - 1);
+  const parsedIndex = Number(flashcardState.cardIndex);
+  flashcardState.cardIndex = Number.isFinite(parsedIndex) ? Math.floor(parsedIndex) : 0;
+  flashcardState.cardIndex = Math.max(0, Math.min(maxIndex, flashcardState.cardIndex));
+}
+
+function getActiveFlashcardDeck() {
+  const decksInSeries = getFlashcardDecksInSeries(flashcardState.selectedSeriesId);
+  return decksInSeries.find((deck) => deck.id === flashcardState.selectedDeckId) ?? null;
+}
+
+function getActiveFlashcardUnit() {
+  const deck = getActiveFlashcardDeck();
+  if (!deck) {
+    return null;
+  }
+  return deck.units.find((unit) => unit.id === flashcardState.selectedUnitId) ?? null;
+}
+
+function getActiveFlashcardCard() {
+  const unit = getActiveFlashcardUnit();
+  if (!unit || unit.cards.length === 0) {
+    return null;
+  }
+  return unit.cards[flashcardState.cardIndex] ?? null;
+}
+
+function renderFlashcardPanel() {
+  if (!elements.flashcardSummary) {
+    return;
+  }
+
+  clampFlashcardState();
+  const decks = flashcardState.decks;
+  const seriesList = getFlashcardSeriesList();
+  const activeSeries = getActiveFlashcardSeries();
+  const decksInSeries = getFlashcardDecksInSeries(activeSeries?.id);
+  renderFlashcardSeriesButtons(seriesList, activeSeries?.id ?? "");
+  renderFlashcardSubjectButtons(decksInSeries, flashcardState.selectedDeckId);
+  if (decks.length === 0) {
+    elements.flashcardSummary.textContent = "問題データが見つかりません。data フォルダの読み込みを確認してください。";
+    updateSelectOptions(elements.flashcardUnitSelect, [], "", true);
+    setFlashcardStudyControlsVisibility(false);
+    if (elements.flashcardCard) {
+      elements.flashcardCard.hidden = true;
+    }
+    setFlashcardAnswerVisibility(false);
+    renderFlashcardImage(null);
+    updateFlashcardActionButtons(0);
+    return;
+  }
+
+  if (!activeSeries) {
+    elements.flashcardSummary.textContent = "教材を選択してください。";
+    updateSelectOptions(elements.flashcardUnitSelect, [], "", true);
+    setFlashcardStudyControlsVisibility(false);
+    if (elements.flashcardCard) {
+      elements.flashcardCard.hidden = true;
+    }
+    setFlashcardAnswerVisibility(false);
+    renderFlashcardImage(null);
+    updateFlashcardActionButtons(0);
+    return;
+  }
+
+  const activeDeck = getActiveFlashcardDeck();
+  if (!activeDeck) {
+    elements.flashcardSummary.textContent = `${activeSeries.label}の科目を選択してください。`;
+    updateSelectOptions(elements.flashcardUnitSelect, [], "", true);
+    setFlashcardStudyControlsVisibility(false);
+    if (elements.flashcardCard) {
+      elements.flashcardCard.hidden = true;
+    }
+    setFlashcardAnswerVisibility(false);
+    renderFlashcardImage(null);
+    updateFlashcardActionButtons(0);
+    return;
+  }
+
+  const activeUnit = getActiveFlashcardUnit();
+  const activeCard = getActiveFlashcardCard();
+  if (!activeUnit || !activeCard) {
+    elements.flashcardSummary.textContent = "表示できる問題がありません。";
+    setFlashcardStudyControlsVisibility(false);
+    if (elements.flashcardCard) {
+      elements.flashcardCard.hidden = true;
+    }
+    setFlashcardAnswerVisibility(false);
+    renderFlashcardImage(null);
+    updateFlashcardActionButtons(0);
+    return;
+  }
+
+  const totalUnits = decksInSeries.reduce((sum, deck) => sum + deck.units.length, 0);
+  const totalCards = decksInSeries.reduce((sum, deck) => sum + deck.totalCards, 0);
+  elements.flashcardSummary.textContent = `${activeSeries.label} / ${decksInSeries.length}科目 / ${totalUnits}章 / ${totalCards}問 / ${activeDeck.label} > ${activeUnit.label} (${flashcardState.cardIndex + 1}/${activeUnit.cards.length})`;
+
+  updateSelectOptions(
+    elements.flashcardUnitSelect,
+    activeDeck.units.map((unit) => ({ value: unit.id, label: `${unit.label} (${unit.cards.length}問)` })),
+    activeUnit.id,
+    activeDeck.units.length <= 1
+  );
+  setFlashcardStudyControlsVisibility(true);
+
+  if (elements.flashcardCard) {
+    elements.flashcardCard.hidden = false;
+  }
+  if (elements.flashcardQuestion) {
+    elements.flashcardQuestion.textContent = activeCard.prompt;
+  }
+  renderFlashcardImage(activeCard);
+
+  renderFlashcardAnswerList(activeCard.answers);
+  setFlashcardAnswerVisibility(flashcardState.answerVisible);
+  if (elements.flashcardRevealBtn) {
+    elements.flashcardRevealBtn.textContent = flashcardState.answerVisible ? "答えを隠す" : "答えを表示";
+    elements.flashcardRevealBtn.disabled = activeCard.answers.length === 0;
+    elements.flashcardRevealBtn.setAttribute("aria-pressed", String(flashcardState.answerVisible));
+  }
+
+  updateFlashcardActionButtons(activeUnit.cards.length);
+}
+
+function renderFlashcardSeriesButtons(seriesList, activeSeriesId) {
+  renderFlashcardChoiceButtons(
+    elements.flashcardSeriesButtons,
+    seriesList.map((series) => ({ value: series.id, label: series.label })),
+    activeSeriesId,
+    "flashcardSeriesId",
+    "教材データなし"
+  );
+}
+
+function renderFlashcardSubjectButtons(decks, activeDeckId) {
+  const safeDecks = Array.isArray(decks) ? decks : [];
+  renderFlashcardChoiceButtons(
+    elements.flashcardSubjectButtons,
+    safeDecks.map((deck) => ({ value: deck.id, label: `${deck.label} (${deck.totalCards}問)` })),
+    activeDeckId,
+    "flashcardDeckId",
+    "科目データなし"
+  );
+  if (elements.flashcardSubjectGroup) {
+    elements.flashcardSubjectGroup.hidden = safeDecks.length === 0;
+  }
+}
+
+function renderFlashcardChoiceButtons(container, options, activeValue, datasetKey, emptyText) {
+  if (!container) {
+    return;
+  }
+  container.innerHTML = "";
+
+  if (!Array.isArray(options) || options.length === 0) {
+    const empty = document.createElement("span");
+    empty.className = "flashcard-choice-empty";
+    empty.textContent = emptyText;
+    container.append(empty);
+    return;
+  }
+
+  options.forEach((optionData) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "flashcard-choice-btn";
+    button.dataset[datasetKey] = optionData.value;
+    button.textContent = optionData.label;
+    const isActive = optionData.value === activeValue;
+    if (isActive) {
+      button.classList.add("is-active");
+    }
+    button.setAttribute("aria-pressed", String(isActive));
+    container.append(button);
+  });
+}
+
+function updateSelectOptions(element, options, selectedValue, disabled) {
+  if (!element) {
+    return;
+  }
+  element.innerHTML = "";
+  options.forEach((optionData) => {
+    const option = document.createElement("option");
+    option.value = optionData.value;
+    option.textContent = optionData.label;
+    element.append(option);
+  });
+  if (selectedValue) {
+    element.value = selectedValue;
+  }
+  element.disabled = Boolean(disabled) || options.length === 0;
+}
+
+function renderFlashcardAnswerList(answers) {
+  if (!elements.flashcardAnswerList) {
+    return;
+  }
+  elements.flashcardAnswerList.innerHTML = "";
+  answers.forEach((answer) => {
+    const item = document.createElement("li");
+    item.textContent = answer;
+    elements.flashcardAnswerList.append(item);
+  });
+}
+
+function renderFlashcardImage(card) {
+  if (!elements.flashcardImageWrap || !elements.flashcardImage) {
+    return;
+  }
+  const hasImage = Boolean(card?.imageSrc);
+  elements.flashcardImageWrap.hidden = !hasImage;
+  if (!hasImage) {
+    elements.flashcardImage.removeAttribute("src");
+    elements.flashcardImage.alt = "";
+    return;
+  }
+  elements.flashcardImage.src = card.imageSrc;
+  elements.flashcardImage.alt = card.imageAlt || "問題画像";
+}
+
+function setFlashcardAnswerVisibility(visible) {
+  if (!elements.flashcardAnswerArea) {
+    return;
+  }
+  const shouldShow = Boolean(visible);
+  elements.flashcardAnswerArea.hidden = !shouldShow;
+  elements.flashcardAnswerArea.style.display = shouldShow ? "grid" : "none";
+}
+
+function setFlashcardStudyControlsVisibility(visible) {
+  const shouldShow = Boolean(visible);
+  if (elements.flashcardToolbar) {
+    elements.flashcardToolbar.hidden = !shouldShow;
+  }
+  if (elements.flashcardActions) {
+    elements.flashcardActions.hidden = !shouldShow;
+  }
+}
+
+function toggleFlashcardFocusMode() {
+  setFlashcardFocusMode(!isFlashcardFocusMode);
+}
+
+function setFlashcardFocusMode(nextValue) {
+  isFlashcardFocusMode = Boolean(nextValue);
+  if (isFlashcardFocusMode) {
+    isSelfcheckTimerFocusMode = false;
+  }
+  renderFlashcardFocusMode();
+}
+
+function renderFlashcardFocusMode() {
+  const shouldEnableFlashcard = isFlashcardFocusMode && activeScreen === "mypage" && activeMypagePage === "top";
+  const shouldEnableTimer = isSelfcheckTimerFocusMode && activeScreen === "mypage" && activeMypagePage === "selfcheck";
+  if (shouldEnableFlashcard || shouldEnableTimer) {
+    closeMypageSubmenu();
+  }
+  document.body.classList.toggle("flashcard-focus-mode", shouldEnableFlashcard);
+  document.body.classList.toggle("selfcheck-timer-focus-mode", shouldEnableTimer);
+  if (elements.mypageTopPage) {
+    elements.mypageTopPage.classList.toggle("is-flashcard-focus", shouldEnableFlashcard);
+  }
+  if (elements.mypageFlashcardPanel) {
+    elements.mypageFlashcardPanel.classList.toggle("is-focus", shouldEnableFlashcard);
+  }
+  if (elements.mypageSelfcheckPage) {
+    elements.mypageSelfcheckPage.classList.toggle("is-timer-focus", shouldEnableTimer);
+  }
+  if (elements.mypageTimerPanel) {
+    elements.mypageTimerPanel.classList.toggle("is-focus", shouldEnableTimer);
+  }
+  if (elements.flashcardFullscreenBtn) {
+    elements.flashcardFullscreenBtn.classList.toggle("is-active", shouldEnableFlashcard);
+    elements.flashcardFullscreenBtn.textContent = shouldEnableFlashcard ? "戻す" : "全画面";
+    elements.flashcardFullscreenBtn.setAttribute("aria-pressed", String(shouldEnableFlashcard));
+    elements.flashcardFullscreenBtn.setAttribute(
+      "aria-label",
+      shouldEnableFlashcard ? "フラッシュカードだけ表示を終了" : "フラッシュカードだけを表示"
+    );
+  }
+  if (elements.selfcheckTimerFullscreenBtn) {
+    elements.selfcheckTimerFullscreenBtn.classList.toggle("is-active", shouldEnableTimer);
+    elements.selfcheckTimerFullscreenBtn.textContent = shouldEnableTimer ? "戻す" : "全画面";
+    elements.selfcheckTimerFullscreenBtn.setAttribute("aria-pressed", String(shouldEnableTimer));
+    elements.selfcheckTimerFullscreenBtn.setAttribute(
+      "aria-label",
+      shouldEnableTimer ? "タイマー全画面表示を終了" : "タイマーを全画面で表示"
+    );
+  }
+}
+
+function toggleSelfcheckTimerFocusMode() {
+  setSelfcheckTimerFocusMode(!isSelfcheckTimerFocusMode);
+}
+
+function setSelfcheckTimerFocusMode(nextValue) {
+  isSelfcheckTimerFocusMode = Boolean(nextValue);
+  if (isSelfcheckTimerFocusMode) {
+    isFlashcardFocusMode = false;
+  }
+  renderFlashcardFocusMode();
+}
+
+function toggleFlashcardAnswer() {
+  const activeCard = getActiveFlashcardCard();
+  if (!activeCard || !Array.isArray(activeCard.answers) || activeCard.answers.length === 0) {
+    return;
+  }
+  flashcardState.answerVisible = !flashcardState.answerVisible;
+  renderFlashcardPanel();
+}
+
+function updateFlashcardActionButtons(cardCount) {
+  const hasMultipleCards = cardCount > 1;
+  if (elements.flashcardPrevBtn) {
+    elements.flashcardPrevBtn.disabled = !hasMultipleCards;
+  }
+  if (elements.flashcardNextBtn) {
+    elements.flashcardNextBtn.disabled = !hasMultipleCards;
+  }
+  if (elements.flashcardShuffleBtn) {
+    elements.flashcardShuffleBtn.disabled = !hasMultipleCards;
+  }
+}
+
+function shiftFlashcardIndex(offset) {
+  const unit = getActiveFlashcardUnit();
+  if (!unit || unit.cards.length === 0) {
+    return;
+  }
+
+  const cardCount = unit.cards.length;
+  const normalizedOffset = Number(offset);
+  if (!Number.isFinite(normalizedOffset) || normalizedOffset === 0) {
+    return;
+  }
+
+  flashcardState.cardIndex = (flashcardState.cardIndex + Math.trunc(normalizedOffset) + cardCount) % cardCount;
+  flashcardState.answerVisible = false;
+  renderFlashcardPanel();
+}
+
+function jumpToRandomFlashcard() {
+  const unit = getActiveFlashcardUnit();
+  if (!unit || unit.cards.length <= 1) {
+    return;
+  }
+
+  let nextIndex = flashcardState.cardIndex;
+  while (nextIndex === flashcardState.cardIndex) {
+    nextIndex = Math.floor(Math.random() * unit.cards.length);
+  }
+  flashcardState.cardIndex = nextIndex;
+  flashcardState.answerVisible = false;
+  renderFlashcardPanel();
 }
 
 function renderCoinBoard(options = {}) {
@@ -744,10 +1725,17 @@ function openMypageCustomizeFromCoinBoard() {
 
 function renderMypageSettings() {
   if (elements.authEmailText) {
-    elements.authEmailText.textContent = state.auth.isLoggedIn ? state.auth.email ?? "未設定" : "未設定";
+    elements.authEmailText.textContent =
+      state.auth.isLoggedIn && state.auth.provider !== "guest" ? state.auth.email ?? "未設定" : "未設定";
   }
   if (elements.authStatusText) {
-    elements.authStatusText.textContent = state.auth.isLoggedIn ? "ログイン中" : "未ログイン";
+    if (!state.auth.isLoggedIn) {
+      elements.authStatusText.textContent = "未ログイン";
+    } else if (state.auth.provider === "guest") {
+      elements.authStatusText.textContent = "ゲストモード";
+    } else {
+      elements.authStatusText.textContent = "ログイン中";
+    }
   }
   if (elements.logoutBtn) {
     elements.logoutBtn.disabled = !state.auth.isLoggedIn;
@@ -775,11 +1763,27 @@ function renderMypageSettings() {
 }
 
 function renderAuthPanel() {
-  if (elements.authLoginBtn) {
-    const canLogin = Boolean(auth0Client);
-    elements.authLoginBtn.disabled = !canLogin || state.auth.isLoggedIn;
-    elements.authLoginBtn.textContent = state.auth.isLoggedIn ? "ログイン済み" : "Auth0でログイン";
-  }
+  const canLogin = Boolean(auth0Client);
+  const isLoggedIn = state.auth.isLoggedIn;
+  const currentProvider = state.auth.provider;
+  elements.authLoginButtons.forEach((button) => {
+    const provider = normalizeAuthLoginProvider(button.dataset.authProvider);
+    if (!provider) {
+      button.disabled = true;
+      button.textContent = "ログイン";
+      return;
+    }
+    if (provider === "guest") {
+      const isCurrentGuest = isLoggedIn && currentProvider === "guest";
+      button.disabled = isCurrentGuest;
+      button.textContent = isCurrentGuest ? "ゲスト利用中" : "ゲストで続ける";
+      return;
+    }
+    const connection = getAuthConnectionForProvider(provider);
+    const isCurrentProvider = isLoggedIn && currentProvider === provider;
+    button.disabled = !canLogin || !connection || isCurrentProvider;
+    button.textContent = isCurrentProvider ? `${formatAuthProviderLabel(provider)}ログイン済み` : `${formatAuthProviderLabel(provider)}でログイン`;
+  });
   if (elements.authConfigHint) {
     elements.authConfigHint.hidden = Boolean(auth0Client);
   }
@@ -1091,6 +2095,7 @@ function setMypagePage(page) {
   }
 
   updateMypageSubmenuCurrent(normalizedPage);
+  renderFlashcardFocusMode();
 }
 
 function normalizeMypagePage(page) {
@@ -1840,6 +2845,10 @@ function normalizeAuth0Config(value) {
   const clientId = typeof value?.clientId === "string" ? value.clientId.trim() : "";
   const audience = typeof value?.audience === "string" ? value.audience.trim() : "";
   const scope = typeof value?.scope === "string" ? value.scope.trim() : AUTH0_DEFAULT_SCOPE;
+  const googleConnection =
+    typeof value?.googleConnection === "string" && value.googleConnection.trim()
+      ? value.googleConnection.trim()
+      : "google-oauth2";
   const redirectUri =
     typeof value?.redirectUri === "string" && value.redirectUri.trim()
       ? value.redirectUri.trim()
@@ -1849,6 +2858,7 @@ function normalizeAuth0Config(value) {
     clientId,
     audience,
     scope,
+    googleConnection,
     redirectUri,
   };
 }
@@ -1875,6 +2885,11 @@ function showStatus(_message) {
   }
   elements.statusMessage.textContent = "";
   elements.statusMessage.hidden = true;
+}
+
+function getCurrentMonthStartDate() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
 function todayKey() {

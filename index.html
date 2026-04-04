@@ -4,15 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Review</title>
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has("code") && params.has("state")) {
+          return;
+        }
+        try {
+          const raw = window.localStorage.getItem("the-review-quest-v1");
+          const saved = raw ? JSON.parse(raw) : null;
+          if (!saved?.auth?.isLoggedIn) {
+            window.location.replace("./login.html");
+          }
+        } catch {
+          window.location.replace("./login.html");
+        }
+      })();
+    </script>
     <link rel="icon" type="image/png" href="./assets/favicon/favicon.png?v=20260326-1" />
     <link rel="apple-touch-icon" href="./assets/favicon/favicon.png?v=20260326-1" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Sora:wght@500;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260326-1" />
+    <link rel="stylesheet" href="./app.css?v=20260403-5" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -78,7 +95,7 @@
               <p id="homeGreeting" class="home-greeting" aria-live="polite">こんにちは。</p>
             </div>
             <div class="home-greeting-character" aria-hidden="true">
-              <img src="./private/avatar/learn/らーん1-1.png" alt="" />
+              <img src="./private/avatar/らーん/らーん1-1.png" alt="" />
             </div>
           </div>
           <section class="panel daily-login-panel">
@@ -146,23 +163,76 @@
       <section id="screen-login" class="screen">
         <section class="panel auth-panel">
           <h2>ログイン</h2>
-          <p class="hint-text">マイページを使うには Auth0 ログインが必要です。</p>
+          <p class="hint-text">マイページを使うには Google ログインまたはゲストモードが必要です。</p>
           <div class="action-row">
-            <button id="authLoginBtn" class="primary" type="button">Auth0でログイン</button>
+            <button id="authLoginGoogleBtn" class="primary" data-auth-provider="google" type="button">
+              Googleでログイン
+            </button>
+            <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">
+              ゲストで続ける
+            </button>
           </div>
           <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
-            auth0-config.js の domain と clientId を設定してください。
+            auth0-config.js の domain / clientId / googleConnection を確認してください。
           </p>
         </section>
       </section>
 
       <section id="screen-mypage" class="screen">
         <section id="mypage-top" class="mypage-subpage mypage-top-page is-active" data-mypage-page="top">
-          <section class="panel">
-            <h2>フラッシュカード</h2>
-            <p class="hint-text">未作成</p>
+          <section id="mypageFlashcardPanel" class="panel mypage-flashcard-panel">
+            <h2 class="flashcard-panel-head">
+              <span class="panel-title-text">フラッシュカード</span>
+              <button
+                id="flashcardFullscreenBtn"
+                class="flashcard-fullscreen-btn panel-fullscreen-btn"
+                type="button"
+                aria-pressed="false"
+                aria-label="フラッシュカードだけを表示"
+              >
+                全画面
+              </button>
+            </h2>
+            <div id="flashcardPanel" class="flashcard-panel">
+              <p id="flashcardSummary" class="hint-text">データを読み込み中です…</p>
+              <div class="flashcard-group-list" aria-label="フラッシュカード教材メニュー">
+                <div class="flashcard-group">
+                  <p class="flashcard-group-label">教材</p>
+                  <div id="flashcardSeriesButtons" class="flashcard-choice-list" role="group" aria-label="教材"></div>
+                </div>
+                <div id="flashcardSubjectGroup" class="flashcard-group" hidden>
+                  <p class="flashcard-group-label">科目</p>
+                  <div id="flashcardSubjectButtons" class="flashcard-choice-list" role="group" aria-label="科目"></div>
+                </div>
+              </div>
+              <div id="flashcardToolbar" class="flashcard-toolbar" hidden>
+                <label class="flashcard-select-wrap" for="flashcardUnitSelect">
+                  <span>章</span>
+                  <select id="flashcardUnitSelect"></select>
+                </label>
+              </div>
+              <article id="flashcardCard" class="flashcard-card" hidden>
+                <p class="flashcard-card-label">問題</p>
+                <p id="flashcardQuestion" class="flashcard-question"></p>
+                <figure id="flashcardImageWrap" class="flashcard-image-wrap" hidden>
+                  <img id="flashcardImage" class="flashcard-image" src="" alt="" loading="lazy" />
+                </figure>
+                <button id="flashcardRevealBtn" class="secondary" data-flashcard-action="toggle-answer" type="button">
+                  答えを表示
+                </button>
+                <div id="flashcardAnswerArea" class="flashcard-answer-area" hidden>
+                  <p class="flashcard-card-label">答え</p>
+                  <ul id="flashcardAnswerList" class="flashcard-answer-list"></ul>
+                </div>
+              </article>
+              <div id="flashcardActions" class="action-row flashcard-actions" hidden>
+                <button id="flashcardPrevBtn" class="secondary" type="button">前へ</button>
+                <button id="flashcardShuffleBtn" class="secondary" type="button">ランダム</button>
+                <button id="flashcardNextBtn" class="primary" type="button">次へ</button>
+              </div>
+            </div>
           </section>
-          <section class="panel">
+          <section id="mypageQuestPanel" class="panel">
             <h2>クエスト</h2>
             <p class="hint-text">未作成</p>
           </section>
@@ -194,10 +264,28 @@
             </div>
           </section>
 
-          <section class="panel selfcheck-section">
-            <h2>タイマー</h2>
-            <div class="selfcheck-section-content">
-              <p id="selfcheckTimerDisplay" class="timer-display">25:00</p>
+          <section id="mypageTimerPanel" class="panel selfcheck-section mypage-timer-panel">
+            <h2 class="timer-panel-head">
+              <span class="panel-title-text">タイマー</span>
+              <button
+                id="selfcheckTimerFullscreenBtn"
+                class="panel-fullscreen-btn"
+                type="button"
+                aria-pressed="false"
+                aria-label="タイマーを全画面で表示"
+              >
+                全画面
+              </button>
+            </h2>
+            <div class="selfcheck-section-content selfcheck-timer-layout">
+              <div class="selfcheck-timer-head">
+                <div class="selfcheck-timer-bubble">
+                  <p id="selfcheckTimerDisplay" class="timer-display">25:00</p>
+                </div>
+                <div class="selfcheck-timer-character" aria-hidden="true">
+                  <img src="./private/avatar/らーん/らーん1-1.png" alt="" />
+                </div>
+              </div>
               <div class="timer-controls">
                 <button id="selfcheckTimerStartBtn" class="primary" type="button">開始</button>
                 <button id="selfcheckTimerPauseBtn" class="secondary" type="button">一時停止</button>
@@ -442,6 +530,15 @@
 
     <script src="./auth0-config.js?v=20260326-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260326-1"></script>
+    <script src="./data/public.js?v=20260326-1"></script>
+    <script src="./data/math1.js?v=20260326-1"></script>
+    <script src="./data/physics_basic.js?v=20260326-1"></script>
+    <script src="./data/logic.js?v=20260326-1"></script>
+    <script src="./data/health.js?v=20260326-1"></script>
+    <script src="./data/ec1.js?v=20260326-1"></script>
+    <script src="./data/bio.js?v=20260326-1"></script>
+    <script src="./data/week_test8.js?v=20260326-1"></script>
+    <script src="./data/week_test9.js?v=20260326-1"></script>
+    <script src="./app.js?v=20260404-1"></script>
   </body>
 </html>

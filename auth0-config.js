@@ -4,4 +4,5 @@ window.AUTH0_CONFIG = {
   audience: "",
   scope: "openid profile email",
   redirectUri: window.location.origin + window.location.pathname,
+  googleConnection: "google-oauth2",
 };
