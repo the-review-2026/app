@@ -61,13 +61,15 @@ const COIN_COUNT_MIN_ANIMATION_MS = 420;
 const COIN_COUNT_MAX_ANIMATION_MS = 1200;
 const COIN_COUNT_DURATION_PER_STEP_MS = 0.22;
 const REVIEW_COIN_FORMATTER = new Intl.NumberFormat("ja-JP");
+const REVIEW_DATA_EXPORT_FORMAT = "the-review-obfuscated-v1";
+const REVIEW_DATA_EXPORT_KEY = "TheReview::DataExport::v1";
 const FLASHCARD_DEFAULT_SERIES = {
   id: "reboot-1st-edition",
   label: "Reboot 1st Edition",
 };
 const FLASHCARD_REVIEW_2ND_SERIES = {
   id: "review-2nd-edition",
-  label: "Review 2nd Edition",
+  label: "Refine 2nd Edition",
 };
 const FLASHCARD_DATASET_SOURCES = [
   {
@@ -197,12 +199,17 @@ const elements = {
   textWeightValue: document.getElementById("textWeightValue"),
   textSpacingRange: document.getElementById("textSpacingRange"),
   textSpacingValue: document.getElementById("textSpacingValue"),
-  notifyDailyLoginToggle: document.getElementById("notifyDailyLoginToggle"),
-  notifyDailyTryToggle: document.getElementById("notifyDailyTryToggle"),
+  notifyReviewPeriodToggle: document.getElementById("notifyReviewPeriodToggle"),
+  notifyTodaysMissionToggle: document.getElementById("notifyTodaysMissionToggle"),
   notifyNoticeToggle: document.getElementById("notifyNoticeToggle"),
   textResetDialogOpenBtn: document.getElementById("textResetDialogOpenBtn"),
   textResetDialog: document.getElementById("textResetDialog"),
   textResetActionButtons: Array.from(document.querySelectorAll("[data-text-reset-action]")),
+  reviewDataExportBtn: document.getElementById("reviewDataExportBtn"),
+  reviewDataImportBtn: document.getElementById("reviewDataImportBtn"),
+  reviewDataImportInput: document.getElementById("reviewDataImportInput"),
+  guestModeDialog: document.getElementById("guestModeDialog"),
+  guestModeActionButtons: Array.from(document.querySelectorAll("[data-guest-mode-action]")),
   homeGreeting: document.getElementById("homeGreeting"),
   dailyLoginCard: document.getElementById("dailyLoginCard"),
   dailyLoginCount: document.getElementById("dailyLoginCount"),
@@ -262,6 +269,7 @@ let reviewCoinAnimationFrameId = null;
 let flashcardState = createInitialFlashcardState();
 let isFlashcardFocusMode = false;
 let isSelfcheckTimerFocusMode = false;
+let pendingGuestModeAppState = null;
 const IS_LOGIN_PAGE = isCurrentLoginPage();
 
 if (IS_LOGIN_PAGE) {
@@ -298,6 +306,7 @@ async function init() {
   if (redirectToLoginPageIfNeeded()) {
     return;
   }
+  bindSharedDataAndGuestDialogEvents();
   applyTheme(state.settings.theme);
   applyAccessibilityModes();
   applyTypographySettings();
@@ -317,6 +326,7 @@ async function initLoginPage() {
     return;
   }
 
+  bindSharedDataAndGuestDialogEvents();
   bindLoginPageAuthEvents();
   await initializeAuth();
   renderAuthPanel();
@@ -333,12 +343,20 @@ function redirectToLoginPageIfNeeded() {
   if (state.auth.isLoggedIn) {
     return false;
   }
-  window.location.replace("./login.html");
+  redirectToLoginPage();
   return true;
 }
 
 function redirectToIndexPage() {
   window.location.replace("./index.html");
+}
+
+function getLoginPageUrl() {
+  return new URL("./login.html", window.location.href).toString();
+}
+
+function redirectToLoginPage() {
+  window.location.replace(getLoginPageUrl());
 }
 
 function bindLoginPageAuthEvents() {
@@ -349,11 +367,11 @@ function bindLoginPageAuthEvents() {
         return;
       }
       if (provider === "guest") {
-        loginAsGuest({
+        requestGuestModeLogin({
           targetScreen: "mypage",
           targetMypagePage: "top",
+          deferRedirectOnLoginPage: true,
         });
-        redirectToIndexPage();
         return;
       }
       await loginWithAuth0(
@@ -363,6 +381,25 @@ function bindLoginPageAuthEvents() {
         },
         { provider }
       );
+    });
+  });
+}
+
+function bindSharedDataAndGuestDialogEvents() {
+  if (elements.reviewDataExportBtn) {
+    elements.reviewDataExportBtn.addEventListener("click", exportReviewData);
+  }
+  if (elements.reviewDataImportBtn) {
+    elements.reviewDataImportBtn.addEventListener("click", () => {
+      openReviewDataImportPicker();
+    });
+  }
+  if (elements.reviewDataImportInput) {
+    elements.reviewDataImportInput.addEventListener("change", handleReviewDataImportSelection);
+  }
+  elements.guestModeActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      handleGuestModeDialogAction(button.dataset.guestModeAction);
     });
   });
 }
@@ -403,7 +440,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#mypage-settings .settings-section"));
-  const settingsLabels = ["Login Status", "Accessibility", "Notice", "Reset"];
+  const settingsLabels = ["Login Status", "Accessibility", "Notice", "Review Data", "Reset"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -496,7 +533,7 @@ function bindEvents() {
         return;
       }
       if (provider === "guest") {
-        loginAsGuest({
+        requestGuestModeLogin({
           targetScreen: "mypage",
           targetMypagePage: "top",
         });
@@ -648,15 +685,15 @@ function bindEvents() {
     });
   }
 
-  if (elements.notifyDailyLoginToggle) {
-    elements.notifyDailyLoginToggle.addEventListener("change", () => {
-      updateNotificationSetting("dailyLogin", elements.notifyDailyLoginToggle.checked);
+  if (elements.notifyReviewPeriodToggle) {
+    elements.notifyReviewPeriodToggle.addEventListener("change", () => {
+      updateNotificationSetting("dailyLogin", elements.notifyReviewPeriodToggle.checked);
     });
   }
 
-  if (elements.notifyDailyTryToggle) {
-    elements.notifyDailyTryToggle.addEventListener("change", () => {
-      updateNotificationSetting("dailyTry", elements.notifyDailyTryToggle.checked);
+  if (elements.notifyTodaysMissionToggle) {
+    elements.notifyTodaysMissionToggle.addEventListener("change", () => {
+      updateNotificationSetting("dailyTry", elements.notifyTodaysMissionToggle.checked);
     });
   }
 
@@ -756,14 +793,77 @@ function activateScreen(screen) {
 
 function promptLoginForMypage() {
   activateScreen("login");
-  showStatus("マイページを見るにはGoogleログインまたはゲストモードが必要です。");
+  showStatus("マイページを見るにはログインまたはGuest Modeが必要です。");
+}
+
+function requestGuestModeLogin(appState = {}) {
+  pendingGuestModeAppState = {
+    targetScreen: "mypage",
+    targetMypagePage: "top",
+    ...appState,
+  };
+
+  if (!elements.guestModeDialog || typeof elements.guestModeDialog.showModal !== "function") {
+    const shouldContinue = window.confirm(
+      "データはサーバー上に保存されず、お持ちのデバイスに保存されます。よろしいですか？"
+    );
+    if (!shouldContinue) {
+      pendingGuestModeAppState = null;
+      return;
+    }
+    proceedGuestModeLogin();
+    return;
+  }
+  if (!elements.guestModeDialog.open) {
+    elements.guestModeDialog.showModal();
+  }
+}
+
+function handleGuestModeDialogAction(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "cancel") {
+    closeGuestModeDialog();
+    pendingGuestModeAppState = null;
+    return;
+  }
+  if (normalizedAction === "import") {
+    openReviewDataImportPicker();
+    return;
+  }
+  if (normalizedAction === "ok") {
+    closeGuestModeDialog();
+    proceedGuestModeLogin();
+  }
+}
+
+function closeGuestModeDialog() {
+  if (elements.guestModeDialog?.open) {
+    elements.guestModeDialog.close();
+  }
+}
+
+function proceedGuestModeLogin() {
+  const appState = pendingGuestModeAppState
+    ? {
+        ...pendingGuestModeAppState,
+      }
+    : {
+        targetScreen: "mypage",
+        targetMypagePage: "top",
+      };
+  const shouldDeferRedirectOnLoginPage = IS_LOGIN_PAGE && Boolean(appState?.deferRedirectOnLoginPage);
+  pendingGuestModeAppState = null;
+  loginAsGuest(appState);
+  if (IS_LOGIN_PAGE && !shouldDeferRedirectOnLoginPage) {
+    redirectToIndexPage();
+  }
 }
 
 function loginAsGuest(appState = {}) {
   state.auth = normalizeAuthState({
     isLoggedIn: true,
     provider: "guest",
-    displayName: "ゲスト",
+    displayName: "Guest Mode",
     email: null,
   });
   saveState();
@@ -777,7 +877,7 @@ function loginAsGuest(appState = {}) {
   }
   markDailyLogin();
   renderDailyLogin();
-  showStatus("ゲストモードで開始しました。");
+  showStatus("Guest Modeで開始しました。");
 }
 
 async function loginWithAuth0(appState, options = {}) {
@@ -793,7 +893,7 @@ async function loginWithAuth0(appState, options = {}) {
   const provider = normalizeAuthLoginProvider(options.provider);
   const providerLabel = provider ? formatAuthProviderLabel(provider) : "Auth0";
   const connection = provider ? getAuthConnectionForProvider(provider) : "";
-  if (provider && !connection) {
+  if (provider && requiresAuthConnection(provider) && !connection) {
     showStatus(`${providerLabel}ログインの接続設定が見つかりません。auth0-config.js を確認してください。`);
     renderAuthPanel();
     return;
@@ -823,25 +923,26 @@ async function logoutAccount() {
   }
   if (state.auth.provider === "guest") {
     applyLoggedOutState();
-    showStatus("ゲストモードを終了しました。");
+    redirectToLoginPage();
     return;
   }
   if (auth0Client) {
     try {
       await auth0Client.logout({
         logoutParams: {
-          returnTo: AUTH0_CONFIG.redirectUri,
+          returnTo: getLoginPageUrl(),
         },
       });
     } catch (error) {
       console.error("Auth0 logout failed:", error);
-      showStatus("Auth0ログアウトに失敗しました。");
+      applyLoggedOutState();
+      redirectToLoginPage();
     }
     return;
   }
 
   applyLoggedOutState();
-  showStatus("ログアウトしました。");
+  redirectToLoginPage();
 }
 
 async function initializeAuth() {
@@ -911,23 +1012,29 @@ function buildAuth0AuthorizationParams() {
 
 function normalizeAuthLoginProvider(value) {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (normalized === "google" || normalized === "guest") {
+  if (normalized === "auth0" || normalized === "google" || normalized === "guest") {
     return normalized;
   }
   return null;
 }
 
 function formatAuthProviderLabel(provider) {
+  if (provider === "auth0") {
+    return "Auth0";
+  }
   if (provider === "google") {
     return "Google";
   }
   if (provider === "guest") {
-    return "ゲスト";
+    return "Guest Mode";
   }
   return "Auth0";
 }
 
 function getAuthConnectionForProvider(provider) {
+  if (provider === "auth0") {
+    return AUTH0_CONFIG.defaultConnection;
+  }
   if (provider === "google") {
     return AUTH0_CONFIG.googleConnection;
   }
@@ -935,6 +1042,10 @@ function getAuthConnectionForProvider(provider) {
     return "local-guest";
   }
   return "";
+}
+
+function requiresAuthConnection(provider) {
+  return provider === "google";
 }
 
 function detectAuthProviderFromUser(user) {
@@ -1005,7 +1116,7 @@ function setLoggedOutAuthState() {
   state.auth = normalizeAuthState({
     isLoggedIn: false,
     provider: null,
-    displayName: "ゲスト",
+    displayName: "Guest Mode",
     email: null,
   });
 }
@@ -1036,7 +1147,7 @@ function deleteAccountAndResetProgress() {
   state.auth = normalizeAuthState({
     isLoggedIn: false,
     provider: null,
-    displayName: "ゲスト",
+    displayName: "Guest Mode",
     email: null,
   });
   state.settings = {
@@ -1732,7 +1843,7 @@ function renderMypageSettings() {
     if (!state.auth.isLoggedIn) {
       elements.authStatusText.textContent = "未ログイン";
     } else if (state.auth.provider === "guest") {
-      elements.authStatusText.textContent = "ゲストモード";
+      elements.authStatusText.textContent = "Guest Mode";
     } else {
       elements.authStatusText.textContent = "ログイン中";
     }
@@ -1749,11 +1860,11 @@ function renderMypageSettings() {
   if (elements.monochromeToggle) {
     elements.monochromeToggle.checked = state.settings.monochrome;
   }
-  if (elements.notifyDailyLoginToggle) {
-    elements.notifyDailyLoginToggle.checked = state.settings.notifications.dailyLogin;
+  if (elements.notifyReviewPeriodToggle) {
+    elements.notifyReviewPeriodToggle.checked = state.settings.notifications.dailyLogin;
   }
-  if (elements.notifyDailyTryToggle) {
-    elements.notifyDailyTryToggle.checked = state.settings.notifications.dailyTry;
+  if (elements.notifyTodaysMissionToggle) {
+    elements.notifyTodaysMissionToggle.checked = state.settings.notifications.dailyTry;
   }
   if (elements.notifyNoticeToggle) {
     elements.notifyNoticeToggle.checked = state.settings.notifications.notice;
@@ -1776,12 +1887,13 @@ function renderAuthPanel() {
     if (provider === "guest") {
       const isCurrentGuest = isLoggedIn && currentProvider === "guest";
       button.disabled = isCurrentGuest;
-      button.textContent = isCurrentGuest ? "ゲスト利用中" : "ゲストで続ける";
+      button.textContent = isCurrentGuest ? "Guest Mode利用中" : "Guest Modeで続ける";
       return;
     }
     const connection = getAuthConnectionForProvider(provider);
+    const requiresConnection = requiresAuthConnection(provider);
     const isCurrentProvider = isLoggedIn && currentProvider === provider;
-    button.disabled = !canLogin || !connection || isCurrentProvider;
+    button.disabled = !canLogin || (requiresConnection && !connection) || isCurrentProvider;
     button.textContent = isCurrentProvider ? `${formatAuthProviderLabel(provider)}ログイン済み` : `${formatAuthProviderLabel(provider)}でログイン`;
   });
   if (elements.authConfigHint) {
@@ -1958,6 +2070,210 @@ function updateNotificationSetting(key, enabled) {
   }
   state.settings.notifications[key] = Boolean(enabled);
   saveState();
+}
+
+function exportReviewData() {
+  const snapshot = JSON.parse(JSON.stringify(state));
+  const plainJson = JSON.stringify(snapshot);
+  const payload = {
+    app: "The Review",
+    storageKey: STORAGE_KEY,
+    format: REVIEW_DATA_EXPORT_FORMAT,
+    exportedAt: new Date().toISOString(),
+    data: obfuscateExportData(plainJson),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = `the-review-data-${formatExportTimestamp(new Date())}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(downloadUrl);
+  window.alert("リビューデータをエクスポートしました。");
+}
+
+function formatExportTimestamp(date) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}${month}${day}-${hours}${minutes}${seconds}`;
+}
+
+function openReviewDataImportPicker() {
+  if (!elements.reviewDataImportInput) {
+    return;
+  }
+  elements.reviewDataImportInput.value = "";
+  elements.reviewDataImportInput.click();
+}
+
+async function handleReviewDataImportSelection(event) {
+  const input = event?.target;
+  const file = input?.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    await importReviewDataFromFile(file);
+  } finally {
+    input.value = "";
+  }
+}
+
+async function importReviewDataFromFile(file) {
+  let parsed = null;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    window.alert("読み込んだファイルの形式が正しくありません。JSONファイルを選択してください。");
+    return;
+  }
+
+  const importData = extractReviewDataPayload(parsed);
+  if (!importData) {
+    window.alert("リビューデータを読み取れませんでした。エクスポートしたJSONファイルを確認してください。");
+    return;
+  }
+
+  const normalizedState = normalizePersistedState(importData);
+  replaceState(normalizedState);
+  saveState();
+
+  if (state.auth.isLoggedIn && state.auth.provider !== "guest") {
+    await initializeAuth();
+  }
+
+  if (IS_LOGIN_PAGE) {
+    if (state.auth.isLoggedIn) {
+      window.alert("リビューデータをインポートしました。");
+      redirectToIndexPage();
+      return;
+    }
+    window.alert("リビューデータをインポートしました。");
+    renderAuthPanel();
+    return;
+  }
+
+  if (!state.auth.isLoggedIn) {
+    window.alert("リビューデータをインポートしました。");
+    redirectToLoginPage();
+    return;
+  }
+
+  applyTheme(state.settings.theme);
+  applyAccessibilityModes();
+  applyTypographySettings();
+  dailyTryRun = createDailyTryRun();
+  pauseSelfcheckTimer();
+  selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
+  calendarViewDate = getCurrentMonthStartDate();
+  markDailyLogin();
+  renderAll();
+  activateScreen(activeScreen);
+  window.alert("リビューデータをインポートしました。");
+}
+
+function extractReviewDataPayload(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  if (typeof value.storageKey === "string" && value.storageKey && value.storageKey !== STORAGE_KEY) {
+    return null;
+  }
+
+  if (value.format === REVIEW_DATA_EXPORT_FORMAT) {
+    if (typeof value.data !== "string" || !value.data.trim()) {
+      return null;
+    }
+    try {
+      const decoded = deobfuscateExportData(value.data);
+      const parsed = JSON.parse(decoded);
+      return isLikelyReviewState(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  if (value.data && typeof value.data === "object" && !Array.isArray(value.data)) {
+    return isLikelyReviewState(value.data) ? value.data : null;
+  }
+
+  return isLikelyReviewState(value) ? value : null;
+}
+
+function replaceState(nextState) {
+  Object.keys(state).forEach((key) => {
+    delete state[key];
+  });
+  Object.assign(state, nextState);
+}
+
+function isLikelyReviewState(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const keys = ["reviewCoin", "coinGrant5000Applied", "loginDays", "dailyTryRecords", "settings", "auth"];
+  return keys.some((key) => key in value);
+}
+
+function obfuscateExportData(plainText) {
+  const sourceBytes = encodeUtf8(plainText);
+  const keyBytes = encodeUtf8(REVIEW_DATA_EXPORT_KEY);
+  const obfuscated = new Uint8Array(sourceBytes.length);
+  for (let index = 0; index < sourceBytes.length; index += 1) {
+    const salt = (index * 31 + 17) & 0xff;
+    obfuscated[index] = sourceBytes[index] ^ keyBytes[index % keyBytes.length] ^ salt;
+  }
+  return encodeBase64Bytes(obfuscated);
+}
+
+function deobfuscateExportData(encodedText) {
+  const sourceBytes = decodeBase64Bytes(encodedText);
+  const keyBytes = encodeUtf8(REVIEW_DATA_EXPORT_KEY);
+  const plainBytes = new Uint8Array(sourceBytes.length);
+  for (let index = 0; index < sourceBytes.length; index += 1) {
+    const salt = (index * 31 + 17) & 0xff;
+    plainBytes[index] = sourceBytes[index] ^ keyBytes[index % keyBytes.length] ^ salt;
+  }
+  return decodeUtf8(plainBytes);
+}
+
+function encodeUtf8(text) {
+  if (typeof TextEncoder !== "function") {
+    throw new Error("TextEncoder is unavailable");
+  }
+  return new TextEncoder().encode(String(text));
+}
+
+function decodeUtf8(bytes) {
+  if (typeof TextDecoder !== "function") {
+    throw new Error("TextDecoder is unavailable");
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+function encodeBase64Bytes(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return window.btoa(binary);
+}
+
+function decodeBase64Bytes(base64Text) {
+  const binary = window.atob(String(base64Text).trim());
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 function openTextResetDialog() {
@@ -2698,7 +3014,22 @@ function getDailyTryQuestionIndex(dateKey) {
 }
 
 function loadState() {
-  const fallback = {
+  const fallback = createDefaultState();
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return fallback;
+    }
+    const parsed = JSON.parse(raw);
+    return normalizePersistedState(parsed);
+  } catch {
+    return fallback;
+  }
+}
+
+function createDefaultState() {
+  return {
     reviewCoin: 0,
     coinGrant5000Applied: false,
     loginDays: {},
@@ -2714,33 +3045,27 @@ function loadState() {
     auth: {
       isLoggedIn: false,
       provider: null,
-      displayName: "ゲスト",
+      displayName: "Guest Mode",
       email: null,
     },
   };
+}
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return fallback;
-    }
-    const parsed = JSON.parse(raw);
-    return {
-      ...fallback,
-      reviewCoin:
-        Number.isFinite(Number(parsed?.reviewCoin)) && Number(parsed.reviewCoin) >= 0
-          ? Number(parsed.reviewCoin)
-          : 0,
-      coinGrant5000Applied: normalizeBoolean(parsed?.coinGrant5000Applied, false),
-      loginDays: parsed?.loginDays && typeof parsed.loginDays === "object" ? parsed.loginDays : {},
-      dailyTryRecords:
-        parsed?.dailyTryRecords && typeof parsed.dailyTryRecords === "object" ? parsed.dailyTryRecords : {},
-      settings: normalizeSettingsState(parsed?.settings),
-      auth: normalizeAuthState(parsed?.auth),
-    };
-  } catch {
+function normalizePersistedState(parsed) {
+  const fallback = createDefaultState();
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return fallback;
   }
+  return {
+    ...fallback,
+    reviewCoin:
+      Number.isFinite(Number(parsed?.reviewCoin)) && Number(parsed.reviewCoin) >= 0 ? Number(parsed.reviewCoin) : 0,
+    coinGrant5000Applied: normalizeBoolean(parsed?.coinGrant5000Applied, false),
+    loginDays: parsed?.loginDays && typeof parsed.loginDays === "object" ? parsed.loginDays : {},
+    dailyTryRecords: parsed?.dailyTryRecords && typeof parsed.dailyTryRecords === "object" ? parsed.dailyTryRecords : {},
+    settings: normalizeSettingsState(parsed?.settings),
+    auth: normalizeAuthState(parsed?.auth),
+  };
 }
 
 function normalizeSettingsState(value) {
@@ -2830,7 +3155,7 @@ function normalizeAuthState(value) {
   const displayName =
     isLoggedIn && typeof value?.displayName === "string" && value.displayName.trim()
       ? value.displayName.trim()
-      : "ゲスト";
+      : "Guest Mode";
   const email = isLoggedIn && typeof value?.email === "string" && value.email.trim() ? value.email.trim() : null;
   return {
     isLoggedIn,
@@ -2849,6 +3174,10 @@ function normalizeAuth0Config(value) {
     typeof value?.googleConnection === "string" && value.googleConnection.trim()
       ? value.googleConnection.trim()
       : "google-oauth2";
+  const defaultConnection =
+    typeof value?.defaultConnection === "string" && value.defaultConnection.trim()
+      ? value.defaultConnection.trim()
+      : "";
   const redirectUri =
     typeof value?.redirectUri === "string" && value.redirectUri.trim()
       ? value.redirectUri.trim()
@@ -2859,6 +3188,7 @@ function normalizeAuth0Config(value) {
     audience,
     scope,
     googleConnection,
+    defaultConnection,
     redirectUri,
   };
 }
@@ -2927,3 +3257,478 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
+// Login page onboarding script (moved from login.html)
+(() => {
+  const DRAFT_STORAGE_KEY = "the-review-login-onboarding-v1";
+  const steps = Array.from(document.querySelectorAll("[data-onboarding-step]"));
+  if (steps.length === 0) {
+    return;
+  }
+
+  const termsAgreeCheckbox = document.getElementById("termsAgreeCheckbox");
+  const termsNextBtn = document.getElementById("termsNextBtn");
+  const educationCodeInput = document.getElementById("educationCodeInput");
+  const educationCodeNextBtn = document.getElementById("educationCodeNextBtn");
+  const educationCodeStartScanBtn = document.getElementById("educationCodeStartScanBtn");
+  const educationCodeUnavailableBubble = document.getElementById("educationCodeUnavailableBubble");
+  const educationCodeStopScanBtn = document.getElementById("educationCodeStopScanBtn");
+  const educationCodeScanner = document.getElementById("educationCodeScanner");
+  const educationCodeVideo = document.getElementById("educationCodeVideo");
+  const educationCodeScanStatus = document.getElementById("educationCodeScanStatus");
+  const avatarInputs = Array.from(document.querySelectorAll('input[name="avatarPreset"]'));
+  const loginNotifyReviewPeriodToggle = document.getElementById("loginNotifyReviewPeriodToggle");
+  const loginNotifyTodaysMissionToggle = document.getElementById("loginNotifyTodaysMissionToggle");
+  const loginNotifyNoticeToggle = document.getElementById("loginNotifyNoticeToggle");
+  const onboardingSaveBtn = document.getElementById("onboardingSaveBtn");
+  const onboardingSavedNote = document.getElementById("onboardingSavedNote");
+  const onboardingFixedProgress = document.getElementById("onboardingFixedProgress");
+  const onboardingFixedProgressFill = document.getElementById("onboardingFixedProgressFill");
+  const onboardingFixedStepLabel = document.getElementById("onboardingFixedStepLabel");
+  const onboardingFixedStepNumber = document.getElementById("onboardingFixedStepNumber");
+  const onboardingFixedStepCurrent = document.getElementById("onboardingFixedStepCurrent");
+  const ONBOARDING_PROGRESS_TOTAL = 5;
+  const ONBOARDING_PROGRESS_BY_STEP = {
+    terms: 1,
+    auth: 2,
+    educationCode: 3,
+    avatar: 4,
+    notification: 5,
+  };
+  const ONBOARDING_PROGRESS_LABEL_BY_STEP = {
+    terms: "利用規約とプライバシーポリシーへの同意",
+    auth: "Review Account",
+    educationCode: "Education Code",
+    avatar: "Avater",
+    notification: "通知",
+  };
+
+  let activeStepIndex = 0;
+  let educationCodeScanStream = null;
+  let educationCodeScanFrameId = 0;
+  let educationCodeScanActive = false;
+  let educationCodeDetector = null;
+
+  function setActiveStep(nextIndex) {
+    const clampedIndex = Math.max(0, Math.min(nextIndex, steps.length - 1));
+    activeStepIndex = clampedIndex;
+    steps.forEach((step, index) => {
+      const isActive = index === clampedIndex;
+      step.hidden = !isActive;
+      step.classList.toggle("is-active", isActive);
+    });
+
+    const activeStepName = String(steps[clampedIndex]?.dataset.onboardingStep || "");
+    if (activeStepName !== "educationCode") {
+      stopEducationCodeScanner();
+    }
+    const progressStep = ONBOARDING_PROGRESS_BY_STEP[activeStepName];
+    if (!progressStep) {
+      if (onboardingFixedProgress) {
+        onboardingFixedProgress.hidden = true;
+      }
+      if (onboardingFixedStepLabel) {
+        onboardingFixedStepLabel.textContent = "";
+      }
+      return;
+    }
+    const progressLabel = ONBOARDING_PROGRESS_LABEL_BY_STEP[activeStepName] || "";
+
+    if (onboardingFixedProgress) {
+      onboardingFixedProgress.hidden = false;
+    }
+    if (onboardingFixedStepLabel) {
+      onboardingFixedStepLabel.textContent = progressLabel;
+    }
+    if (onboardingFixedProgressFill) {
+      onboardingFixedProgressFill.style.width = `${(progressStep / ONBOARDING_PROGRESS_TOTAL) * 100}%`;
+    }
+    if (onboardingFixedStepCurrent) {
+      onboardingFixedStepCurrent.textContent = String(progressStep);
+    }
+    if (onboardingFixedStepNumber) {
+      onboardingFixedStepNumber.setAttribute("aria-label", `${progressStep} / ${ONBOARDING_PROGRESS_TOTAL}`);
+    }
+  }
+
+  function getSelectedValue(inputs) {
+    const selected = inputs.find((input) => input.checked);
+    return selected ? selected.value : "";
+  }
+
+  function getOnboardingNotificationSettingsFromToggles() {
+    return {
+      dailyLogin: loginNotifyReviewPeriodToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.dailyLogin,
+      dailyTry: loginNotifyTodaysMissionToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.dailyTry,
+      notice: loginNotifyNoticeToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.notice,
+    };
+  }
+
+  function applyOnboardingNotificationSettingsToToggles(settings) {
+    const normalized = normalizeNotificationSettings(settings);
+    if (loginNotifyReviewPeriodToggle) {
+      loginNotifyReviewPeriodToggle.checked = normalized.dailyLogin;
+    }
+    if (loginNotifyTodaysMissionToggle) {
+      loginNotifyTodaysMissionToggle.checked = normalized.dailyTry;
+    }
+    if (loginNotifyNoticeToggle) {
+      loginNotifyNoticeToggle.checked = normalized.notice;
+    }
+  }
+
+  function commitOnboardingNotificationSettings(settings) {
+    state.settings.notifications = normalizeNotificationSettings(settings);
+    saveState();
+  }
+
+  function handleOnboardingNotificationToggleChange() {
+    const nextSettings = getOnboardingNotificationSettingsFromToggles();
+    commitOnboardingNotificationSettings(nextSettings);
+    saveDraft();
+  }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveDraft() {
+    const payload = {
+      termsAccepted: Boolean(termsAgreeCheckbox?.checked),
+      educationCode: String(educationCodeInput?.value ?? "").trim(),
+      avatarPreset: getSelectedValue(avatarInputs),
+      notifications: getOnboardingNotificationSettingsFromToggles(),
+    };
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+  }
+
+  function syncTermsStep() {
+    if (termsNextBtn) {
+      termsNextBtn.disabled = !Boolean(termsAgreeCheckbox?.checked);
+    }
+  }
+
+  function syncEducationCodeStep() {
+    if (educationCodeNextBtn) {
+      educationCodeNextBtn.disabled = String(educationCodeInput?.value ?? "").trim().length === 0;
+    }
+  }
+
+  function setEducationCodeScanStatus(message) {
+    if (educationCodeScanStatus) {
+      educationCodeScanStatus.textContent = String(message || "");
+    }
+  }
+
+  function setEducationCodeUnavailableBubbleVisible(isVisible) {
+    if (educationCodeUnavailableBubble) {
+      educationCodeUnavailableBubble.hidden = !Boolean(isVisible);
+    }
+  }
+
+  function setEducationCodeScannerVisible(isVisible) {
+    if (educationCodeScanner) {
+      educationCodeScanner.hidden = !isVisible;
+    }
+    if (educationCodeStartScanBtn) {
+      educationCodeStartScanBtn.hidden = Boolean(isVisible);
+    }
+    if (educationCodeStopScanBtn) {
+      educationCodeStopScanBtn.hidden = !Boolean(isVisible);
+    }
+  }
+
+  function stopEducationCodeScanner() {
+    educationCodeScanActive = false;
+    if (educationCodeScanFrameId) {
+      window.cancelAnimationFrame(educationCodeScanFrameId);
+      educationCodeScanFrameId = 0;
+    }
+    if (educationCodeScanStream) {
+      educationCodeScanStream.getTracks().forEach((track) => track.stop());
+      educationCodeScanStream = null;
+    }
+    if (educationCodeVideo) {
+      educationCodeVideo.pause();
+      educationCodeVideo.srcObject = null;
+    }
+    setEducationCodeScannerVisible(false);
+  }
+
+  function extractEducationCodeFromQr(rawValue) {
+    const text = String(rawValue ?? "").trim();
+    if (!text) {
+      return "";
+    }
+
+    try {
+      const parsedUrl = new URL(text);
+      const byQuery =
+        parsedUrl.searchParams.get("educationCode") ||
+        parsedUrl.searchParams.get("schoolCode") ||
+        parsedUrl.searchParams.get("code");
+      if (byQuery) {
+        return byQuery.trim().slice(0, 20);
+      }
+    } catch {
+      // URLでない場合はそのまま次の判定へ進む
+    }
+
+    const keyValueMatch = text.match(/(?:educationCode|schoolCode|code)\s*[:=]\s*([A-Za-z0-9_-]+)/i);
+    if (keyValueMatch?.[1]) {
+      return keyValueMatch[1].trim().slice(0, 20);
+    }
+
+    return text.slice(0, 20);
+  }
+
+  function applyEducationCodeValue(nextValue) {
+    if (!educationCodeInput) {
+      return;
+    }
+    educationCodeInput.value = String(nextValue ?? "").trim().slice(0, 20);
+    syncEducationCodeStep();
+    saveDraft();
+  }
+
+  async function scanEducationCodeFrame() {
+    if (!educationCodeScanActive || !educationCodeDetector || !educationCodeVideo) {
+      return;
+    }
+
+    try {
+      if (educationCodeVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        const detections = await educationCodeDetector.detect(educationCodeVideo);
+        const rawValue = detections?.[0]?.rawValue;
+        if (rawValue) {
+          const detectedCode = extractEducationCodeFromQr(rawValue);
+          if (detectedCode) {
+            applyEducationCodeValue(detectedCode);
+            setEducationCodeScanStatus("QRコードを読みとりました。");
+            stopEducationCodeScanner();
+            return;
+          }
+        }
+      }
+    } catch {
+      setEducationCodeScanStatus("読みとりに失敗しました。");
+      stopEducationCodeScanner();
+      return;
+    }
+
+    educationCodeScanFrameId = window.requestAnimationFrame(() => {
+      void scanEducationCodeFrame();
+    });
+  }
+
+  async function startEducationCodeScanner() {
+    const canUseQrScan = "BarcodeDetector" in window && Boolean(navigator.mediaDevices?.getUserMedia);
+    if (!canUseQrScan) {
+      setEducationCodeUnavailableBubbleVisible(true);
+      return;
+    }
+
+    setEducationCodeUnavailableBubbleVisible(false);
+    stopEducationCodeScanner();
+    setEducationCodeScannerVisible(true);
+    setEducationCodeScanStatus("カメラを起動しています…");
+
+    try {
+      if (!educationCodeDetector) {
+        educationCodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
+      }
+      educationCodeScanStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      });
+      if (!educationCodeVideo) {
+        throw new Error("Video element is unavailable.");
+      }
+      educationCodeVideo.srcObject = educationCodeScanStream;
+      await educationCodeVideo.play();
+      educationCodeScanActive = true;
+      setEducationCodeScanStatus("QRコードをカメラに映してください。");
+      void scanEducationCodeFrame();
+    } catch {
+      setEducationCodeScanStatus("カメラの起動ができませんでした。");
+      stopEducationCodeScanner();
+    }
+  }
+
+  function syncEducationCodeScannerAvailability() {
+    const canUseQrScan = "BarcodeDetector" in window && Boolean(navigator.mediaDevices?.getUserMedia);
+    if (educationCodeStartScanBtn) {
+      educationCodeStartScanBtn.disabled = !canUseQrScan;
+    }
+    setEducationCodeUnavailableBubbleVisible(!canUseQrScan);
+  }
+
+  function renderLegalDocument(rawText) {
+    const normalized = String(rawText ?? "").replace(/\r\n/g, "\n");
+    if (!normalized.trim()) {
+      return "<p>文書が空です。</p>";
+    }
+    return `<p>${normalized.replace(/\n/g, "<br />")}</p>`;
+  }
+
+  async function populateLegalContent() {
+    const legalTargets = [
+      {
+        id: "termsTabPanelTerms",
+        src: "./terms.txt",
+      },
+      {
+        id: "termsTabPanelPrivacy",
+        src: "./privacy-policy.txt",
+      },
+    ];
+
+    await Promise.all(
+      legalTargets.map(async ({ id, src }) => {
+        const panel = document.getElementById(id);
+        if (!panel) {
+          return;
+        }
+        try {
+          const response = await fetch(src, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`Failed to load ${src}`);
+          }
+          const text = await response.text();
+          panel.innerHTML = renderLegalDocument(text);
+        } catch {
+          panel.innerHTML = "<p>文書の読み込みに失敗しました。</p>";
+        }
+      }),
+    );
+  }
+
+  const initialDraft = loadDraft();
+  if (initialDraft) {
+    if (termsAgreeCheckbox && typeof initialDraft.termsAccepted === "boolean") {
+      termsAgreeCheckbox.checked = initialDraft.termsAccepted;
+    }
+    const initialEducationCode =
+      typeof initialDraft.educationCode === "string"
+        ? initialDraft.educationCode
+        : typeof initialDraft.schoolCode === "string"
+          ? initialDraft.schoolCode
+          : "";
+    if (educationCodeInput && initialEducationCode) {
+      educationCodeInput.value = initialEducationCode;
+    }
+    if (typeof initialDraft.avatarPreset === "string" && initialDraft.avatarPreset.trim()) {
+      const avatarInput = avatarInputs.find((input) => input.value === initialDraft.avatarPreset);
+      if (avatarInput) {
+        avatarInput.checked = true;
+      }
+    }
+    if (initialDraft.notifications && typeof initialDraft.notifications === "object") {
+      applyOnboardingNotificationSettingsToToggles(initialDraft.notifications);
+    } else if (typeof initialDraft.notifyPreference === "string" && initialDraft.notifyPreference.trim()) {
+      const normalizedPreference = initialDraft.notifyPreference.trim().toLowerCase();
+      if (normalizedPreference === "disabled") {
+        applyOnboardingNotificationSettingsToToggles({
+          dailyLogin: false,
+          dailyTry: false,
+          notice: false,
+        });
+      } else {
+        applyOnboardingNotificationSettingsToToggles({
+          dailyLogin: true,
+          dailyTry: true,
+          notice: true,
+        });
+      }
+    } else {
+      applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
+    }
+  } else {
+    applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
+  }
+
+  termsAgreeCheckbox?.addEventListener("change", () => {
+    syncTermsStep();
+    saveDraft();
+  });
+
+  educationCodeInput?.addEventListener("input", () => {
+    syncEducationCodeStep();
+    saveDraft();
+  });
+
+  educationCodeStartScanBtn?.addEventListener("click", () => {
+    void startEducationCodeScanner();
+  });
+
+  educationCodeStopScanBtn?.addEventListener("click", () => {
+    setEducationCodeScanStatus("QRコードの読みとりを停止しました。");
+    stopEducationCodeScanner();
+  });
+
+  avatarInputs.forEach((input) => {
+    input.addEventListener("change", saveDraft);
+  });
+
+  loginNotifyReviewPeriodToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
+  loginNotifyTodaysMissionToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
+  loginNotifyNoticeToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
+
+  document.addEventListener("click", (event) => {
+    const gotoButton = event.target.closest("[data-onboarding-goto]");
+    if (gotoButton) {
+      const stepName = String(gotoButton.dataset.onboardingGoto || "");
+      const targetIndex = steps.findIndex((step) => step.dataset.onboardingStep === stepName);
+      if (targetIndex >= 0) {
+        setActiveStep(targetIndex);
+      }
+      return;
+    }
+
+    const navButton = event.target.closest("[data-onboarding-nav]");
+    if (!navButton) {
+      return;
+    }
+
+    const direction = navButton.dataset.onboardingNav;
+    if (direction === "next") {
+      setActiveStep(activeStepIndex + 1);
+      return;
+    }
+    if (direction === "prev") {
+      setActiveStep(activeStepIndex - 1);
+    }
+  });
+
+  onboardingSaveBtn?.addEventListener("click", () => {
+    const nextNotificationSettings = getOnboardingNotificationSettingsFromToggles();
+    commitOnboardingNotificationSettings(nextNotificationSettings);
+    saveDraft();
+    if (state.auth.isLoggedIn) {
+      redirectToIndexPage();
+      return;
+    }
+    if (onboardingSavedNote) {
+      onboardingSavedNote.hidden = false;
+    }
+  });
+
+  populateLegalContent();
+  syncEducationCodeScannerAvailability();
+  syncTermsStep();
+  syncEducationCodeStep();
+  setActiveStep(0);
+
+  window.addEventListener("beforeunload", stopEducationCodeScanner);
+})();

@@ -29,7 +29,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260403-5" />
+    <link rel="stylesheet" href="./app.css?v=20260414-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -163,17 +163,17 @@
       <section id="screen-login" class="screen">
         <section class="panel auth-panel">
           <h2>ログイン</h2>
-          <p class="hint-text">マイページを使うには Google ログインまたはゲストモードが必要です。</p>
+          <p class="hint-text">マイページを使うには Auth0 ログインまたはGuest Modeが必要です。</p>
           <div class="action-row">
-            <button id="authLoginGoogleBtn" class="primary" data-auth-provider="google" type="button">
-              Googleでログイン
+            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">
+              ログインする
             </button>
             <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">
-              ゲストで続ける
+              Guest Modeで続ける
             </button>
           </div>
           <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
-            auth0-config.js の domain / clientId / googleConnection を確認してください。
+            auth0-config.js の domain / clientId / defaultConnection を確認してください。
           </p>
         </section>
       </section>
@@ -453,25 +453,39 @@
             <h2>通知</h2>
             <div class="settings-section-content">
               <div class="setting-row">
-                <span>デイリーログイン通知</span>
-                <label class="toggle-switch" for="notifyDailyLoginToggle">
-                  <input id="notifyDailyLoginToggle" type="checkbox" />
+                <span>リビュー日数</span>
+                <label class="toggle-switch" for="notifyReviewPeriodToggle">
+                  <input id="notifyReviewPeriodToggle" type="checkbox" />
                   <span class="toggle-slider" aria-hidden="true"></span>
                 </label>
               </div>
               <div class="setting-row">
-                <span>この問題にTRY!通知</span>
-                <label class="toggle-switch" for="notifyDailyTryToggle">
-                  <input id="notifyDailyTryToggle" type="checkbox" />
+                <span>この問題にTRY!</span>
+                <label class="toggle-switch" for="notifyTodaysMissionToggle">
+                  <input id="notifyTodaysMissionToggle" type="checkbox" />
                   <span class="toggle-slider" aria-hidden="true"></span>
                 </label>
               </div>
               <div class="setting-row">
-                <span>お知らせ通知</span>
+                <span>お知らせ</span>
                 <label class="toggle-switch" for="notifyNoticeToggle">
                   <input id="notifyNoticeToggle" type="checkbox" />
                   <span class="toggle-slider" aria-hidden="true"></span>
                 </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel settings-section">
+            <h2>リビューデータ</h2>
+            <div class="settings-section-content">
+              <div class="setting-row">
+                <span>データをエクスポート</span>
+                <button id="reviewDataExportBtn" class="secondary" type="button">保存</button>
+              </div>
+              <div class="setting-row">
+                <span>データをインポート</span>
+                <button id="reviewDataImportBtn" class="secondary" type="button">ファイルを読み込む</button>
               </div>
             </div>
           </section>
@@ -526,6 +540,20 @@
       </form>
     </dialog>
 
+    <dialog id="guestModeDialog" class="text-reset-dialog" aria-labelledby="guestModeDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="guestModeDialogTitle">Guest Mode</h3>
+        <p>データはサーバー上に保存されず、お持ちのデバイスに保存されます。よろしいですか？</p>
+        <div class="guest-mode-actions">
+          <button class="secondary" type="button" data-guest-mode-action="cancel">キャンセル</button>
+          <button class="secondary" type="button" data-guest-mode-action="import">データをインポートする</button>
+          <button class="primary" type="button" data-guest-mode-action="ok">OK</button>
+        </div>
+      </form>
+    </dialog>
+
+    <input id="reviewDataImportInput" type="file" accept=".json,application/json" hidden />
+
     <p id="statusMessage" class="status-message" role="status" aria-live="polite"></p>
 
     <script src="./auth0-config.js?v=20260326-1"></script>
@@ -539,6 +567,6 @@
     <script src="./data/bio.js?v=20260326-1"></script>
     <script src="./data/week_test8.js?v=20260326-1"></script>
     <script src="./data/week_test9.js?v=20260326-1"></script>
-    <script src="./app.js?v=20260404-1"></script>
+    <script src="./app.js?v=20260414-1"></script>
   </body>
 </html>
