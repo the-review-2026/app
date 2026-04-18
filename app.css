@@ -1904,9 +1904,12 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   color: var(--book-text);
   padding: 0.72rem 0.98rem 0.78rem 1.24rem;
   z-index: calc(90 + var(--flashcard-stack-index, 0));
-  transform: translateY(0);
-  will-change: transform;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, margin-top 0.2s ease;
+  transform: translate3d(0, 0, 0);
+  transform-origin: center;
+  contain: paint;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 280ms cubic-bezier(0.2, 0.72, 0.24, 1);
 }
 
 #flashcardSubjectButtons .flashcard-book-shell:first-child {
@@ -1938,9 +1941,14 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 #flashcardSubjectButtons .flashcard-book-shell.is-raised {
-  transform: translateY(var(--flashcard-book-lift-y));
+  transform: translate3d(0, var(--flashcard-book-lift-y), 0);
   box-shadow: 0 0 0 1px var(--book-outer-edge), 0 14px 20px rgba(13, 31, 50, 0.26);
   border-color: var(--book-edge-raised);
+}
+
+#flashcardSubjectButtons .flashcard-book-shell.is-lifting,
+#flashcardSubjectButtons .flashcard-book-shell.is-dropping {
+  will-change: transform;
 }
 
 #flashcardSubjectButtons .flashcard-book-shell.is-lifting {
@@ -1957,7 +1965,6 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 #flashcardSubjectButtons .flashcard-book-shell.is-unready {
-  filter: saturate(0.72);
   opacity: 1;
 }
 
@@ -1975,6 +1982,8 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   display: grid;
   gap: 0.2rem;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #flashcardSubjectButtons .flashcard-book-script {
@@ -2063,6 +2072,8 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #flashcardSubjectButtons .flashcard-book-use-btn:disabled {
@@ -2157,23 +2168,19 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 
 @keyframes flashcard-book-lift {
   0% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateY(var(--flashcard-book-lift-y));
+    transform: translate3d(0, var(--flashcard-book-lift-y), 0);
   }
 }
 
 @keyframes flashcard-book-drop {
   0% {
-    transform: translateY(var(--flashcard-book-lift-y));
-    box-shadow: 0 0 0 1px var(--book-outer-edge), 0 14px 20px rgba(13, 31, 50, 0.26);
-    border-color: var(--book-edge-raised);
+    transform: translate3d(0, var(--flashcard-book-lift-y), 0);
   }
   100% {
-    transform: translateY(0);
-    box-shadow: 0 0 0 1px var(--book-outer-edge), 0 5px 12px rgba(18, 38, 59, 0.2);
-    border-color: var(--book-edge-default);
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -3260,7 +3267,7 @@ button {
   }
 
   #flashcardSubjectButtons .flashcard-book-shell.is-raised {
-    transform: translateY(var(--flashcard-book-lift-y));
+    transform: translate3d(0, var(--flashcard-book-lift-y), 0);
   }
 
   #flashcardSubjectButtons .flashcard-book-script {
