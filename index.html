@@ -29,7 +29,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260414-1" />
+    <link rel="stylesheet" href="./app.css?v=20260414-6" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -54,34 +54,12 @@
             <img class="menu-icon" src="./assets/icons/menu.svg?v=20260326-1" alt="" aria-hidden="true" />
             <span>ホーム</span>
           </button>
-          <button
-            class="top-nav-item"
-            type="button"
-            data-screen="mypage"
-            aria-haspopup="menu"
-            aria-controls="mypageSubmenu"
-            aria-expanded="false"
-          >
-            <img class="menu-icon" src="./assets/icons/menu.svg?v=20260326-1" alt="" aria-hidden="true" />
-            <span>マイページ</span>
-          </button>
-          <div id="mypageSubmenu" class="mypage-submenu" role="menu" aria-label="マイページサブメニュー">
-            <button class="mypage-submenu-item is-current" type="button" data-mypage-target="top" role="menuitem">
-              トップ
-            </button>
-            <button class="mypage-submenu-item" type="button" data-mypage-target="selfcheck" role="menuitem">
-              セルフチェック
-            </button>
-            <button class="mypage-submenu-item" type="button" data-mypage-target="customize" role="menuitem">
-              カスタマイズ
-            </button>
-            <button class="mypage-submenu-item" type="button" data-mypage-target="settings" role="menuitem">
-              設定
-            </button>
+          <div class="top-nav-character" aria-hidden="true">
+            <img src="./private/avatar/らーん/らーん1-1.png" alt="" />
           </div>
           <button class="top-nav-item" type="button" data-screen="notice">
             <img class="menu-icon" src="./assets/icons/menu.svg?v=20260326-1" alt="" aria-hidden="true" />
-            <span>お知らせ</span>
+            <span>ストア</span>
           </button>
         </nav>
       </div>
@@ -158,24 +136,6 @@
           </section>
 
         </div>
-      </section>
-
-      <section id="screen-login" class="screen">
-        <section class="panel auth-panel">
-          <h2>ログイン</h2>
-          <p class="hint-text">マイページを使うには Auth0 ログインまたはGuest Modeが必要です。</p>
-          <div class="action-row">
-            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">
-              ログインする
-            </button>
-            <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">
-              Guest Modeで続ける
-            </button>
-          </div>
-          <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
-            auth0-config.js の domain / clientId / defaultConnection を確認してください。
-          </p>
-        </section>
       </section>
 
       <section id="screen-mypage" class="screen">
@@ -396,10 +356,6 @@
                 <span>メールアドレス</span>
                 <strong id="authEmailText">未設定</strong>
               </div>
-              <div class="setting-row">
-                <span>ログインステータス</span>
-                <strong id="authStatusText">未ログイン</strong>
-              </div>
             </div>
           </section>
 
@@ -467,7 +423,7 @@
                 </label>
               </div>
               <div class="setting-row">
-                <span>お知らせ</span>
+                <span>ストア</span>
                 <label class="toggle-switch" for="notifyNoticeToggle">
                   <input id="notifyNoticeToggle" type="checkbox" />
                   <span class="toggle-slider" aria-hidden="true"></span>
@@ -512,11 +468,11 @@
 
       <section id="screen-notice" class="screen">
         <section class="panel">
-          <h2>お知らせ</h2>
+          <h2>ストア</h2>
           <ul class="notice-list">
             <li>ホームでデイリー問題に挑戦できます。</li>
-            <li>マイページでリビューコイン枚数を確認できます。</li>
-            <li>メニューはホーム・マイページ・お知らせの3つです。</li>
+            <li>ホームでマイページ機能（フラッシュカード・セルフチェック・設定）を使えます。</li>
+            <li>メニューはホーム・ストアの2つです。</li>
           </ul>
         </section>
         <div class="notice-shortcuts">
@@ -554,8 +510,6 @@
 
     <input id="reviewDataImportInput" type="file" accept=".json,application/json" hidden />
 
-    <p id="statusMessage" class="status-message" role="status" aria-live="polite"></p>
-
     <script src="./auth0-config.js?v=20260326-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
     <script src="./data/public.js?v=20260326-1"></script>
@@ -567,6 +521,6 @@
     <script src="./data/bio.js?v=20260326-1"></script>
     <script src="./data/week_test8.js?v=20260326-1"></script>
     <script src="./data/week_test9.js?v=20260326-1"></script>
-    <script src="./app.js?v=20260414-1"></script>
+    <script src="./app.js?v=20260414-4"></script>
   </body>
 </html>

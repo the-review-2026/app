@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260414-1" />
+    <link rel="stylesheet" href="./app.css?v=20260414-4" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body class="login-page" data-theme="sea">
@@ -66,7 +66,7 @@
 
         <section class="onboarding-step" data-onboarding-step="auth">
           <h2>Review Account</h2>
-          <p class="hint-text">Review Accountを作成すると、Review Dataをサーバー上に保存することができます。</p>
+          <p class="hint-text">アプリをご利用になったデータ（Review Data）をクラウド上に保存することができます。他のデバイスでは、ログインするだけでかんたんにReview Dataを引きつげます。</p>
           <div class="action-row">
             <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">ログインする</button>
             <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">Guest Modeで続行する</button>
@@ -81,25 +81,13 @@
 
         <section class="onboarding-step" data-onboarding-step="educationCode">
           <h2>Education Code</h2>
-          <p class="hint-text">QRコードを読みとるか、手入力してください。</p>
+          <p class="hint-text">学校内で使うコードです。入力すると、校内限定の教材やカラーテーマなどにアクセスできます。QRコードを読みとるか、コードを入力してください。</p>
           <div class="education-code-mode-actions">
             <div class="education-code-start-scan-wrap">
-              <p
-                id="educationCodeUnavailableBubble"
-                class="education-code-unavailable-bubble"
-                role="status"
-                aria-live="polite"
-                hidden
-              >
-                このデバイスでは、QRコードの読みとりはご利用いただけません
-              </p>
               <button id="educationCodeStartScanBtn" class="secondary" type="button">QRコードを読みとる</button>
             </div>
             <button id="educationCodeStopScanBtn" class="secondary" type="button" hidden>読みとりを停止する</button>
           </div>
-          <p id="educationCodeScanStatus" class="hint-text education-code-scan-status" aria-live="polite">
-            手入力もご利用になれます。
-          </p>
           <div id="educationCodeScanner" class="education-code-scanner" hidden>
             <video id="educationCodeVideo" class="education-code-video" playsinline muted></video>
           </div>
@@ -129,7 +117,6 @@
             <div class="onboarding-notify-row">
               <div class="onboarding-notify-labels">
                 <span>リビュー日数</span>
-                <small>Review Period</small>
               </div>
               <label class="toggle-switch" for="loginNotifyReviewPeriodToggle">
                 <input id="loginNotifyReviewPeriodToggle" type="checkbox" checked />
@@ -139,7 +126,6 @@
             <div class="onboarding-notify-row">
               <div class="onboarding-notify-labels">
                 <span>この問題にTRY!</span>
-                <small>Today's Mission</small>
               </div>
               <label class="toggle-switch" for="loginNotifyTodaysMissionToggle">
                 <input id="loginNotifyTodaysMissionToggle" type="checkbox" checked />
@@ -149,13 +135,26 @@
             <div class="onboarding-notify-row">
               <div class="onboarding-notify-labels">
                 <span>お知らせ</span>
-                <small>Notice</small>
               </div>
               <label class="toggle-switch" for="loginNotifyNoticeToggle">
                 <input id="loginNotifyNoticeToggle" type="checkbox" checked />
                 <span class="toggle-slider" aria-hidden="true"></span>
               </label>
             </div>
+          </div>
+          <div class="onboarding-notify-time-common">
+            <p class="onboarding-notify-time-title">通知時刻（全通知共通）</p>
+            <small id="loginNotifyCommonTimeDescription">
+              07:00に毎日アプリをご利用できるよう通知を送信します
+            </small>
+            <input
+              id="loginNotifyCommonTimeInput"
+              class="onboarding-notify-time-input"
+              type="time"
+              value="07:00"
+              step="300"
+              aria-label="全通知共通の時刻"
+            />
           </div>
           <div class="action-row onboarding-step-actions">
             <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
@@ -192,9 +191,8 @@
 
     <input id="reviewDataImportInput" type="file" accept=".json,application/json" hidden />
 
-    <p id="statusMessage" class="status-message" role="status" aria-live="polite" hidden></p>
     <script src="./auth0-config.js?v=20260326-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260414-1"></script>
+    <script src="./app.js?v=20260414-4"></script>
   </body>
 </html>
