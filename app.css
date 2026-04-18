@@ -1915,11 +1915,16 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 
 body.flashcard-book-global-focus #flashcardSubjectButtons.flashcard-choice-list {
   z-index: 24;
+  isolation: isolate;
 }
 
 body.flashcard-book-global-focus #flashcardSubjectButtons {
   position: relative;
   z-index: 24;
+}
+
+body.flashcard-book-global-focus #flashcardSubjectButtons .flashcard-book-shell {
+  z-index: calc(120 + var(--flashcard-stack-index, 0));
 }
 
 #flashcardSubjectButtons .flashcard-book-shell {
@@ -1967,6 +1972,41 @@ body.flashcard-book-global-focus #flashcardSubjectButtons {
 
 #flashcardSubjectButtons .flashcard-book-shell:first-child {
   margin-top: 0;
+}
+
+#flashcardSubjectButtons .flashcard-book-page-turn,
+#flashcardSubjectButtons .flashcard-book-page-shadow {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+
+#flashcardSubjectButtons .flashcard-book-page-turn {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 52%;
+  border-radius: 0 14px 14px 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0)),
+    repeating-linear-gradient(135deg, var(--book-hatch) 0 2px, rgba(255, 255, 255, 0) 2px 11px),
+    var(--book-bg);
+  box-shadow: -2px 0 0 rgba(255, 255, 255, 0.34), -20px 0 30px rgba(8, 12, 20, 0.26);
+  transform-origin: left center;
+  transform: perspective(2200px) rotateY(0deg);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  z-index: 4;
+}
+
+#flashcardSubjectButtons .flashcard-book-page-shadow {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 42px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0));
+  z-index: 3;
 }
 
 #flashcardSubjectButtons .flashcard-book-shell::before {
@@ -2028,6 +2068,27 @@ body.flashcard-book-global-focus #flashcardSubjectButtons {
   animation: flashcard-book-use-open-right 420ms cubic-bezier(0.22, 0.76, 0.24, 1) both;
 }
 
+#flashcardSubjectButtons .flashcard-book-shell.is-using-open-left .flashcard-book-page-turn {
+  right: 0;
+  left: auto;
+  transform-origin: left center;
+  animation: flashcard-book-page-turn-left 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+#flashcardSubjectButtons .flashcard-book-shell.is-using-open-right .flashcard-book-page-turn {
+  left: 0;
+  right: auto;
+  border-radius: 14px 0 0 14px;
+  box-shadow: 2px 0 0 rgba(255, 255, 255, 0.34), 20px 0 30px rgba(8, 12, 20, 0.26);
+  transform-origin: right center;
+  animation: flashcard-book-page-turn-right 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+#flashcardSubjectButtons .flashcard-book-shell.is-using-open-left .flashcard-book-page-shadow,
+#flashcardSubjectButtons .flashcard-book-shell.is-using-open-right .flashcard-book-page-shadow {
+  animation: flashcard-book-page-shadow-pulse 420ms ease both;
+}
+
 #flashcardSubjectButtons .flashcard-book-shell.is-lifting {
   animation: flashcard-book-lift 280ms cubic-bezier(0.18, 0.8, 0.24, 1);
 }
@@ -2044,7 +2105,8 @@ body.flashcard-book-global-focus #flashcardSubjectButtons {
 }
 
 body.flashcard-book-global-focus #flashcardSubjectButtons .flashcard-book-shell.is-active {
-  z-index: 40;
+  z-index: 2800 !important;
+  isolation: isolate;
   filter: none !important;
   opacity: 1;
 }
@@ -2379,6 +2441,65 @@ body.flashcard-book-global-focus #flashcardSubjectButtons .flashcard-book-shell:
   }
   100% {
     transform: translate3d(0, var(--flashcard-book-lift-y), 0) rotateY(0deg);
+  }
+}
+
+@keyframes flashcard-book-page-turn-left {
+  0% {
+    opacity: 0;
+    transform: perspective(2200px) rotateY(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 1;
+    transform: perspective(2200px) rotateY(-168deg);
+  }
+  70% {
+    opacity: 0.9;
+    transform: perspective(2200px) rotateY(-110deg);
+  }
+  100% {
+    opacity: 0;
+    transform: perspective(2200px) rotateY(0deg);
+  }
+}
+
+@keyframes flashcard-book-page-turn-right {
+  0% {
+    opacity: 0;
+    transform: perspective(2200px) rotateY(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 1;
+    transform: perspective(2200px) rotateY(168deg);
+  }
+  70% {
+    opacity: 0.9;
+    transform: perspective(2200px) rotateY(110deg);
+  }
+  100% {
+    opacity: 0;
+    transform: perspective(2200px) rotateY(0deg);
+  }
+}
+
+@keyframes flashcard-book-page-shadow-pulse {
+  0% {
+    opacity: 0;
+  }
+  22% {
+    opacity: 0.92;
+  }
+  66% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
   }
 }
 
@@ -3464,6 +3585,14 @@ button {
   #flashcardSubjectButtons .flashcard-book-shell::after {
     width: 5px;
     border-radius: 0 12px 12px 0;
+  }
+
+  #flashcardSubjectButtons .flashcard-book-page-turn {
+    border-radius: 0 12px 12px 0;
+  }
+
+  #flashcardSubjectButtons .flashcard-book-shell.is-using-open-right .flashcard-book-page-turn {
+    border-radius: 12px 0 0 12px;
   }
 
   #flashcardSubjectButtons .flashcard-book-shell.is-raised {

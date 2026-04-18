@@ -2117,6 +2117,16 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
       activeShell = shell;
     }
 
+    const turnPage = document.createElement("span");
+    turnPage.className = "flashcard-book-page-turn";
+    turnPage.setAttribute("aria-hidden", "true");
+    shell.append(turnPage);
+
+    const turnShadow = document.createElement("span");
+    turnShadow.className = "flashcard-book-page-shadow";
+    turnShadow.setAttribute("aria-hidden", "true");
+    shell.append(turnShadow);
+
     const liftButton = document.createElement("button");
     liftButton.type = "button";
     liftButton.className = "flashcard-book-lift-btn";
