@@ -73,6 +73,17 @@ const FLASHCARD_REVIEW_2ND_SERIES = {
   label: "Refine 2nd Edition",
 };
 const FLASHCARD_BOOK_DROP_ANIMATION_MS = 280;
+const FLASHCARD_BOOK_USE_EXIT_ANIMATION_MS = 340;
+const FLASHCARD_BOOK_USE_DROP_ANIMATION_MS = 360;
+const FLASHCARD_BOOK_USE_OPEN_ANIMATION_MS = 420;
+const FLASHCARD_BOOK_USE_ANIMATION_TOTAL_MS =
+  FLASHCARD_BOOK_USE_EXIT_ANIMATION_MS + FLASHCARD_BOOK_USE_DROP_ANIMATION_MS + FLASHCARD_BOOK_USE_OPEN_ANIMATION_MS;
+const FLASHCARD_SUMMARY_DEFAULT_TEXT = "復習する科目を選び、本をとり出してください。";
+const FLASHCARD_BOOK_OPEN_RIGHT_SUBJECT_IDS = new Set([
+  "reboot-modern-japanese",
+  "reboot-language-culture",
+  "refine-logical-japanese",
+]);
 const FLASHCARD_BOOK_TONE_SUBJECT_IDS = {
   red: new Set(["reboot-modern-japanese", "reboot-language-culture", "refine-logical-japanese"]),
   blue: new Set(["math1", "reboot-math-a", "refine-math-2", "refine-math-b", "refine-math-c"]),
@@ -380,6 +391,8 @@ let auth0Client = null;
 let reviewCoinAnimationFrameId = null;
 let flashcardState = createInitialFlashcardState();
 const flashcardBookDropTimerBySeries = new Map();
+const flashcardBookUseTimerBySeries = new Map();
+const flashcardBookUseAnimationBySeries = new Map();
 let isFlashcardFocusMode = false;
 let isSelfcheckTimerFocusMode = false;
 let pendingGuestModeAppState = null;
@@ -674,6 +687,7 @@ function bindEvents() {
       if (!nextSeriesId || nextSeriesId === flashcardState.selectedSeriesId) {
         return;
       }
+      clearFlashcardBookUseAnimation(flashcardState.selectedSeriesId);
       flashcardState.selectedSeriesId = nextSeriesId;
       flashcardState.selectedDeckId = "";
       flashcardState.selectedUnitId = "";
@@ -691,18 +705,15 @@ function bindEvents() {
           return;
         }
         const nextDeckId = normalizeFlashcardText(actionButton.dataset.flashcardDeckId);
-        if (!nextDeckId || nextDeckId === flashcardState.selectedDeckId) {
+        const activeSeriesId = normalizeFlashcardText(flashcardState.selectedSeriesId);
+        if (!nextDeckId || !activeSeriesId) {
           return;
         }
-        const isDeckSelectable = getFlashcardDecksInSeries(flashcardState.selectedSeriesId).some((deck) => deck.id === nextDeckId);
+        const isDeckSelectable = getFlashcardDecksInSeries(activeSeriesId).some((deck) => deck.id === nextDeckId);
         if (!isDeckSelectable) {
           return;
         }
-        flashcardState.selectedDeckId = nextDeckId;
-        flashcardState.selectedUnitId = "";
-        flashcardState.cardIndex = 0;
-        flashcardState.answerVisible = false;
-        renderFlashcardPanel();
+        startFlashcardBookUseAnimation(activeSeriesId, nextDeckId);
         return;
       }
 
@@ -713,6 +724,9 @@ function bindEvents() {
       const nextDeckId = normalizeFlashcardText(liftButton.dataset.flashcardDeckId);
       const activeSeriesId = normalizeFlashcardText(flashcardState.selectedSeriesId);
       if (!nextDeckId || !activeSeriesId) {
+        return;
+      }
+      if (getFlashcardBookUseAnimation(activeSeriesId)) {
         return;
       }
       const raisedDeckId = getRaisedFlashcardDeckId(activeSeriesId);
@@ -936,6 +950,7 @@ function activateScreen(screen) {
   if (normalizedScreen === "mypage") {
     setMypagePage(activeMypagePage);
   } else {
+    setFlashcardPanelBookDimmed(false);
     closeMypageSubmenu();
   }
   renderFlashcardFocusMode();
@@ -1344,6 +1359,13 @@ function initializeFlashcards() {
     clearTimeout(timerId);
   });
   flashcardBookDropTimerBySeries.clear();
+  flashcardBookUseTimerBySeries.forEach((timerIds) => {
+    if (Array.isArray(timerIds)) {
+      timerIds.forEach((timerId) => clearTimeout(timerId));
+    }
+  });
+  flashcardBookUseTimerBySeries.clear();
+  flashcardBookUseAnimationBySeries.clear();
 
   flashcardState = {
     ...createInitialFlashcardState(),
@@ -1553,6 +1575,34 @@ function getFlashcardBookEnglishTitle(subjectId) {
   return FLASHCARD_BOOK_ENGLISH_TITLE_BY_SUBJECT_ID[normalizedSubjectId] ?? "";
 }
 
+function getFlashcardBookOpeningDirection(subjectId) {
+  const normalizedSubjectId = normalizeFlashcardText(subjectId);
+  if (!normalizedSubjectId) {
+    return "left";
+  }
+  return FLASHCARD_BOOK_OPEN_RIGHT_SUBJECT_IDS.has(normalizedSubjectId) ? "right" : "left";
+}
+
+function getFlashcardBookUseAnimation(seriesId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  if (!normalizedSeriesId) {
+    return null;
+  }
+  const animationState = flashcardBookUseAnimationBySeries.get(normalizedSeriesId);
+  if (!animationState || typeof animationState !== "object") {
+    return null;
+  }
+  const deckId = normalizeFlashcardText(animationState.deckId);
+  const phase = normalizeFlashcardText(animationState.phase);
+  if (!deckId || !phase) {
+    return null;
+  }
+  return {
+    deckId,
+    phase,
+  };
+}
+
 function getRaisedFlashcardDeckId(seriesId) {
   const normalizedSeriesId = normalizeFlashcardText(seriesId);
   if (!normalizedSeriesId || !flashcardState.raisedDeckBySeries || typeof flashcardState.raisedDeckBySeries !== "object") {
@@ -1637,6 +1687,95 @@ function clearFlashcardBookDropTimer(seriesId) {
   }
 }
 
+function clearFlashcardBookUseTimer(seriesId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  if (!normalizedSeriesId) {
+    return;
+  }
+  const timerIds = flashcardBookUseTimerBySeries.get(normalizedSeriesId);
+  if (Array.isArray(timerIds)) {
+    timerIds.forEach((timerId) => clearTimeout(timerId));
+  }
+  flashcardBookUseTimerBySeries.delete(normalizedSeriesId);
+}
+
+function clearFlashcardBookUseAnimation(seriesId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  if (!normalizedSeriesId) {
+    return;
+  }
+  clearFlashcardBookUseTimer(normalizedSeriesId);
+  flashcardBookUseAnimationBySeries.delete(normalizedSeriesId);
+}
+
+function startFlashcardBookUseAnimation(seriesId, deckId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  const normalizedDeckId = normalizeFlashcardText(deckId);
+  if (!normalizedSeriesId || !normalizedDeckId) {
+    return;
+  }
+
+  clearFlashcardBookUseAnimation(normalizedSeriesId);
+  clearFlashcardBookDropTimer(normalizedSeriesId);
+  setDroppingFlashcardDeckId(normalizedSeriesId, "");
+  setLiftingFlashcardDeckId(normalizedSeriesId, "");
+  setRaisedFlashcardDeckId(normalizedSeriesId, normalizedDeckId);
+
+  flashcardBookUseAnimationBySeries.set(normalizedSeriesId, {
+    deckId: normalizedDeckId,
+    phase: "exit",
+  });
+  flashcardState.selectedDeckId = "";
+  flashcardState.selectedUnitId = "";
+  flashcardState.cardIndex = 0;
+  flashcardState.answerVisible = false;
+  renderFlashcardPanel();
+
+  const exitTimerId = window.setTimeout(() => {
+    const animationState = getFlashcardBookUseAnimation(normalizedSeriesId);
+    if (!animationState || animationState.deckId !== normalizedDeckId) {
+      return;
+    }
+    flashcardBookUseAnimationBySeries.set(normalizedSeriesId, {
+      deckId: normalizedDeckId,
+      phase: "drop",
+    });
+    renderFlashcardPanel();
+  }, FLASHCARD_BOOK_USE_EXIT_ANIMATION_MS);
+
+  const dropTimerId = window.setTimeout(() => {
+    const animationState = getFlashcardBookUseAnimation(normalizedSeriesId);
+    if (!animationState || animationState.deckId !== normalizedDeckId) {
+      return;
+    }
+    if (normalizeFlashcardText(flashcardState.selectedSeriesId) !== normalizedSeriesId) {
+      clearFlashcardBookUseAnimation(normalizedSeriesId);
+      return;
+    }
+    flashcardBookUseAnimationBySeries.set(normalizedSeriesId, {
+      deckId: normalizedDeckId,
+      phase: "open",
+    });
+    flashcardState.selectedDeckId = normalizedDeckId;
+    flashcardState.selectedUnitId = "";
+    flashcardState.cardIndex = 0;
+    flashcardState.answerVisible = false;
+    renderFlashcardPanel();
+  }, FLASHCARD_BOOK_USE_EXIT_ANIMATION_MS + FLASHCARD_BOOK_USE_DROP_ANIMATION_MS);
+
+  const completeTimerId = window.setTimeout(() => {
+    const animationState = getFlashcardBookUseAnimation(normalizedSeriesId);
+    if (!animationState || animationState.deckId !== normalizedDeckId) {
+      return;
+    }
+    flashcardBookUseAnimationBySeries.delete(normalizedSeriesId);
+    flashcardBookUseTimerBySeries.delete(normalizedSeriesId);
+    renderFlashcardPanel();
+  }, FLASHCARD_BOOK_USE_ANIMATION_TOTAL_MS + 40);
+
+  flashcardBookUseTimerBySeries.set(normalizedSeriesId, [exitTimerId, dropTimerId, completeTimerId]);
+}
+
 function scheduleFlashcardBookDropAnimation(seriesId, deckId) {
   const normalizedSeriesId = normalizeFlashcardText(seriesId);
   const normalizedDeckId = normalizeFlashcardText(deckId);
@@ -1688,6 +1827,11 @@ function clampFlashcardState() {
       delete flashcardState.liftingDeckBySeries[seriesId];
     }
   });
+  Array.from(flashcardBookUseAnimationBySeries.keys()).forEach((seriesId) => {
+    if (!validSeriesIds.has(seriesId)) {
+      clearFlashcardBookUseAnimation(seriesId);
+    }
+  });
 
   if (!Array.isArray(flashcardState.decks) || flashcardState.decks.length === 0) {
     const activeSeries = seriesList.find((item) => item.id === flashcardState.selectedSeriesId) ?? null;
@@ -1715,6 +1859,7 @@ function clampFlashcardState() {
   const raisedDeckId = getRaisedFlashcardDeckId(activeSeries.id);
   const droppingDeckId = getDroppingFlashcardDeckId(activeSeries.id);
   const liftingDeckId = getLiftingFlashcardDeckId(activeSeries.id);
+  const usingAnimationState = getFlashcardBookUseAnimation(activeSeries.id);
   if (raisedDeckId && !validSubjectIds.has(raisedDeckId)) {
     setRaisedFlashcardDeckId(activeSeries.id, "");
   }
@@ -1724,6 +1869,9 @@ function clampFlashcardState() {
   }
   if (liftingDeckId && !validSubjectIds.has(liftingDeckId)) {
     setLiftingFlashcardDeckId(activeSeries.id, "");
+  }
+  if (usingAnimationState && !validSubjectIds.has(usingAnimationState.deckId)) {
+    clearFlashcardBookUseAnimation(activeSeries.id);
   }
   if (decksInSeries.length === 0) {
     flashcardState.selectedDeckId = "";
@@ -1772,6 +1920,10 @@ function getActiveFlashcardCard() {
   return unit.cards[flashcardState.cardIndex] ?? null;
 }
 
+function setFlashcardPanelBookDimmed(shouldDim) {
+  document.body.classList.toggle("flashcard-book-global-focus", Boolean(shouldDim));
+}
+
 function renderFlashcardPanel() {
   if (!elements.flashcardSummary) {
     return;
@@ -1781,6 +1933,11 @@ function renderFlashcardPanel() {
   const decks = flashcardState.decks;
   const seriesList = getFlashcardSeriesList();
   const activeSeries = getActiveFlashcardSeries();
+  const activeSeriesId = normalizeFlashcardText(activeSeries?.id);
+  const useAnimationState = getFlashcardBookUseAnimation(activeSeriesId);
+  const isBookUseTransitionPhase = useAnimationState?.phase === "exit" || useAnimationState?.phase === "drop";
+  const hasActiveDeck = Boolean(normalizeFlashcardText(flashcardState.selectedDeckId));
+  setFlashcardPanelBookDimmed(Boolean(activeSeriesId && (hasActiveDeck || isBookUseTransitionPhase)));
   const decksInSeries = getFlashcardDecksInSeries(activeSeries?.id);
   const subjectsInSeries = getFlashcardSubjectsInSeries(activeSeries?.id);
   renderFlashcardSeriesButtons(seriesList, activeSeries?.id ?? "");
@@ -1815,7 +1972,7 @@ function renderFlashcardPanel() {
   if (!activeDeck) {
     elements.flashcardSummary.textContent =
       decksInSeries.length > 0
-        ? `${activeSeries.label}の科目をタップし、「この教材を使う」を押してください。`
+        ? FLASHCARD_SUMMARY_DEFAULT_TEXT
         : `${activeSeries.label}の問題は準備中です。`;
     updateSelectOptions(elements.flashcardUnitSelect, [], "", true);
     setFlashcardStudyControlsVisibility(false);
@@ -1842,9 +1999,7 @@ function renderFlashcardPanel() {
     return;
   }
 
-  const totalUnits = decksInSeries.reduce((sum, deck) => sum + deck.units.length, 0);
-  const totalCards = decksInSeries.reduce((sum, deck) => sum + deck.totalCards, 0);
-  elements.flashcardSummary.textContent = `${activeSeries.label} / ${decksInSeries.length}科目 / ${totalUnits}章 / ${totalCards}問 / ${activeDeck.label} > ${activeUnit.label} (${flashcardState.cardIndex + 1}/${activeUnit.cards.length})`;
+  elements.flashcardSummary.textContent = FLASHCARD_SUMMARY_DEFAULT_TEXT;
 
   updateSelectOptions(
     elements.flashcardUnitSelect,
@@ -1908,6 +2063,11 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
   const raisedDeckId = getRaisedFlashcardDeckId(activeSeriesId);
   const droppingDeckId = getDroppingFlashcardDeckId(activeSeriesId);
   const liftingDeckId = getLiftingFlashcardDeckId(activeSeriesId);
+  const useAnimationState = getFlashcardBookUseAnimation(activeSeriesId);
+  const usingDeckId = useAnimationState?.deckId ?? "";
+  const usingPhase = useAnimationState?.phase ?? "";
+  const isUseAnimationRunning = Boolean(usingDeckId && usingPhase);
+  let activeShell = null;
 
   safeSubjects.forEach((subject, index) => {
     const subjectId = normalizeFlashcardText(subject.id);
@@ -1920,6 +2080,8 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
     const isDropping = !isRaised && droppingDeckId === subjectId;
     const isLifting = isRaised && liftingDeckId === subjectId;
     const isActive = isReady && subjectId === activeDeckId;
+    const isUsing = isUseAnimationRunning && usingDeckId === subjectId;
+    const openingDirection = getFlashcardBookOpeningDirection(subjectId);
 
     const shell = document.createElement("article");
     shell.className = "flashcard-book-shell";
@@ -1941,6 +2103,19 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
     if (!isReady) {
       shell.classList.add("is-unready");
     }
+    if (isUsing) {
+      shell.classList.add("is-using");
+      if (usingPhase === "exit") {
+        shell.classList.add("is-using-exit");
+      } else if (usingPhase === "drop") {
+        shell.classList.add("is-using-drop");
+      } else if (usingPhase === "open") {
+        shell.classList.add(openingDirection === "right" ? "is-using-open-right" : "is-using-open-left");
+      }
+    }
+    if (isActive) {
+      activeShell = shell;
+    }
 
     const liftButton = document.createElement("button");
     liftButton.type = "button";
@@ -1955,6 +2130,7 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
         ? `${subject.label}（${deck.totalCards}問）`
         : `${subject.label}（準備中）`
     );
+    liftButton.disabled = isUseAnimationRunning;
 
     const title = document.createElement("span");
     title.className = "flashcard-book-title";
@@ -1990,8 +2166,8 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
     useButton.dataset.flashcardSubjectAction = "select";
     useButton.dataset.flashcardDeckId = subjectId;
     useButton.textContent = "この教材を使う";
-    useButton.disabled = !isReady;
-    if (!isReady) {
+    useButton.disabled = !isReady || isUseAnimationRunning;
+    if (!isReady || isUseAnimationRunning) {
       useButton.setAttribute("aria-disabled", "true");
     }
     actionWrap.append(useButton);
@@ -1999,6 +2175,21 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
 
     container.append(shell);
   });
+
+  if (activeShell) {
+    const studyArea = document.createElement("section");
+    studyArea.className = "flashcard-book-study-area";
+    if (elements.flashcardToolbar) {
+      studyArea.append(elements.flashcardToolbar);
+    }
+    if (elements.flashcardCard) {
+      studyArea.append(elements.flashcardCard);
+    }
+    if (elements.flashcardActions) {
+      studyArea.append(elements.flashcardActions);
+    }
+    activeShell.append(studyArea);
+  }
 
   if (elements.flashcardSubjectGroup) {
     elements.flashcardSubjectGroup.hidden = safeSubjects.length === 0;
@@ -2892,6 +3083,9 @@ function setMypagePage(page) {
 
   if (normalizedPage === "selfcheck") {
     renderSelfcheckCalendar();
+  }
+  if (normalizedPage !== "top") {
+    setFlashcardPanelBookDimmed(false);
   }
 
   updateMypageSubmenuCurrent(normalizedPage);
