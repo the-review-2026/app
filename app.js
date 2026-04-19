@@ -78,6 +78,10 @@ const FLASHCARD_BOOK_USE_DROP_ANIMATION_MS = 360;
 const FLASHCARD_BOOK_USE_OPEN_ANIMATION_MS = 420;
 const FLASHCARD_BOOK_USE_ANIMATION_TOTAL_MS =
   FLASHCARD_BOOK_USE_EXIT_ANIMATION_MS + FLASHCARD_BOOK_USE_DROP_ANIMATION_MS + FLASHCARD_BOOK_USE_OPEN_ANIMATION_MS;
+const FLASHCARD_BOOK_PUTAWAY_EXIT_ANIMATION_MS = 340;
+const FLASHCARD_BOOK_PUTAWAY_DROP_ANIMATION_MS = 360;
+const FLASHCARD_BOOK_PUTAWAY_ANIMATION_TOTAL_MS =
+  FLASHCARD_BOOK_PUTAWAY_EXIT_ANIMATION_MS + FLASHCARD_BOOK_PUTAWAY_DROP_ANIMATION_MS;
 const FLASHCARD_SUMMARY_DEFAULT_TEXT = "復習する科目を選び、本をとり出してください。";
 const FLASHCARD_BOOK_OPEN_RIGHT_SUBJECT_IDS = new Set([
   "reboot-modern-japanese",
@@ -731,11 +735,7 @@ function bindEvents() {
       }
       const raisedDeckId = getRaisedFlashcardDeckId(activeSeriesId);
       if (raisedDeckId === nextDeckId) {
-        setLiftingFlashcardDeckId(activeSeriesId, "");
-        setRaisedFlashcardDeckId(activeSeriesId, "");
-        setDroppingFlashcardDeckId(activeSeriesId, nextDeckId);
-        scheduleFlashcardBookDropAnimation(activeSeriesId, nextDeckId);
-        renderFlashcardPanel();
+        startFlashcardBookPutAwayAnimation(activeSeriesId, nextDeckId);
         return;
       }
 
@@ -1776,6 +1776,59 @@ function startFlashcardBookUseAnimation(seriesId, deckId) {
   flashcardBookUseTimerBySeries.set(normalizedSeriesId, [exitTimerId, dropTimerId, completeTimerId]);
 }
 
+function startFlashcardBookPutAwayAnimation(seriesId, deckId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  const normalizedDeckId = normalizeFlashcardText(deckId);
+  if (!normalizedSeriesId || !normalizedDeckId) {
+    return;
+  }
+
+  clearFlashcardBookUseAnimation(normalizedSeriesId);
+  clearFlashcardBookDropTimer(normalizedSeriesId);
+  setDroppingFlashcardDeckId(normalizedSeriesId, "");
+  setLiftingFlashcardDeckId(normalizedSeriesId, "");
+  setRaisedFlashcardDeckId(normalizedSeriesId, normalizedDeckId);
+
+  flashcardBookUseAnimationBySeries.set(normalizedSeriesId, {
+    deckId: normalizedDeckId,
+    phase: "putaway-exit",
+  });
+  if (normalizeFlashcardText(flashcardState.selectedDeckId) === normalizedDeckId) {
+    flashcardState.selectedDeckId = "";
+    flashcardState.selectedUnitId = "";
+    flashcardState.cardIndex = 0;
+    flashcardState.answerVisible = false;
+  }
+  renderFlashcardPanel();
+
+  const exitTimerId = window.setTimeout(() => {
+    const animationState = getFlashcardBookUseAnimation(normalizedSeriesId);
+    if (!animationState || animationState.deckId !== normalizedDeckId || animationState.phase !== "putaway-exit") {
+      return;
+    }
+    flashcardBookUseAnimationBySeries.set(normalizedSeriesId, {
+      deckId: normalizedDeckId,
+      phase: "putaway-drop",
+    });
+    renderFlashcardPanel();
+  }, FLASHCARD_BOOK_PUTAWAY_EXIT_ANIMATION_MS);
+
+  const completeTimerId = window.setTimeout(() => {
+    const animationState = getFlashcardBookUseAnimation(normalizedSeriesId);
+    if (!animationState || animationState.deckId !== normalizedDeckId) {
+      return;
+    }
+    clearFlashcardBookUseTimer(normalizedSeriesId);
+    flashcardBookUseAnimationBySeries.delete(normalizedSeriesId);
+    setRaisedFlashcardDeckId(normalizedSeriesId, "");
+    setDroppingFlashcardDeckId(normalizedSeriesId, "");
+    setLiftingFlashcardDeckId(normalizedSeriesId, "");
+    renderFlashcardPanel();
+  }, FLASHCARD_BOOK_PUTAWAY_ANIMATION_TOTAL_MS + 40);
+
+  flashcardBookUseTimerBySeries.set(normalizedSeriesId, [exitTimerId, completeTimerId]);
+}
+
 function scheduleFlashcardBookDropAnimation(seriesId, deckId) {
   const normalizedSeriesId = normalizeFlashcardText(seriesId);
   const normalizedDeckId = normalizeFlashcardText(deckId);
@@ -1921,7 +1974,10 @@ function getActiveFlashcardCard() {
 }
 
 function setFlashcardPanelBookDimmed(shouldDim) {
-  document.body.classList.toggle("flashcard-book-global-focus", Boolean(shouldDim));
+  const shouldLock = Boolean(shouldDim);
+  document.body.classList.toggle("flashcard-book-global-focus", shouldLock);
+  document.body.classList.toggle("flashcard-book-scroll-lock", shouldLock);
+  document.documentElement.classList.toggle("flashcard-book-scroll-lock", shouldLock);
 }
 
 function renderFlashcardPanel() {
@@ -1935,7 +1991,12 @@ function renderFlashcardPanel() {
   const activeSeries = getActiveFlashcardSeries();
   const activeSeriesId = normalizeFlashcardText(activeSeries?.id);
   const useAnimationState = getFlashcardBookUseAnimation(activeSeriesId);
-  const isBookUseTransitionPhase = useAnimationState?.phase === "exit" || useAnimationState?.phase === "drop";
+  const transitionPhase = normalizeFlashcardText(useAnimationState?.phase);
+  const isBookUseTransitionPhase =
+    transitionPhase === "exit" ||
+    transitionPhase === "drop" ||
+    transitionPhase === "putaway-exit" ||
+    transitionPhase === "putaway-drop";
   const hasActiveDeck = Boolean(normalizeFlashcardText(flashcardState.selectedDeckId));
   setFlashcardPanelBookDimmed(Boolean(activeSeriesId && (hasActiveDeck || isBookUseTransitionPhase)));
   const decksInSeries = getFlashcardDecksInSeries(activeSeries?.id);
@@ -2068,6 +2129,8 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
   const usingPhase = useAnimationState?.phase ?? "";
   const isUseAnimationRunning = Boolean(usingDeckId && usingPhase);
   let activeShell = null;
+  let activeDeck = null;
+  let activeSubjectLabel = "";
 
   safeSubjects.forEach((subject, index) => {
     const subjectId = normalizeFlashcardText(subject.id);
@@ -2111,10 +2174,31 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
         shell.classList.add("is-using-drop");
       } else if (usingPhase === "open") {
         shell.classList.add(openingDirection === "right" ? "is-using-open-right" : "is-using-open-left");
+      } else if (usingPhase === "putaway-exit") {
+        shell.classList.add("is-putaway-exit");
+      } else if (usingPhase === "putaway-drop") {
+        shell.classList.add("is-putaway-drop");
       }
     }
     if (isActive) {
       activeShell = shell;
+      activeDeck = deck;
+      activeSubjectLabel = subject.label;
+      shell.classList.add("is-opened");
+    }
+
+    const shouldShowPutAwayButton = isRaised && (isActive || isUsing);
+    if (shouldShowPutAwayButton) {
+      shell.classList.add("has-putaway-button");
+      const putAwayButton = document.createElement("button");
+      putAwayButton.type = "button";
+      putAwayButton.className = "flashcard-book-putaway-btn";
+      putAwayButton.dataset.flashcardBookLift = "1";
+      putAwayButton.dataset.flashcardDeckId = subjectId;
+      putAwayButton.textContent = "この教材をしまう";
+      putAwayButton.setAttribute("aria-label", `${subject.label}をしまう`);
+      putAwayButton.disabled = isUseAnimationRunning;
+      shell.append(putAwayButton);
     }
 
     const turnPage = document.createElement("span");
@@ -2167,37 +2251,63 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
 
     shell.append(liftButton);
 
-    const actionWrap = document.createElement("div");
-    actionWrap.className = "flashcard-book-action-row";
+    const shouldShowUseButton = !isActive && !isUsing;
+    if (shouldShowUseButton) {
+      const actionWrap = document.createElement("div");
+      actionWrap.className = "flashcard-book-action-row";
 
-    const useButton = document.createElement("button");
-    useButton.type = "button";
-    useButton.className = "flashcard-book-use-btn";
-    useButton.dataset.flashcardSubjectAction = "select";
-    useButton.dataset.flashcardDeckId = subjectId;
-    useButton.textContent = "この教材を使う";
-    useButton.disabled = !isReady || isUseAnimationRunning;
-    if (!isReady || isUseAnimationRunning) {
-      useButton.setAttribute("aria-disabled", "true");
+      const useButton = document.createElement("button");
+      useButton.type = "button";
+      useButton.className = "flashcard-book-use-btn";
+      useButton.dataset.flashcardSubjectAction = "select";
+      useButton.dataset.flashcardDeckId = subjectId;
+      useButton.textContent = "この教材を使う";
+      useButton.disabled = !isReady || isUseAnimationRunning;
+      if (!isReady || isUseAnimationRunning) {
+        useButton.setAttribute("aria-disabled", "true");
+      }
+      actionWrap.append(useButton);
+      shell.append(actionWrap);
     }
-    actionWrap.append(useButton);
-    shell.append(actionWrap);
 
     container.append(shell);
   });
 
-  if (activeShell) {
+  if (activeShell && activeDeck) {
     const studyArea = document.createElement("section");
     studyArea.className = "flashcard-book-study-area";
+    const spread = document.createElement("div");
+    spread.className = "flashcard-book-spread";
+
+    const leftPage = document.createElement("section");
+    leftPage.className = "flashcard-book-page flashcard-book-page-left";
+    const leftKicker = document.createElement("p");
+    leftKicker.className = "flashcard-book-page-kicker";
+    leftKicker.textContent = "FLASHCARD";
+    leftPage.append(leftKicker);
+    const leftTitle = document.createElement("h3");
+    leftTitle.className = "flashcard-book-page-title";
+    leftTitle.textContent = activeSubjectLabel;
+    leftPage.append(leftTitle);
+    const leftMeta = document.createElement("p");
+    leftMeta.className = "flashcard-book-page-meta";
+    leftMeta.textContent = `${activeDeck.totalCards}問`;
+    leftPage.append(leftMeta);
+
+    const rightPage = document.createElement("section");
+    rightPage.className = "flashcard-book-page flashcard-book-page-right";
     if (elements.flashcardToolbar) {
-      studyArea.append(elements.flashcardToolbar);
+      rightPage.append(elements.flashcardToolbar);
     }
     if (elements.flashcardCard) {
-      studyArea.append(elements.flashcardCard);
+      rightPage.append(elements.flashcardCard);
     }
     if (elements.flashcardActions) {
-      studyArea.append(elements.flashcardActions);
+      rightPage.append(elements.flashcardActions);
     }
+
+    spread.append(leftPage, rightPage);
+    studyArea.append(spread);
     activeShell.append(studyArea);
   }
 
