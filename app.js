@@ -1,4 +1,4 @@
-const STORAGE_KEY = "the-review-quest-v1";
+﻿const STORAGE_KEY = "the-review-quest-v1";
 const HOME_GREETING_REFRESH_MS = 60 * 1000;
 const JP_HOLIDAY_CACHE = new Map();
 const DEFAULT_THEME = "sea";
@@ -1326,6 +1326,9 @@ async function initializeAuth() {
     return;
   }
 
+  console.log("AUTH0_CONFIG.domain =", AUTH0_CONFIG.domain);
+  console.log("AUTH0_CONFIG =", AUTH0_CONFIG);
+  
   auth0Client = await window.auth0.createAuth0Client({
     domain: AUTH0_CONFIG.domain,
     clientId: AUTH0_CONFIG.clientId,
