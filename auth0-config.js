@@ -1,5 +1,5 @@
 window.AUTH0_CONFIG = {
-  domain: "auth.auth0.com",
+  domain: "auth.the-review.net",
   clientId: "sREm6xFL7Sx57uPbBwLR6MrZfuL64A34",
   audience: "https://api.the-review.net",
   scope: "openid profile email",
