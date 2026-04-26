@@ -89,6 +89,8 @@ const FLASHCARD_BOOK_PUTAWAY_ANIMATION_TOTAL_MS =
   FLASHCARD_BOOK_PUTAWAY_EXIT_ANIMATION_MS + FLASHCARD_BOOK_PUTAWAY_DROP_ANIMATION_MS;
 const FLASHCARD_BOOK_SINGLE_CLICK_DELAY_MS = 240;
 const FLASHCARD_SUMMARY_DEFAULT_TEXT = "復習する科目を選び、本をとり出してください。";
+const REVIEW_API_BASE_URL = "https://api.the-review.net";
+const REVIEW_API_AUDIENCE = "https://api.the-review.net";
 const FLASHCARD_QUESTIONS_API_URL = "https://api.the-review.net/questions";
 const FLASHCARD_REMOTE_DEFAULT_DECK_ID = "ec1";
 const FLASHCARD_REMOTE_DEFAULT_UNIT = "Questions";
@@ -1363,10 +1365,57 @@ function buildAuth0AuthorizationParams() {
     redirect_uri: AUTH0_CONFIG.redirectUri,
     scope: AUTH0_CONFIG.scope || AUTH0_DEFAULT_SCOPE,
   };
-  if (AUTH0_CONFIG.audience) {
-    params.audience = AUTH0_CONFIG.audience;
-  }
+  params.audience = AUTH0_CONFIG.audience || REVIEW_API_AUDIENCE;
   return params;
+}
+
+async function getAuth0AccessTokenForApi() {
+  if (!auth0Client || !state.auth.isLoggedIn || state.auth.provider === "guest") {
+    return null;
+  }
+
+  try {
+    const isAuthenticated = await auth0Client.isAuthenticated();
+    if (!isAuthenticated) {
+      return null;
+    }
+    return await auth0Client.getTokenSilently({
+      authorizationParams: {
+        audience: AUTH0_CONFIG.audience || REVIEW_API_AUDIENCE,
+        scope: AUTH0_CONFIG.scope || AUTH0_DEFAULT_SCOPE,
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to get Auth0 access token for answer sync:", error);
+    return null;
+  }
+}
+
+async function savePersonalAnswer(payload) {
+  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+    return;
+  }
+
+  const accessToken = await getAuth0AccessTokenForApi();
+  if (!accessToken) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/me/answers`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      console.warn("Failed to save personal answer:", response.status);
+    }
+  } catch (error) {
+    console.warn("Failed to save personal answer:", error);
+  }
 }
 
 function normalizeAuthLoginProvider(value) {
@@ -5335,6 +5384,11 @@ function submitDailyTryAnswer() {
   saveState();
   renderCoinBoard();
   renderDailyTryPanel();
+  void savePersonalAnswer({
+    questionId: question.id || `daily-try-${dailyTryRun.questionIndex + 1}`,
+    answerText: question.choices[dailyTryRun.selected] ?? "",
+    isCorrect,
+  });
 }
 
 function startHomeGreetingTicker() {
