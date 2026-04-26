@@ -65,11 +65,17 @@ async function createAnswer(request, env) {
     return json(userResult.body, userResult.status);
   }
   if (!userResult.user) {
-    return json({ error: "User not found", auth0Sub: TEST_AUTH0_SUB }, 404);
+    return json(
+      {
+        error: "Answer could not be saved because the test user was not found",
+        auth0Sub: TEST_AUTH0_SUB,
+      },
+      404
+    );
   }
 
   const insertResult = await insertAnswer(supabase, {
-    user_id: userResult.user.user_id,
+    user_id: userResult.user.id,
     question_id: answerPayload.value.questionId,
     answer_text: answerPayload.value.answerText,
     is_correct: answerPayload.value.isCorrect,
@@ -132,11 +138,11 @@ function normalizeAnswerPayload(body) {
 async function getUserByAuth0Sub(supabase, auth0Sub) {
   const response = await supabaseRequest(
     supabase,
-    `/users?auth0_sub=eq.${encodeURIComponent(auth0Sub)}&select=user_id&limit=1`
+    `/users?auth0_sub=eq.${encodeURIComponent(auth0Sub)}&select=id&limit=1`
   );
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to fetch user");
+    return supabaseError(response, "Failed to look up the test user in Supabase");
   }
 
   const users = await response.json();
@@ -156,7 +162,7 @@ async function insertAnswer(supabase, answer) {
   });
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to save answer");
+    return supabaseError(response, "Failed to insert the answer into Supabase");
   }
 
   const savedAnswers = await response.json();
