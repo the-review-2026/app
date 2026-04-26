@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = "the-review-quest-v1";
+const STORAGE_KEY = "the-review-quest-v1";
 const HOME_GREETING_REFRESH_MS = 60 * 1000;
 const JP_HOLIDAY_CACHE = new Map();
 const DEFAULT_THEME = "sea";
@@ -17,6 +17,8 @@ const AVAILABLE_THEMES = [
   "the-black",
   "kagiko",
   "city",
+  "sumiyoshi-sta",
+  "kinshicho-sta",
 ];
 const THEME_DISPLAY_NAMES = {
   sea: "Sea",
@@ -31,18 +33,21 @@ const THEME_DISPLAY_NAMES = {
   strawberry: "Strawberry",
   "the-paper": "The Paper",
   "the-black": "The Black",
-  kagiko: "KAGIKO",
+  kagiko: "TOKAGI",
   city: "City",
+  "sumiyoshi-sta": "Sumiyoshi Sta.",
+  "kinshicho-sta": "Kinshichō Sta.",
 };
-const PREMIUM_THEMES = ["kagiko", "city"];
+const PREMIUM_THEMES = ["kagiko", "city", "sumiyoshi-sta", "kinshicho-sta"];
 const THEME_UNLOCK_COST = 50;
 const LEGACY_THEME_ALIASES = {
   deepsea: "sea",
 };
 const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
-const MYPAGE_PAGE_IDS = ["top", "selfcheck", "customize", "settings"];
-const SCREEN_IDS = ["home", "login", "mypage", "notice"];
+const MYPAGE_PAGE_IDS = ["top"];
+const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings"];
+const SETTINGS_TAB_IDS = ["account", "notification", "review-data"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const DEFAULT_TEXT_SETTINGS = {
   size: 100,
@@ -82,7 +87,29 @@ const FLASHCARD_BOOK_PUTAWAY_EXIT_ANIMATION_MS = 340;
 const FLASHCARD_BOOK_PUTAWAY_DROP_ANIMATION_MS = 360;
 const FLASHCARD_BOOK_PUTAWAY_ANIMATION_TOTAL_MS =
   FLASHCARD_BOOK_PUTAWAY_EXIT_ANIMATION_MS + FLASHCARD_BOOK_PUTAWAY_DROP_ANIMATION_MS;
+const FLASHCARD_BOOK_SINGLE_CLICK_DELAY_MS = 240;
 const FLASHCARD_SUMMARY_DEFAULT_TEXT = "復習する科目を選び、本をとり出してください。";
+const FLASHCARD_QUESTIONS_API_URL = "https://api.the-review.net/questions";
+const FLASHCARD_REMOTE_DEFAULT_DECK_ID = "ec1";
+const FLASHCARD_REMOTE_DEFAULT_UNIT = "Questions";
+const FLASHCARD_REMOTE_SUBJECT_ALIASES = {
+  english: "ec1",
+  "english-communication-i": "ec1",
+  "english communication i": "ec1",
+  math: "math1",
+  mathematics: "math1",
+  "mathematics-i": "math1",
+  "mathematics i": "math1",
+  physics: "physics-basic",
+  "basic-physics": "physics-basic",
+  biology: "bio-basic",
+  bio: "bio-basic",
+  "basic-biology": "bio-basic",
+  civics: "public",
+  public: "public",
+  health: "health",
+  logic: "ss-tech-theory-1",
+};
 const FLASHCARD_BOOK_OPEN_RIGHT_SUBJECT_IDS = new Set([
   "reboot-modern-japanese",
   "reboot-language-culture",
@@ -300,6 +327,10 @@ const elements = {
   mypageSubmenuItems: Array.from(document.querySelectorAll("[data-mypage-target]")),
   screens: Array.from(document.querySelectorAll(".screen")),
   mypagePages: Array.from(document.querySelectorAll("[data-mypage-page]")),
+  settingsTabButtons: Array.from(document.querySelectorAll("[data-settings-tab]")),
+  settingsTabPanels: Array.from(document.querySelectorAll("[data-settings-panel]")),
+  infoMenuTrigger: document.getElementById("infoMenuTrigger"),
+  infoMenuPanel: document.getElementById("infoMenuPanel"),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
@@ -312,6 +343,7 @@ const elements = {
   selfcheckTimerFullscreenBtn: document.getElementById("selfcheckTimerFullscreenBtn"),
   reviewCoinValue: document.getElementById("reviewCoinValue"),
   mypageCoinValueNumber: document.getElementById("mypageCoinValueNumber"),
+  authLoginStatusText: document.getElementById("authLoginStatusText"),
   authEmailText: document.getElementById("authEmailText"),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
@@ -330,15 +362,20 @@ const elements = {
   notifyReviewPeriodToggle: document.getElementById("notifyReviewPeriodToggle"),
   notifyTodaysMissionToggle: document.getElementById("notifyTodaysMissionToggle"),
   notifyNoticeToggle: document.getElementById("notifyNoticeToggle"),
-  textResetDialogOpenBtn: document.getElementById("textResetDialogOpenBtn"),
-  textResetDialog: document.getElementById("textResetDialog"),
-  textResetActionButtons: Array.from(document.querySelectorAll("[data-text-reset-action]")),
   reviewDataExportBtn: document.getElementById("reviewDataExportBtn"),
   reviewDataImportBtn: document.getElementById("reviewDataImportBtn"),
   reviewDataImportInput: document.getElementById("reviewDataImportInput"),
   guestModeDialog: document.getElementById("guestModeDialog"),
   guestModeActionButtons: Array.from(document.querySelectorAll("[data-guest-mode-action]")),
+  themeUnlockDialog: document.getElementById("themeUnlockDialog"),
+  themeUnlockName: document.getElementById("themeUnlockName"),
+  themeUnlockCost: document.getElementById("themeUnlockCost"),
+  themeUnlockCurrentCoin: document.getElementById("themeUnlockCurrentCoin"),
+  themeUnlockActionButtons: Array.from(document.querySelectorAll("[data-theme-unlock-action]")),
   homeGreeting: document.getElementById("homeGreeting"),
+  homeCardTrack: document.getElementById("homeCardTrack"),
+  homeCardSlides: Array.from(document.querySelectorAll("#homeCardTrack .home-card-slide")),
+  homeCardNavButtons: Array.from(document.querySelectorAll("[data-home-card-nav]")),
   dailyLoginCard: document.getElementById("dailyLoginCard"),
   dailyLoginCount: document.getElementById("dailyLoginCount"),
   dailyLoginScale: document.getElementById("dailyLoginScale"),
@@ -359,6 +396,7 @@ const elements = {
   dailyTryFeedback: document.getElementById("dailyTryFeedback"),
   dailyTrySubmitBtn: document.getElementById("dailyTrySubmitBtn"),
   flashcardSummary: document.getElementById("flashcardSummary"),
+  flashcardBinderList: document.getElementById("flashcardBinderList"),
   flashcardSeriesButtons: document.getElementById("flashcardSeriesButtons"),
   flashcardSubjectGroup: document.getElementById("flashcardSubjectGroup"),
   flashcardSubjectButtons: document.getElementById("flashcardSubjectButtons"),
@@ -388,18 +426,38 @@ let homeGreetingTimerId = null;
 let dailyTryRun = createDailyTryRun();
 let themeFadeTimerId = null;
 let activeMypagePage = "top";
+let activeSettingsTab = "account";
 let selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
 let selfcheckTimerIntervalId = null;
 let calendarViewDate = getCurrentMonthStartDate();
 let auth0Client = null;
 let reviewCoinAnimationFrameId = null;
+let homeCardScrollAnimationFrameId = null;
 let flashcardState = createInitialFlashcardState();
 const flashcardBookDropTimerBySeries = new Map();
 const flashcardBookUseTimerBySeries = new Map();
 const flashcardBookUseAnimationBySeries = new Map();
+const flashcardBookIntentTimerByKey = new Map();
+const flashcardBookActionQueueBySeries = new Map();
 let isFlashcardFocusMode = false;
 let isSelfcheckTimerFocusMode = false;
 let pendingGuestModeAppState = null;
+let pendingThemeUnlockKey = null;
+let liftedFlashcardNoteElement = null;
+let liftedFlashcardBinderElement = null;
+let activeFlashcardBinderElement = null;
+let activeFlashcardNotebookState = null;
+let flashcardBinderPointerState = null;
+let flashcardBinderStageElement = null;
+let flashcardBinderBackdropElement = null;
+let flashcardBinderPortalState = null;
+const FLASHCARD_NOTE_BASE_THICKNESS_PX = 10;
+const FLASHCARD_NOTE_THICKNESS_STEP_PX = 1;
+const FLASHCARD_NOTE_QUESTIONS_PER_THICKNESS_STEP = 10;
+const FLASHCARD_NOTE_SPINE_GAP_PX = 2;
+const FLASHCARD_BINDER_SIDE_PADDING_PX = 5;
+const FLASHCARD_BINDER_EXTRA_THICKNESS_PX = FLASHCARD_BINDER_SIDE_PADDING_PX * 2;
+const FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX = 46;
 const IS_LOGIN_PAGE = isCurrentLoginPage();
 
 if (IS_LOGIN_PAGE) {
@@ -442,7 +500,8 @@ async function init() {
   bindBeforeUnloadPrompt();
   markDailyLogin();
   bindEvents();
-  initializeFlashcards();
+  await initializeFlashcards();
+  initializeFlashcardNoteBinder();
   startHomeGreetingTicker();
   renderAll();
   activateScreen(activeScreen);
@@ -532,6 +591,94 @@ function bindSharedDataAndGuestDialogEvents() {
   });
 }
 
+function bindHomeCardCarouselEvents() {
+  if (!elements.homeCardTrack) {
+    return;
+  }
+
+  elements.homeCardNavButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      moveHomeCardCarousel(button.dataset.homeCardNav);
+    });
+  });
+
+  elements.homeCardTrack.addEventListener(
+    "scroll",
+    () => {
+      if (homeCardScrollAnimationFrameId !== null) {
+        return;
+      }
+      homeCardScrollAnimationFrameId = window.requestAnimationFrame(() => {
+        homeCardScrollAnimationFrameId = null;
+        updateHomeCardCarouselControls();
+      });
+    },
+    { passive: true }
+  );
+}
+
+function getHomeCardSlides() {
+  return elements.homeCardSlides.length > 0
+    ? elements.homeCardSlides
+    : Array.from(elements.homeCardTrack?.querySelectorAll(".home-card-slide") ?? []);
+}
+
+function getHomeCardSlideLeft(track, slide) {
+  const trackRect = track.getBoundingClientRect();
+  const slideRect = slide.getBoundingClientRect();
+  return track.scrollLeft + slideRect.left - trackRect.left;
+}
+
+function getActiveHomeCardIndex() {
+  const track = elements.homeCardTrack;
+  const slides = getHomeCardSlides();
+  if (!track || slides.length === 0) {
+    return 0;
+  }
+
+  let activeIndex = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  slides.forEach((slide, index) => {
+    const distance = Math.abs(getHomeCardSlideLeft(track, slide) - track.scrollLeft);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      activeIndex = index;
+    }
+  });
+  return activeIndex;
+}
+
+function moveHomeCardCarousel(direction) {
+  const track = elements.homeCardTrack;
+  const slides = getHomeCardSlides();
+  if (!track || slides.length === 0) {
+    return;
+  }
+
+  const offset = direction === "prev" ? -1 : 1;
+  const nextIndex = Math.min(Math.max(getActiveHomeCardIndex() + offset, 0), slides.length - 1);
+  const nextSlide = slides[nextIndex];
+  track.scrollTo({
+    left: getHomeCardSlideLeft(track, nextSlide),
+    behavior: "smooth",
+  });
+  updateHomeCardCarouselControls(nextIndex);
+}
+
+function updateHomeCardCarouselControls(activeIndex = getActiveHomeCardIndex()) {
+  const slides = getHomeCardSlides();
+  const lastIndex = Math.max(0, slides.length - 1);
+
+  elements.homeCardNavButtons.forEach((button) => {
+    const action = button.dataset.homeCardNav;
+    button.disabled = slides.length <= 1 || (action === "prev" ? activeIndex <= 0 : activeIndex >= lastIndex);
+  });
+
+  slides.forEach((slide, index) => {
+    slide.classList.toggle("is-active", index === activeIndex);
+  });
+}
+
 function injectTabScriptLabels() {
   const panelsWithLabels = [
     {
@@ -546,10 +693,6 @@ function injectTabScriptLabels() {
       selector: "#mypageQuestPanel",
       label: "Quest",
     },
-    {
-      selector: "#screen-notice .panel",
-      label: "Information",
-    },
   ];
 
   panelsWithLabels.forEach(({ selector, label }) => {
@@ -557,18 +700,19 @@ function injectTabScriptLabels() {
     appendTabScriptLabel(panel, label);
   });
 
-  const selfcheckSections = Array.from(document.querySelectorAll("#mypage-selfcheck .selfcheck-section"));
-  appendTabScriptLabel(selfcheckSections[0] ?? null, "Calender");
-  appendTabScriptLabel(selfcheckSections[1] ?? null, "Timer");
+  const learnSections = Array.from(document.querySelectorAll("#screen-learn .selfcheck-section"));
+  appendTabScriptLabel(learnSections[0] ?? null, "Calendar");
+  appendTabScriptLabel(learnSections[1] ?? null, "Timer");
+  appendTabScriptLabel(learnSections[2] ?? null, "Collection");
 
-  const customizeSections = Array.from(document.querySelectorAll("#mypage-customize .settings-section"));
-  const customizeLabels = ["Number of Review Coins", "Avatar", "Color Schemes"];
-  customizeLabels.forEach((label, index) => {
-    appendTabScriptLabel(customizeSections[index] ?? null, label);
+  const storeSections = Array.from(document.querySelectorAll("#screen-notice .settings-section"));
+  const storeLabels = ["Number of Review Coins", "Avatar", "Color Schemes"];
+  storeLabels.forEach((label, index) => {
+    appendTabScriptLabel(storeSections[index] ?? null, label);
   });
 
-  const settingsSections = Array.from(document.querySelectorAll("#mypage-settings .settings-section"));
-  const settingsLabels = ["Account", "Accessibility", "Notice", "Review Data", "Reset"];
+  const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
+  const settingsLabels = ["Account", "Notice", "Review Data"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -620,14 +764,18 @@ function bindBeforeUnloadPrompt() {
 }
 
 function bindEvents() {
+  if (elements.infoMenuTrigger) {
+    elements.infoMenuTrigger.addEventListener("click", toggleInfoMenu);
+  }
+
   if (elements.reviewCoinBoard) {
-    elements.reviewCoinBoard.addEventListener("click", openMypageCustomizeFromCoinBoard);
+    elements.reviewCoinBoard.addEventListener("click", openStoreFromCoinBoard);
     elements.reviewCoinBoard.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") {
         return;
       }
       event.preventDefault();
-      openMypageCustomizeFromCoinBoard();
+      openStoreFromCoinBoard();
     });
   }
 
@@ -643,6 +791,7 @@ function bindEvents() {
       }
 
       closeMypageSubmenu();
+      closeInfoMenu();
       if (screen === "mypage" && !state.auth.isLoggedIn) {
         promptLoginForMypage();
         return;
@@ -652,6 +801,13 @@ function bindEvents() {
         setMypagePage("top");
       }
     });
+  });
+
+  elements.settingsTabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setSettingsTab(button.dataset.settingsTab);
+    });
+    button.addEventListener("keydown", handleSettingsTabKeydown);
   });
 
   elements.authLoginButtons.forEach((button) => {
@@ -677,6 +833,8 @@ function bindEvents() {
     });
   });
 
+  bindHomeCardCarouselEvents();
+
   if (elements.dailyTrySubmitBtn) {
     elements.dailyTrySubmitBtn.addEventListener("click", submitDailyTryAnswer);
   }
@@ -691,6 +849,7 @@ function bindEvents() {
       if (!nextSeriesId || nextSeriesId === flashcardState.selectedSeriesId) {
         return;
       }
+      clearFlashcardBookIntentTimersForSeries(flashcardState.selectedSeriesId);
       clearFlashcardBookUseAnimation(flashcardState.selectedSeriesId);
       flashcardState.selectedSeriesId = nextSeriesId;
       flashcardState.selectedDeckId = "";
@@ -703,6 +862,23 @@ function bindEvents() {
 
   if (elements.flashcardSubjectButtons) {
     elements.flashcardSubjectButtons.addEventListener("click", (event) => {
+      const putAwayButton = event.target.closest("[data-flashcard-book-putaway]");
+      if (putAwayButton) {
+        if (putAwayButton.disabled) {
+          return;
+        }
+        const nextDeckId = normalizeFlashcardText(putAwayButton.dataset.flashcardDeckId);
+        const activeSeriesId = normalizeFlashcardText(flashcardState.selectedSeriesId);
+        if (!nextDeckId || !activeSeriesId) {
+          return;
+        }
+        clearFlashcardBookIntentTimerByKey(getFlashcardBookIntentTimerKey(activeSeriesId, nextDeckId));
+        queueFlashcardBookAction(activeSeriesId, () => {
+          startFlashcardBookPutAwayAnimation(activeSeriesId, nextDeckId);
+        });
+        return;
+      }
+
       const actionButton = event.target.closest("[data-flashcard-subject-action]");
       if (actionButton) {
         if (actionButton.disabled) {
@@ -717,7 +893,10 @@ function bindEvents() {
         if (!isDeckSelectable) {
           return;
         }
-        startFlashcardBookUseAnimation(activeSeriesId, nextDeckId);
+        clearFlashcardBookIntentTimerByKey(getFlashcardBookIntentTimerKey(activeSeriesId, nextDeckId));
+        queueFlashcardBookAction(activeSeriesId, () => {
+          startFlashcardBookUseAnimation(activeSeriesId, nextDeckId);
+        });
         return;
       }
 
@@ -730,27 +909,31 @@ function bindEvents() {
       if (!nextDeckId || !activeSeriesId) {
         return;
       }
-      if (getFlashcardBookUseAnimation(activeSeriesId)) {
-        return;
-      }
-      const raisedDeckId = getRaisedFlashcardDeckId(activeSeriesId);
-      if (raisedDeckId === nextDeckId) {
-        startFlashcardBookPutAwayAnimation(activeSeriesId, nextDeckId);
+      const timerKey = getFlashcardBookIntentTimerKey(activeSeriesId, nextDeckId);
+      clearFlashcardBookIntentTimerByKey(timerKey);
+
+      const clickCount = Number(event.detail);
+      if (Number.isFinite(clickCount) && clickCount >= 2) {
+        queueFlashcardBookAction(activeSeriesId, () => {
+          startFlashcardBookUseAnimationIfReady(activeSeriesId, nextDeckId);
+        });
         return;
       }
 
-      if (raisedDeckId) {
-        setDroppingFlashcardDeckId(activeSeriesId, raisedDeckId);
-        scheduleFlashcardBookDropAnimation(activeSeriesId, raisedDeckId);
-      } else {
-        setDroppingFlashcardDeckId(activeSeriesId, "");
-        clearFlashcardBookDropTimer(activeSeriesId);
+      if (clickCount === 0) {
+        queueFlashcardBookAction(activeSeriesId, () => {
+          toggleFlashcardBookLift(activeSeriesId, nextDeckId);
+        });
+        return;
       }
 
-      setLiftingFlashcardDeckId(activeSeriesId, nextDeckId);
-      setRaisedFlashcardDeckId(activeSeriesId, nextDeckId);
-      renderFlashcardPanel();
-      setLiftingFlashcardDeckId(activeSeriesId, "");
+      const timerId = window.setTimeout(() => {
+        flashcardBookIntentTimerByKey.delete(timerKey);
+        queueFlashcardBookAction(activeSeriesId, () => {
+          toggleFlashcardBookLift(activeSeriesId, nextDeckId);
+        });
+      }, FLASHCARD_BOOK_SINGLE_CLICK_DELAY_MS);
+      flashcardBookIntentTimerByKey.set(timerKey, timerId);
     });
   }
 
@@ -819,6 +1002,16 @@ function bindEvents() {
     });
   });
 
+  elements.themeUnlockActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      handleThemeUnlockDialogAction(button.dataset.themeUnlockAction);
+    });
+  });
+
+  elements.themeUnlockDialog?.addEventListener("cancel", () => {
+    pendingThemeUnlockKey = null;
+  });
+
   if (elements.highContrastToggle) {
     elements.highContrastToggle.addEventListener("change", () => {
       updateAccessibilityMode("highContrast", elements.highContrastToggle.checked);
@@ -867,16 +1060,6 @@ function bindEvents() {
     });
   }
 
-  if (elements.textResetDialogOpenBtn) {
-    elements.textResetDialogOpenBtn.addEventListener("click", openTextResetDialog);
-  }
-
-  elements.textResetActionButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      resetTextSettingByAction(button.dataset.textResetAction);
-    });
-  });
-
   if (elements.selfcheckTimerStartBtn) {
     elements.selfcheckTimerStartBtn.addEventListener("click", startSelfcheckTimer);
   }
@@ -912,6 +1095,12 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
+    const clickedInsideInfoMenu = elements.infoMenuPanel?.contains(event.target);
+    const clickedInfoTrigger = elements.infoMenuTrigger?.contains(event.target);
+    if (!clickedInsideInfoMenu && !clickedInfoTrigger) {
+      closeInfoMenu();
+    }
+
     if (!isMypageSubmenuOpen()) {
       return;
     }
@@ -925,6 +1114,7 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      closeInfoMenu();
       closeMypageSubmenu();
       if (isFlashcardFocusMode || isSelfcheckTimerFocusMode) {
         setFlashcardFocusMode(false);
@@ -935,6 +1125,7 @@ function bindEvents() {
 
   window.addEventListener("resize", () => {
     renderDailyLogin();
+    updateHomeCardCarouselControls();
   });
 }
 
@@ -950,8 +1141,18 @@ function activateScreen(screen) {
   if (normalizedScreen === "mypage") {
     setMypagePage(activeMypagePage);
   } else {
+    clearAllFlashcardBookIntentTimers();
     setFlashcardPanelBookDimmed(false);
     closeMypageSubmenu();
+  }
+  if (normalizedScreen === "learn") {
+    renderSelfcheckCalendar();
+  }
+  if (normalizedScreen === "home") {
+    updateHomeCardCarouselControls();
+  }
+  if (normalizedScreen === "settings") {
+    setSettingsTab(activeSettingsTab);
   }
   renderFlashcardFocusMode();
 }
@@ -1338,6 +1539,8 @@ function renderAll() {
   renderHomeGreeting();
   renderDailyLogin();
   renderDailyTryPanel();
+  updateHomeCardCarouselControls();
+  setSettingsTab(activeSettingsTab);
 }
 
 function createInitialFlashcardState() {
@@ -1354,7 +1557,107 @@ function createInitialFlashcardState() {
   };
 }
 
-function initializeFlashcards() {
+function getFlashcardBookIntentTimerKey(seriesId, deckId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  const normalizedDeckId = normalizeFlashcardText(deckId);
+  if (!normalizedSeriesId || !normalizedDeckId) {
+    return "";
+  }
+  return `${normalizedSeriesId}::${normalizedDeckId}`;
+}
+
+function clearFlashcardBookIntentTimerByKey(timerKey) {
+  if (!timerKey) {
+    return;
+  }
+  const timerId = flashcardBookIntentTimerByKey.get(timerKey);
+  if (typeof timerId === "number") {
+    window.clearTimeout(timerId);
+  }
+  flashcardBookIntentTimerByKey.delete(timerKey);
+}
+
+function clearFlashcardBookIntentTimersForSeries(seriesId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  if (!normalizedSeriesId) {
+    return;
+  }
+  Array.from(flashcardBookIntentTimerByKey.keys()).forEach((timerKey) => {
+    if (timerKey.startsWith(`${normalizedSeriesId}::`)) {
+      clearFlashcardBookIntentTimerByKey(timerKey);
+    }
+  });
+}
+
+function clearAllFlashcardBookIntentTimers() {
+  Array.from(flashcardBookIntentTimerByKey.keys()).forEach((timerKey) => {
+    clearFlashcardBookIntentTimerByKey(timerKey);
+  });
+}
+
+function queueFlashcardBookAction(seriesId, action) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  if (!normalizedSeriesId || typeof action !== "function") {
+    return Promise.resolve();
+  }
+  const tail = flashcardBookActionQueueBySeries.get(normalizedSeriesId) ?? Promise.resolve();
+  const next = tail
+    .catch(() => undefined)
+    .then(() => action());
+  flashcardBookActionQueueBySeries.set(
+    normalizedSeriesId,
+    Promise.resolve(next).catch(() => undefined)
+  );
+  return next;
+}
+
+function toggleFlashcardBookLift(seriesId, deckId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  const normalizedDeckId = normalizeFlashcardText(deckId);
+  if (!normalizedSeriesId || !normalizedDeckId) {
+    return;
+  }
+  if (getFlashcardBookUseAnimation(normalizedSeriesId)) {
+    return;
+  }
+  const raisedDeckId = getRaisedFlashcardDeckId(normalizedSeriesId);
+  if (raisedDeckId === normalizedDeckId) {
+    startFlashcardBookPutAwayAnimation(normalizedSeriesId, normalizedDeckId);
+    return;
+  }
+
+  if (raisedDeckId) {
+    setDroppingFlashcardDeckId(normalizedSeriesId, raisedDeckId);
+    scheduleFlashcardBookDropAnimation(normalizedSeriesId, raisedDeckId);
+  } else {
+    setDroppingFlashcardDeckId(normalizedSeriesId, "");
+    clearFlashcardBookDropTimer(normalizedSeriesId);
+  }
+
+  setLiftingFlashcardDeckId(normalizedSeriesId, normalizedDeckId);
+  setRaisedFlashcardDeckId(normalizedSeriesId, normalizedDeckId);
+  renderFlashcardPanel();
+  setLiftingFlashcardDeckId(normalizedSeriesId, "");
+}
+
+function startFlashcardBookUseAnimationIfReady(seriesId, deckId) {
+  const normalizedSeriesId = normalizeFlashcardText(seriesId);
+  const normalizedDeckId = normalizeFlashcardText(deckId);
+  if (!normalizedSeriesId || !normalizedDeckId) {
+    return;
+  }
+  if (getFlashcardBookUseAnimation(normalizedSeriesId)) {
+    return;
+  }
+  const isDeckSelectable = getFlashcardDecksInSeries(normalizedSeriesId).some((deck) => deck.id === normalizedDeckId);
+  if (!isDeckSelectable) {
+    return;
+  }
+  startFlashcardBookUseAnimation(normalizedSeriesId, normalizedDeckId);
+}
+
+async function initializeFlashcards() {
+  clearAllFlashcardBookIntentTimers();
   flashcardBookDropTimerBySeries.forEach((timerId) => {
     clearTimeout(timerId);
   });
@@ -1366,16 +1669,1327 @@ function initializeFlashcards() {
   });
   flashcardBookUseTimerBySeries.clear();
   flashcardBookUseAnimationBySeries.clear();
+  flashcardBookActionQueueBySeries.clear();
 
+  const remoteDecks = await loadRemoteFlashcardDecks();
   flashcardState = {
     ...createInitialFlashcardState(),
-    decks: collectFlashcardDecks(),
+    decks: collectFlashcardDecks(remoteDecks),
   };
   clampFlashcardState();
 }
 
-function collectFlashcardDecks() {
-  return FLASHCARD_DATASET_SOURCES.map((source) => normalizeFlashcardDeck(source, source.resolve())).filter(Boolean);
+function initializeFlashcardNoteBinder() {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList || binderList.dataset.noteBinderReady === "1") {
+    return;
+  }
+  binderList.dataset.noteBinderReady = "1";
+  const deckProblemCountByLabel = createFlashcardDeckProblemCountByLabelMap();
+  const deckByLabel = createFlashcardDeckByLabelMap();
+  const binderElements = Array.from(binderList.querySelectorAll(".flashcard-binder"));
+  const measuredBinderHeights = binderElements
+    .map((binder) => Math.round(binder.getBoundingClientRect().height))
+    .filter((height) => Number.isFinite(height) && height > 0);
+  if (measuredBinderHeights.length > 0) {
+    binderList.style.setProperty("--flashcard-binder-shelf-height", `${Math.max(...measuredBinderHeights)}px`);
+  }
+  binderList.classList.add("is-bookshelf");
+
+  binderElements.forEach((binder, index) => {
+    binder.dataset.flashcardBinderIndex = String(index);
+    binder.setAttribute("role", "button");
+    binder.setAttribute("aria-pressed", "false");
+    binder.tabIndex = 0;
+
+    let useButton = binder.querySelector(".flashcard-binder-use-btn");
+    if (!useButton) {
+      useButton = document.createElement("button");
+      useButton.type = "button";
+      useButton.className = "flashcard-binder-use-btn";
+      useButton.dataset.flashcardUseBinder = "1";
+      binder.append(useButton);
+    }
+    useButton.textContent = "このバインダーを使う";
+    useButton.tabIndex = -1;
+    useButton.setAttribute("aria-hidden", "true");
+
+    let closeButton = binder.querySelector(".flashcard-binder-close-btn");
+    if (!closeButton) {
+      closeButton = document.createElement("button");
+      closeButton.type = "button";
+      closeButton.className = "flashcard-binder-close-btn";
+      closeButton.dataset.flashcardCloseBinder = "1";
+      binder.append(closeButton);
+    }
+    closeButton.textContent = "← バインダーをしまう";
+    closeButton.tabIndex = -1;
+    closeButton.setAttribute("aria-hidden", "true");
+  });
+
+  const noteLists = Array.from(binderList.querySelectorAll(".flashcard-note-list"));
+  noteLists.forEach((noteList) => {
+    const binder = noteList.closest(".flashcard-binder");
+    const binderItem = binder?.closest(".flashcard-binder-item");
+    const notes = Array.from(noteList.querySelectorAll(".flashcard-note"));
+    const noteMetrics = notes.map((note) => {
+      const problemCount = resolveFlashcardProblemCountForNote(note, deckProblemCountByLabel);
+      const thicknessStepCount = Math.floor(
+        Math.max(0, problemCount) / FLASHCARD_NOTE_QUESTIONS_PER_THICKNESS_STEP
+      );
+      const noteThickness =
+        FLASHCARD_NOTE_BASE_THICKNESS_PX + thicknessStepCount * FLASHCARD_NOTE_THICKNESS_STEP_PX;
+      return {
+        deck: resolveFlashcardDeckForNote(note, deckByLabel),
+        problemCount,
+        thickness: noteThickness,
+      };
+    });
+    let noteStackThickness = noteMetrics.reduce((total, metric, index) => {
+      const gap = index < noteMetrics.length - 1 ? FLASHCARD_NOTE_SPINE_GAP_PX : 0;
+      return total + metric.thickness + gap;
+    }, 0);
+    let spineOffsetFromRight = FLASHCARD_BINDER_SIDE_PADDING_PX;
+    for (let index = notes.length - 1; index >= 0; index -= 1) {
+      const note = notes[index];
+      const metric = noteMetrics[index];
+      note.style.setProperty("--note-stack-index", String(index));
+      note.style.setProperty("--note-stack-count", String(notes.length));
+      note.style.setProperty("--flashcard-note-thickness", `${metric.thickness}px`);
+      note.style.setProperty("--flashcard-note-spine-offset", `${spineOffsetFromRight}px`);
+      spineOffsetFromRight += metric.thickness + FLASHCARD_NOTE_SPINE_GAP_PX;
+      note.dataset.flashcardProblemCount = String(metric.problemCount);
+      if (metric.deck) {
+        note.dataset.flashcardDeckId = metric.deck.id;
+      } else {
+        delete note.dataset.flashcardDeckId;
+      }
+      note.setAttribute("role", "button");
+      note.setAttribute("aria-pressed", "false");
+      note.setAttribute("aria-disabled", "true");
+      note.tabIndex = -1;
+
+      let takeButton = note.querySelector(".flashcard-note-take-btn");
+      if (!takeButton) {
+        takeButton = document.createElement("button");
+        takeButton.type = "button";
+        takeButton.className = "flashcard-note-take-btn";
+        takeButton.dataset.flashcardTakeNote = "1";
+        note.append(takeButton);
+      }
+      takeButton.textContent = "このノートを使う";
+      takeButton.tabIndex = -1;
+      takeButton.setAttribute("aria-hidden", "true");
+    }
+    if (notes.length === 0) {
+      noteStackThickness = FLASHCARD_NOTE_BASE_THICKNESS_PX;
+    }
+    if (binder) {
+      const binderThickness = noteStackThickness + FLASHCARD_BINDER_EXTRA_THICKNESS_PX;
+      binder.style.setProperty("--flashcard-binder-thickness", `${binderThickness}px`);
+      binder.dataset.flashcardBinderThickness = String(binderThickness);
+      if (binderItem) {
+        binderItem.style.setProperty("--flashcard-binder-thickness", `${binderThickness}px`);
+      }
+    }
+  });
+
+  binderList.addEventListener("click", handleFlashcardNoteBinderClick);
+  binderList.addEventListener("keydown", handleFlashcardNoteBinderKeydown);
+  binderList.addEventListener("pointerdown", handleFlashcardNoteBinderPointerDown);
+  binderList.addEventListener("pointerup", handleFlashcardNoteBinderPointerUp);
+  binderList.addEventListener("pointercancel", clearFlashcardNoteBinderPointerState);
+  window.addEventListener("resize", () => updateFlashcardBinderTargetWidth());
+}
+
+function createFlashcardDeckProblemCountByLabelMap() {
+  const map = new Map();
+  if (!flashcardState || !Array.isArray(flashcardState.decks)) {
+    return map;
+  }
+  flashcardState.decks.forEach((deck) => {
+    const normalizedLabel = normalizeFlashcardText(deck?.label);
+    if (!normalizedLabel) {
+      return;
+    }
+    const totalCards = Number.isFinite(deck?.totalCards) ? Math.max(0, Math.round(deck.totalCards)) : 0;
+    const lookupKeys = [normalizedLabel, toFlashcardLabelLookupKey(normalizedLabel)].filter(Boolean);
+    lookupKeys.forEach((lookupKey) => {
+      const previous = map.get(lookupKey);
+      if (!Number.isFinite(previous) || totalCards > previous) {
+        map.set(lookupKey, totalCards);
+      }
+    });
+  });
+  return map;
+}
+
+function createFlashcardDeckByLabelMap() {
+  const map = new Map();
+  if (!flashcardState || !Array.isArray(flashcardState.decks)) {
+    return map;
+  }
+  flashcardState.decks.forEach((deck) => {
+    const normalizedLabel = normalizeFlashcardText(deck?.label);
+    if (!normalizedLabel) {
+      return;
+    }
+    const lookupKeys = [normalizedLabel, toFlashcardLabelLookupKey(normalizedLabel)].filter(Boolean);
+    lookupKeys.forEach((lookupKey) => {
+      if (!map.has(lookupKey)) {
+        map.set(lookupKey, deck);
+      }
+    });
+  });
+  return map;
+}
+
+function resolveFlashcardDeckForNote(note, deckByLabel = createFlashcardDeckByLabelMap()) {
+  if (!(note instanceof Element) || !(deckByLabel instanceof Map)) {
+    return null;
+  }
+  const deckId = normalizeFlashcardText(note.dataset.flashcardDeckId);
+  if (deckId && Array.isArray(flashcardState?.decks)) {
+    const deck = flashcardState.decks.find((item) => item.id === deckId);
+    if (deck) {
+      return deck;
+    }
+  }
+  const noteLabelElement = note.querySelector(".flashcard-note-jp");
+  const noteLabel = normalizeFlashcardText(noteLabelElement?.textContent);
+  const noteLookupKeys = [noteLabel, toFlashcardLabelLookupKey(noteLabel)].filter(Boolean);
+  for (const lookupKey of noteLookupKeys) {
+    if (deckByLabel.has(lookupKey)) {
+      return deckByLabel.get(lookupKey) ?? null;
+    }
+  }
+  const ariaLabel = normalizeFlashcardText(note.getAttribute("aria-label"));
+  const ariaLookupKeys = [ariaLabel, toFlashcardLabelLookupKey(ariaLabel)].filter(Boolean);
+  for (const lookupKey of ariaLookupKeys) {
+    if (deckByLabel.has(lookupKey)) {
+      return deckByLabel.get(lookupKey) ?? null;
+    }
+  }
+  return null;
+}
+
+function resolveFlashcardProblemCountForNote(note, deckProblemCountByLabel) {
+  if (!(note instanceof Element) || !(deckProblemCountByLabel instanceof Map)) {
+    return 0;
+  }
+  const noteLabelElement = note.querySelector(".flashcard-note-jp");
+  const noteLabel = normalizeFlashcardText(noteLabelElement?.textContent);
+  const noteLookupKeys = [noteLabel, toFlashcardLabelLookupKey(noteLabel)].filter(Boolean);
+  for (const lookupKey of noteLookupKeys) {
+    if (deckProblemCountByLabel.has(lookupKey)) {
+      return deckProblemCountByLabel.get(lookupKey) ?? 0;
+    }
+  }
+  const ariaLabel = normalizeFlashcardText(note.getAttribute("aria-label"));
+  const ariaLookupKeys = [ariaLabel, toFlashcardLabelLookupKey(ariaLabel)].filter(Boolean);
+  for (const lookupKey of ariaLookupKeys) {
+    if (deckProblemCountByLabel.has(lookupKey)) {
+      return deckProblemCountByLabel.get(lookupKey) ?? 0;
+    }
+  }
+  return 0;
+}
+
+function toFlashcardLabelLookupKey(value) {
+  const normalized = normalizeFlashcardText(value);
+  if (!normalized) {
+    return "";
+  }
+  return normalized
+    .replace(/[\s\u3000]+/g, "")
+    .replace(/[()（）［］\[\]{}｛｝・･・,，.．。:：\/／\-ー―～~]/g, "")
+    .toLowerCase();
+}
+
+function handleFlashcardNoteBinderClick(event) {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList) {
+    return;
+  }
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  const readerAction = target.closest("[data-flashcard-note-reader-action]");
+  if (readerAction && isInFlashcardBinderInteractionSurface(readerAction)) {
+    handleFlashcardNoteReaderAction(readerAction);
+    return;
+  }
+
+  const closeBinderButton = target.closest("[data-flashcard-close-binder]");
+  if (closeBinderButton && isInFlashcardBinderInteractionSurface(closeBinderButton)) {
+    closeFlashcardBinder();
+    return;
+  }
+
+  const useBinderButton = target.closest("[data-flashcard-use-binder]");
+  if (useBinderButton && isInFlashcardBinderInteractionSurface(useBinderButton)) {
+    const binder = useBinderButton.closest(".flashcard-binder");
+    if (binder && (binderList.contains(binder) || binder === activeFlashcardBinderElement)) {
+      openFlashcardBinder(binder);
+    }
+    return;
+  }
+
+  const takeButton = target.closest("[data-flashcard-take-note]");
+  if (takeButton && isInFlashcardBinderInteractionSurface(takeButton)) {
+    const note = takeButton.closest(".flashcard-note");
+    if (note && activeFlashcardBinderElement?.contains(note)) {
+      openFlashcardNotebook(note);
+    }
+    return;
+  }
+
+  if (!isFlashcardBinderOpen(binderList)) {
+    const binder = target.closest(".flashcard-binder");
+    if (!binder || !binderList.contains(binder)) {
+      return;
+    }
+    if (liftedFlashcardBinderElement === binder) {
+      setLiftedFlashcardBinder(null);
+      return;
+    }
+    setLiftedFlashcardBinder(binder);
+    return;
+  }
+
+  if (!activeFlashcardBinderElement || !activeFlashcardBinderElement.contains(target)) {
+    return;
+  }
+  if (activeFlashcardNotebookState) {
+    return;
+  }
+
+  const note = target.closest(".flashcard-note");
+  if (!note || !activeFlashcardBinderElement.contains(note)) {
+    setLiftedFlashcardNote(null);
+    return;
+  }
+  if (liftedFlashcardNoteElement === note) {
+    setLiftedFlashcardNote(null);
+    return;
+  }
+  setLiftedFlashcardNote(note);
+}
+
+function handleFlashcardNoteBinderKeydown(event) {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList) {
+    return;
+  }
+  if (event.key === "Escape") {
+    if (activeFlashcardNotebookState) {
+      closeFlashcardNotebook();
+      event.preventDefault();
+      return;
+    }
+    if (isFlashcardBinderOpen(binderList)) {
+      closeFlashcardBinder();
+      event.preventDefault();
+    }
+    return;
+  }
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  if (
+    target.closest(
+      "[data-flashcard-take-note], [data-flashcard-use-binder], [data-flashcard-close-binder], [data-flashcard-note-reader-action]"
+    )
+  ) {
+    return;
+  }
+
+  if (!isFlashcardBinderOpen(binderList)) {
+    const binder = target.closest(".flashcard-binder");
+    if (!binder || !binderList.contains(binder)) {
+      return;
+    }
+    event.preventDefault();
+    if (liftedFlashcardBinderElement === binder) {
+      openFlashcardBinder(binder);
+      return;
+    }
+    setLiftedFlashcardBinder(binder);
+    return;
+  }
+
+  if (!activeFlashcardBinderElement || activeFlashcardNotebookState) {
+    return;
+  }
+  const note = target.closest(".flashcard-note");
+  if (!note || !activeFlashcardBinderElement.contains(note)) {
+    return;
+  }
+  event.preventDefault();
+  if (liftedFlashcardNoteElement === note) {
+    openFlashcardNotebook(note);
+    return;
+  }
+  setLiftedFlashcardNote(note);
+}
+
+function isFlashcardNoteBinderLocked(binderList) {
+  return !isFlashcardBinderOpen(binderList);
+}
+
+function isFlashcardBinderOpen(binderList = elements.flashcardBinderList) {
+  return Boolean(binderList?.classList.contains("is-binder-open") && activeFlashcardBinderElement);
+}
+
+function isInFlashcardBinderInteractionSurface(element) {
+  if (!(element instanceof Element)) {
+    return false;
+  }
+  return Boolean(
+    elements.flashcardBinderList?.contains(element) ||
+      activeFlashcardBinderElement?.contains(element) ||
+      flashcardBinderStageElement?.contains(element)
+  );
+}
+
+function handleFlashcardNoteBinderPointerDown(event) {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList || event.pointerType === "mouse") {
+    return;
+  }
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  if (
+    target.closest(
+      "[data-flashcard-take-note], [data-flashcard-use-binder], [data-flashcard-close-binder], [data-flashcard-note-reader-action]"
+    )
+  ) {
+    return;
+  }
+  const note = isFlashcardBinderOpen(binderList) ? target.closest(".flashcard-note") : null;
+  const binder = target.closest(".flashcard-binder");
+  if (!binder || (!binderList.contains(binder) && binder !== activeFlashcardBinderElement)) {
+    return;
+  }
+  flashcardBinderPointerState = {
+    binder,
+    note,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+  };
+}
+
+function handleFlashcardNoteBinderPointerUp(event) {
+  const pointerState = flashcardBinderPointerState;
+  clearFlashcardNoteBinderPointerState();
+  const binderList = elements.flashcardBinderList;
+  if (!binderList || !pointerState || pointerState.pointerId !== event.pointerId) {
+    return;
+  }
+  const deltaX = event.clientX - pointerState.startX;
+  const deltaY = event.clientY - pointerState.startY;
+  const isUpSwipe =
+    deltaY <= FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX * -1 && Math.abs(deltaY) > Math.abs(deltaX) * 1.12;
+  if (!isUpSwipe) {
+    return;
+  }
+
+  if (isFlashcardBinderOpen(binderList)) {
+    const note = pointerState.note;
+    if (!note || !activeFlashcardBinderElement?.contains(note) || activeFlashcardNotebookState) {
+      return;
+    }
+    event.preventDefault();
+    if (liftedFlashcardNoteElement === note) {
+      openFlashcardNotebook(note);
+      return;
+    }
+    setLiftedFlashcardNote(note);
+    return;
+  }
+
+  const binder = pointerState.binder;
+  if (!binderList.contains(binder)) {
+    return;
+  }
+  event.preventDefault();
+  if (liftedFlashcardBinderElement === binder) {
+    openFlashcardBinder(binder);
+    return;
+  }
+  setLiftedFlashcardBinder(binder);
+}
+
+function clearFlashcardNoteBinderPointerState() {
+  flashcardBinderPointerState = null;
+}
+
+function ensureFlashcardBinderBackdrop() {
+  if (flashcardBinderBackdropElement instanceof HTMLElement) {
+    return flashcardBinderBackdropElement;
+  }
+  const backdrop = document.createElement("div");
+  backdrop.id = "flashcardBinderBackdrop";
+  backdrop.className = "flashcard-binder-backdrop";
+  backdrop.setAttribute("aria-hidden", "true");
+  document.body.append(backdrop);
+  flashcardBinderBackdropElement = backdrop;
+  return backdrop;
+}
+
+function ensureFlashcardBinderStage() {
+  if (flashcardBinderStageElement instanceof HTMLElement) {
+    return flashcardBinderStageElement;
+  }
+  const stage = document.createElement("div");
+  stage.id = "flashcardBinderStage";
+  stage.className = "flashcard-binder-stage flashcard-binder-list is-bookshelf is-binder-open";
+  stage.setAttribute("aria-hidden", "true");
+  stage.addEventListener("click", handleFlashcardNoteBinderClick);
+  stage.addEventListener("keydown", handleFlashcardNoteBinderKeydown);
+  stage.addEventListener("pointerdown", handleFlashcardNoteBinderPointerDown);
+  stage.addEventListener("pointerup", handleFlashcardNoteBinderPointerUp);
+  stage.addEventListener("pointercancel", clearFlashcardNoteBinderPointerState);
+  document.body.append(stage);
+  flashcardBinderStageElement = stage;
+  return stage;
+}
+
+function mountFlashcardBinderStage(binder, binderList) {
+  if (!(binder instanceof Element) || !binderList) {
+    return;
+  }
+  const stage = ensureFlashcardBinderStage();
+  if (!flashcardBinderPortalState || flashcardBinderPortalState.binder !== binder) {
+    const closeButton = binder.querySelector(".flashcard-binder-close-btn");
+    flashcardBinderPortalState = {
+      binder,
+      parent: binder.parentNode,
+      nextSibling: binder.nextSibling,
+      closeButton,
+      closeButtonParent: closeButton?.parentNode ?? null,
+      closeButtonNextSibling: closeButton?.nextSibling ?? null,
+    };
+  }
+  updateFlashcardBinderTargetWidth(binder);
+  stage.classList.toggle("is-note-open", binderList.classList.contains("is-note-open"));
+  stage.setAttribute("aria-hidden", "false");
+  binder.classList.add("is-stage-binder");
+  stage.append(binder);
+  if (flashcardBinderPortalState.closeButton instanceof HTMLElement) {
+    stage.append(flashcardBinderPortalState.closeButton);
+  }
+}
+
+function restoreFlashcardBinderStage() {
+  const portalState = flashcardBinderPortalState;
+  const stage = flashcardBinderStageElement;
+  if (!portalState?.binder) {
+    if (stage) {
+      stage.setAttribute("aria-hidden", "true");
+      stage.classList.remove("is-note-open");
+    }
+    return;
+  }
+  const { binder, parent, nextSibling, closeButton, closeButtonParent, closeButtonNextSibling } = portalState;
+  if (closeButton instanceof HTMLElement && closeButtonParent && closeButton.parentNode !== closeButtonParent) {
+    if (closeButtonNextSibling && closeButtonNextSibling.parentNode === closeButtonParent) {
+      closeButtonParent.insertBefore(closeButton, closeButtonNextSibling);
+    } else {
+      closeButtonParent.append(closeButton);
+    }
+  }
+  binder.classList.remove("is-stage-binder");
+  if (parent && binder.parentNode !== parent) {
+    if (nextSibling && nextSibling.parentNode === parent) {
+      parent.insertBefore(binder, nextSibling);
+    } else {
+      parent.append(binder);
+    }
+  }
+  if (stage) {
+    stage.setAttribute("aria-hidden", "true");
+    stage.classList.remove("is-note-open");
+  }
+  flashcardBinderPortalState = null;
+}
+
+function setFlashcardBinderStageNoteOpen(shouldOpen) {
+  flashcardBinderStageElement?.classList.toggle("is-note-open", Boolean(shouldOpen));
+}
+
+function getFlashcardBinderTargetNoteWidth() {
+  const targetRect = elements.mypageFlashcardPanel?.getBoundingClientRect();
+  const viewportWidth = Math.max(0, document.documentElement.clientWidth || window.innerWidth || 0);
+  const measuredWidth = Number.isFinite(targetRect?.width) && targetRect.width > 0 ? targetRect.width : 0;
+  const fallbackWidth = Math.min(560, Math.max(178, viewportWidth - 32));
+  return Math.max(178, Math.round(measuredWidth || fallbackWidth));
+}
+
+function updateFlashcardBinderTargetWidth(binder = activeFlashcardBinderElement) {
+  if (!(binder instanceof HTMLElement)) {
+    return;
+  }
+  binder.style.setProperty("--flashcard-note-cover-width", `${getFlashcardBinderTargetNoteWidth()}px`);
+}
+
+function setLiftedFlashcardBinder(nextBinder) {
+  elements.flashcardBinderList?.classList.toggle("has-lifted-binder", Boolean(nextBinder));
+  if (liftedFlashcardBinderElement && liftedFlashcardBinderElement !== nextBinder) {
+    liftedFlashcardBinderElement.classList.remove("is-lifted");
+    liftedFlashcardBinderElement.setAttribute("aria-pressed", "false");
+    const previousButton = liftedFlashcardBinderElement.querySelector(".flashcard-binder-use-btn");
+    if (previousButton) {
+      previousButton.tabIndex = -1;
+      previousButton.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  if (!nextBinder) {
+    if (liftedFlashcardBinderElement) {
+      const activeButton = liftedFlashcardBinderElement.querySelector(".flashcard-binder-use-btn");
+      liftedFlashcardBinderElement.classList.remove("is-lifted");
+      liftedFlashcardBinderElement.setAttribute("aria-pressed", "false");
+      if (activeButton) {
+        activeButton.tabIndex = -1;
+        activeButton.setAttribute("aria-hidden", "true");
+      }
+    }
+    liftedFlashcardBinderElement = null;
+    return;
+  }
+
+  nextBinder.classList.add("is-lifted");
+  nextBinder.setAttribute("aria-pressed", "true");
+  const useButton = nextBinder.querySelector(".flashcard-binder-use-btn");
+  if (useButton) {
+    useButton.tabIndex = 0;
+    useButton.setAttribute("aria-hidden", "false");
+  }
+  liftedFlashcardBinderElement = nextBinder;
+}
+
+function setFlashcardBinderFocusMode(shouldLock) {
+  const shouldFocus = Boolean(shouldLock);
+  if (shouldFocus) {
+    ensureFlashcardBinderBackdrop();
+  }
+  document.body.classList.toggle("flashcard-binder-global-focus", shouldFocus);
+  document.body.classList.toggle("flashcard-book-scroll-lock", shouldFocus);
+  document.documentElement.classList.toggle("flashcard-book-scroll-lock", shouldFocus);
+}
+
+function openFlashcardBinder(binder) {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList || !(binder instanceof Element) || !binderList.contains(binder)) {
+    return;
+  }
+
+  closeFlashcardNotebook({ preserveBinder: true });
+  setLiftedFlashcardBinder(binder);
+  activeFlashcardBinderElement = binder;
+  binderList.classList.add("is-binder-open");
+  binderList.classList.remove("is-note-open");
+  binder.classList.add("is-opening-binder");
+  window.setTimeout(() => {
+    binder.classList.remove("is-opening-binder");
+  }, 620);
+  setFlashcardBinderFocusMode(true);
+
+  Array.from(binderList.querySelectorAll(".flashcard-binder")).forEach((item) => {
+    const isActive = item === binder;
+    item.closest(".flashcard-binder-item")?.classList.toggle("is-active-binder-item", isActive);
+    item.classList.toggle("is-active-binder", isActive);
+    item.setAttribute("aria-pressed", String(isActive));
+    item.tabIndex = isActive ? 0 : -1;
+    const useButton = item.querySelector(".flashcard-binder-use-btn");
+    if (useButton) {
+      useButton.tabIndex = -1;
+      useButton.setAttribute("aria-hidden", "true");
+    }
+    const closeButton = item.querySelector(".flashcard-binder-close-btn");
+    if (closeButton) {
+      closeButton.tabIndex = isActive ? 0 : -1;
+      closeButton.setAttribute("aria-hidden", String(!isActive));
+    }
+    const notes = Array.from(item.querySelectorAll(".flashcard-note"));
+    notes.forEach((note) => {
+      note.setAttribute("aria-disabled", String(!isActive));
+      note.tabIndex = isActive ? 0 : -1;
+    });
+  });
+
+  mountFlashcardBinderStage(binder, binderList);
+}
+
+function closeFlashcardBinder() {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList) {
+    return;
+  }
+
+  closeFlashcardNotebook({ preserveBinder: true });
+  restoreFlashcardBinderStage();
+  binderList.classList.remove("is-binder-open", "is-note-open");
+  Array.from(binderList.querySelectorAll(".flashcard-binder")).forEach((binder) => {
+    binder.closest(".flashcard-binder-item")?.classList.remove("is-active-binder-item");
+    binder.classList.remove("is-active-binder", "is-lifted", "is-opening-binder");
+    binder.setAttribute("aria-pressed", "false");
+    binder.tabIndex = 0;
+    const useButton = binder.querySelector(".flashcard-binder-use-btn");
+    if (useButton) {
+      useButton.tabIndex = -1;
+      useButton.setAttribute("aria-hidden", "true");
+    }
+    const closeButton = binder.querySelector(".flashcard-binder-close-btn");
+    if (closeButton) {
+      closeButton.tabIndex = -1;
+      closeButton.setAttribute("aria-hidden", "true");
+    }
+    Array.from(binder.querySelectorAll(".flashcard-note")).forEach((note) => {
+      note.classList.remove("is-lifted", "is-opened-note");
+      note.setAttribute("aria-pressed", "false");
+      note.setAttribute("aria-disabled", "true");
+      note.tabIndex = -1;
+      const takeButton = note.querySelector(".flashcard-note-take-btn");
+      if (takeButton) {
+        takeButton.tabIndex = -1;
+        takeButton.setAttribute("aria-hidden", "true");
+      }
+    });
+  });
+  activeFlashcardBinderElement = null;
+  liftedFlashcardBinderElement = null;
+  liftedFlashcardNoteElement = null;
+  setFlashcardBinderFocusMode(false);
+}
+
+function setLiftedFlashcardNote(nextNote) {
+  if (liftedFlashcardNoteElement && liftedFlashcardNoteElement !== nextNote) {
+    liftedFlashcardNoteElement.classList.remove("is-lifted");
+    liftedFlashcardNoteElement.setAttribute("aria-pressed", "false");
+    const previousButton = liftedFlashcardNoteElement.querySelector(".flashcard-note-take-btn");
+    if (previousButton) {
+      previousButton.tabIndex = -1;
+      previousButton.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  if (!nextNote) {
+    if (liftedFlashcardNoteElement) {
+      const activeButton = liftedFlashcardNoteElement.querySelector(".flashcard-note-take-btn");
+      liftedFlashcardNoteElement.classList.remove("is-lifted");
+      liftedFlashcardNoteElement.setAttribute("aria-pressed", "false");
+      if (activeButton) {
+        activeButton.tabIndex = -1;
+        activeButton.setAttribute("aria-hidden", "true");
+      }
+    }
+    liftedFlashcardNoteElement = null;
+    return;
+  }
+
+  if (activeFlashcardBinderElement && !activeFlashcardBinderElement.contains(nextNote)) {
+    return;
+  }
+  nextNote.classList.add("is-lifted");
+  nextNote.setAttribute("aria-pressed", "true");
+  const takeButton = nextNote.querySelector(".flashcard-note-take-btn");
+  if (takeButton) {
+    takeButton.tabIndex = 0;
+    takeButton.setAttribute("aria-hidden", "false");
+  }
+  liftedFlashcardNoteElement = nextNote;
+}
+
+function openFlashcardNotebook(note) {
+  const binderList = elements.flashcardBinderList;
+  if (
+    !binderList ||
+    !(note instanceof Element) ||
+    !activeFlashcardBinderElement ||
+    !activeFlashcardBinderElement.contains(note)
+  ) {
+    return;
+  }
+
+  setLiftedFlashcardNote(note);
+  const activeNoteAccent = getComputedStyle(note).getPropertyValue("--note-accent").trim();
+  if (activeNoteAccent) {
+    activeFlashcardBinderElement.style.setProperty("--active-note-accent", activeNoteAccent);
+  }
+  Array.from(activeFlashcardBinderElement.querySelectorAll(".flashcard-note")).forEach((item) => {
+    item.classList.toggle("is-opened-note", item === note);
+  });
+  activeFlashcardNotebookState = {
+    note,
+    pageIndex: 0,
+    leftVisible: false,
+    pageTurnDirection: "",
+  };
+  activeFlashcardBinderElement.classList.add("is-opening-note");
+  window.setTimeout(() => {
+    activeFlashcardBinderElement?.classList.remove("is-opening-note");
+  }, 760);
+  binderList.classList.add("is-note-open");
+  setFlashcardBinderStageNoteOpen(true);
+  renderFlashcardNotebook();
+}
+
+function closeFlashcardNotebook(options = {}) {
+  const binderList = elements.flashcardBinderList;
+  const shouldPreserveBinder = Boolean(options.preserveBinder);
+  const activeBinder = activeFlashcardBinderElement;
+
+  if (activeBinder) {
+    Array.from(activeBinder.querySelectorAll(".flashcard-note-reader")).forEach((reader) => reader.remove());
+    Array.from(activeBinder.querySelectorAll(".flashcard-note")).forEach((note) => {
+      note.classList.remove("is-opened-note");
+    });
+  } else if (binderList) {
+    Array.from(binderList.querySelectorAll(".flashcard-note-reader")).forEach((reader) => reader.remove());
+  }
+  flashcardBinderStageElement?.querySelectorAll(".flashcard-note-reader-close-btn").forEach((button) => button.remove());
+
+  if (binderList) {
+    binderList.classList.remove("is-note-open");
+  }
+  setFlashcardBinderStageNoteOpen(false);
+  activeFlashcardNotebookState = null;
+  setLiftedFlashcardNote(null);
+
+  if (!shouldPreserveBinder && binderList && !isFlashcardBinderOpen(binderList)) {
+    setFlashcardBinderFocusMode(false);
+  }
+}
+
+function handleFlashcardNoteReaderAction(actionButton) {
+  if (!(actionButton instanceof Element) || !activeFlashcardNotebookState) {
+    return;
+  }
+  const action = normalizeFlashcardText(actionButton.dataset.flashcardNoteReaderAction);
+  if (action === "close") {
+    closeFlashcardNotebook({ preserveBinder: true });
+    return;
+  }
+
+  const spreads = buildFlashcardNotebookSpreads(activeFlashcardNotebookState.note);
+  const maxPageIndex = Math.max(0, spreads.length - 1);
+  if (action === "prev") {
+    activeFlashcardNotebookState.pageIndex = Math.max(0, activeFlashcardNotebookState.pageIndex - 1);
+    activeFlashcardNotebookState.leftVisible = false;
+    activeFlashcardNotebookState.pageTurnDirection = "prev";
+    renderFlashcardNotebook();
+    return;
+  }
+  if (action === "next") {
+    activeFlashcardNotebookState.pageIndex = Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex + 1);
+    activeFlashcardNotebookState.leftVisible = false;
+    activeFlashcardNotebookState.pageTurnDirection = "next";
+    renderFlashcardNotebook();
+    return;
+  }
+  if (action === "toggle-left") {
+    activeFlashcardNotebookState.leftVisible = !activeFlashcardNotebookState.leftVisible;
+    renderFlashcardNotebook();
+  }
+}
+
+function renderFlashcardNotebook() {
+  if (!activeFlashcardNotebookState || !activeFlashcardBinderElement) {
+    return;
+  }
+
+  Array.from(activeFlashcardBinderElement.querySelectorAll(".flashcard-note-reader")).forEach((reader) => reader.remove());
+  flashcardBinderStageElement?.querySelectorAll(".flashcard-note-reader-close-btn").forEach((button) => button.remove());
+
+  const spreads = buildFlashcardNotebookSpreads(activeFlashcardNotebookState.note);
+  const maxPageIndex = Math.max(0, spreads.length - 1);
+  activeFlashcardNotebookState.pageIndex = Math.max(
+    0,
+    Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex)
+  );
+  const spread = spreads[activeFlashcardNotebookState.pageIndex] ?? createBlankFlashcardNotebookSpread();
+  const hasLeftContent = hasFlashcardNotebookPageContent(spread.left);
+  if (!hasLeftContent) {
+    activeFlashcardNotebookState.leftVisible = false;
+  }
+  const pageTurnDirection = normalizeFlashcardText(activeFlashcardNotebookState.pageTurnDirection);
+  activeFlashcardNotebookState.pageTurnDirection = "";
+
+  const reader = document.createElement("section");
+  reader.className = "flashcard-note-reader";
+  reader.classList.toggle("is-left-visible", Boolean(activeFlashcardNotebookState.leftVisible && hasLeftContent));
+  if (pageTurnDirection === "next" || pageTurnDirection === "prev") {
+    reader.classList.add(`is-turning-${pageTurnDirection}`);
+  }
+  reader.setAttribute("aria-label", `${getFlashcardNoteJapaneseLabel(activeFlashcardNotebookState.note)}のノート`);
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "flashcard-note-reader-close-btn";
+  closeButton.dataset.flashcardNoteReaderAction = "close";
+  closeButton.textContent = "← ノートを閉じる";
+  (flashcardBinderStageElement ?? reader).append(closeButton);
+
+  if (hasLeftContent) {
+    const leftToggleButton = document.createElement("button");
+    leftToggleButton.type = "button";
+    leftToggleButton.className = "flashcard-note-left-toggle-btn";
+    leftToggleButton.dataset.flashcardNoteReaderAction = "toggle-left";
+    leftToggleButton.textContent = activeFlashcardNotebookState.leftVisible
+      ? "右ページに戻る"
+      : spread.left.toggleLabel || "事前知識を見る";
+    leftToggleButton.setAttribute("aria-pressed", String(activeFlashcardNotebookState.leftVisible));
+    reader.append(leftToggleButton);
+  }
+
+  const pageWrap = document.createElement("div");
+  pageWrap.className = "flashcard-note-reader-pages";
+  pageWrap.append(
+    createFlashcardNotebookPageElement(spread.left, "left"),
+    createFlashcardNotebookPageElement(spread.right, "right")
+  );
+  if (pageTurnDirection === "next" || pageTurnDirection === "prev") {
+    const turnSheet = document.createElement("span");
+    turnSheet.className = "flashcard-note-page-turn-sheet";
+    turnSheet.setAttribute("aria-hidden", "true");
+    pageWrap.append(turnSheet);
+  }
+  reader.append(pageWrap);
+
+  const controls = document.createElement("div");
+  controls.className = "flashcard-note-reader-controls";
+
+  const prevButton = document.createElement("button");
+  prevButton.type = "button";
+  prevButton.className = "flashcard-note-reader-nav-btn";
+  prevButton.dataset.flashcardNoteReaderAction = "prev";
+  prevButton.textContent = "前へ";
+  prevButton.disabled = activeFlashcardNotebookState.pageIndex <= 0;
+
+  const pageCounter = document.createElement("span");
+  pageCounter.className = "flashcard-note-reader-page-count";
+  pageCounter.textContent = `${activeFlashcardNotebookState.pageIndex + 1} / ${spreads.length}`;
+
+  const nextButton = document.createElement("button");
+  nextButton.type = "button";
+  nextButton.className = "flashcard-note-reader-nav-btn";
+  nextButton.dataset.flashcardNoteReaderAction = "next";
+  nextButton.textContent = "次へ";
+  nextButton.disabled = activeFlashcardNotebookState.pageIndex >= maxPageIndex;
+
+  controls.append(prevButton, pageCounter, nextButton);
+  reader.append(controls);
+  activeFlashcardBinderElement.append(reader);
+}
+
+function buildFlashcardNotebookSpreads(note) {
+  const deck = resolveFlashcardDeckForNote(note);
+  const noteLabel = getFlashcardNoteJapaneseLabel(note);
+  const englishLabel = getFlashcardNoteEnglishLabel(note);
+  const fallbackProblemCount = Number.parseInt(note?.dataset?.flashcardProblemCount ?? "0", 10);
+  const totalCards = deck?.totalCards ?? (Number.isFinite(fallbackProblemCount) ? fallbackProblemCount : 0);
+  const unitItems = deck?.units?.length
+    ? deck.units.map((unit, index) => `${index + 1}. ${unit.label}（${unit.cards.length}問）`)
+    : ["このノートの問題データは準備中です。"];
+
+  const spreads = [
+    {
+      left: createBlankFlashcardNotebookPage(),
+      right: {
+        kind: "toc",
+        kicker: "目次",
+        title: noteLabel,
+        subtitle: englishLabel,
+        items: unitItems,
+      },
+    },
+  ];
+
+  const cardEntries = deck?.units?.flatMap((unit) =>
+    unit.cards.map((card) => ({
+      unit,
+      card,
+    }))
+  ) ?? [];
+
+  cardEntries.forEach((entry, index) => {
+    const cardNumber = index + 1;
+    spreads.push({
+      left: entry.card.preKnowledge
+        ? {
+            kind: "knowledge",
+            kicker: "事前知識",
+            title: `事前知識 ${cardNumber}`,
+            body: entry.card.preKnowledge,
+            toggleLabel: "事前知識を見る",
+          }
+        : createBlankFlashcardNotebookPage(),
+      right: {
+        kind: "problem",
+        kicker: entry.unit.label,
+        title: `問題 ${cardNumber}`,
+        body: entry.card.prompt,
+        imageSrc: entry.card.imageSrc,
+        imageAlt: entry.card.imageAlt,
+      },
+    });
+    spreads.push({
+      left: entry.card.hint
+        ? {
+            kind: "explanation",
+            kicker: "解説",
+            title: `解説 ${cardNumber}`,
+            body: entry.card.hint,
+            toggleLabel: "解説を見る",
+          }
+        : createBlankFlashcardNotebookPage(),
+      right: {
+        kind: "answer",
+        kicker: entry.unit.label,
+        title: `答え ${cardNumber}`,
+        answers: entry.card.answers,
+      },
+    });
+  });
+
+  return spreads;
+}
+
+function createBlankFlashcardNotebookSpread() {
+  return {
+    left: createBlankFlashcardNotebookPage(),
+    right: createBlankFlashcardNotebookPage(),
+  };
+}
+
+function createBlankFlashcardNotebookPage() {
+  return {
+    blank: true,
+  };
+}
+
+function createFlashcardNotebookPageElement(page, side) {
+  const pageElement = document.createElement("article");
+  pageElement.className = `flashcard-note-paper flashcard-note-paper-${side}`;
+  if (!page || page.blank) {
+    pageElement.classList.add("is-blank");
+    pageElement.setAttribute("aria-hidden", "true");
+    return pageElement;
+  }
+  if (page.kind) {
+    pageElement.classList.add(`is-${page.kind}`);
+  }
+
+  if (page.kicker) {
+    const kicker = document.createElement("p");
+    kicker.className = "flashcard-note-paper-kicker";
+    kicker.textContent = page.kicker;
+    pageElement.append(kicker);
+  }
+  if (page.title) {
+    const title = document.createElement("h3");
+    title.className = "flashcard-note-paper-title";
+    title.textContent = page.title;
+    pageElement.append(title);
+  }
+  if (page.subtitle) {
+    const subtitle = document.createElement("p");
+    subtitle.className = "flashcard-note-paper-subtitle";
+    subtitle.textContent = page.subtitle;
+    pageElement.append(subtitle);
+  }
+  if (page.body) {
+    const body = document.createElement("p");
+    body.className = "flashcard-note-paper-body";
+    body.textContent = page.body;
+    pageElement.append(body);
+  }
+  if (page.imageSrc) {
+    const image = document.createElement("img");
+    image.className = "flashcard-note-paper-image";
+    image.src = page.imageSrc;
+    image.alt = page.imageAlt || "";
+    pageElement.append(image);
+  }
+  if (Array.isArray(page.items) && page.items.length > 0) {
+    const list = document.createElement("ol");
+    list.className = "flashcard-note-paper-list";
+    page.items.forEach((item) => {
+      const listItem = document.createElement("li");
+      listItem.textContent = item;
+      list.append(listItem);
+    });
+    pageElement.append(list);
+  }
+  if (Array.isArray(page.answers) && page.answers.length > 0) {
+    const list = document.createElement("ul");
+    list.className = "flashcard-note-paper-answer-list";
+    page.answers.forEach((answer) => {
+      const listItem = document.createElement("li");
+      listItem.textContent = answer;
+      list.append(listItem);
+    });
+    pageElement.append(list);
+  }
+
+  return pageElement;
+}
+
+function hasFlashcardNotebookPageContent(page) {
+  if (!page || page.blank) {
+    return false;
+  }
+  return Boolean(
+    page.kicker ||
+      page.title ||
+      page.subtitle ||
+      page.body ||
+      page.imageSrc ||
+      (Array.isArray(page.items) && page.items.length > 0) ||
+      (Array.isArray(page.answers) && page.answers.length > 0)
+  );
+}
+
+function getFlashcardNoteJapaneseLabel(note) {
+  return normalizeFlashcardText(note?.querySelector?.(".flashcard-note-jp")?.textContent) || "ノート";
+}
+
+function getFlashcardNoteEnglishLabel(note) {
+  return normalizeFlashcardText(note?.querySelector?.(".flashcard-note-en")?.textContent);
+}
+
+async function loadRemoteFlashcardDecks() {
+  try {
+    const response = await fetch(FLASHCARD_QUESTIONS_API_URL, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Questions API returned ${response.status}`);
+    }
+    const payload = await response.json();
+    return normalizeRemoteFlashcardDecks(payload);
+  } catch (error) {
+    console.warn("Failed to load remote questions:", error);
+    return [];
+  }
+}
+
+function normalizeRemoteFlashcardDecks(payload) {
+  const questions = getRemoteFlashcardQuestionArray(payload);
+  if (questions) {
+    return normalizeRemoteFlashcardQuestionArray(questions);
+  }
+
+  if (isFlashcardDatasetObject(payload)) {
+    const source = createRemoteFlashcardSource(FLASHCARD_REMOTE_DEFAULT_DECK_ID, {});
+    const deck = normalizeFlashcardDeck(source, payload);
+    return deck ? [deck] : [];
+  }
+
+  return [];
+}
+
+function getRemoteFlashcardQuestionArray(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  if (Array.isArray(payload.questions)) {
+    return payload.questions;
+  }
+  if (Array.isArray(payload.data)) {
+    return payload.data;
+  }
+  if (Array.isArray(payload.items)) {
+    return payload.items;
+  }
+  return null;
+}
+
+function normalizeRemoteFlashcardQuestionArray(questions) {
+  const datasetByDeckId = new Map();
+  const sourceByDeckId = new Map();
+
+  questions.forEach((question) => {
+    if (!question || typeof question !== "object") {
+      return;
+    }
+    const deckId = resolveRemoteFlashcardDeckId(question);
+    const card = normalizeRemoteFlashcardQuestion(question);
+    if (!deckId || !card) {
+      return;
+    }
+    if (!datasetByDeckId.has(deckId)) {
+      datasetByDeckId.set(deckId, {});
+      sourceByDeckId.set(deckId, createRemoteFlashcardSource(deckId, question));
+    }
+    const dataset = datasetByDeckId.get(deckId);
+    const unitName = resolveRemoteFlashcardUnitName(question);
+    if (!Array.isArray(dataset[unitName])) {
+      dataset[unitName] = [];
+    }
+    dataset[unitName].push(card);
+  });
+
+  return Array.from(datasetByDeckId.entries())
+    .map(([deckId, dataset]) => normalizeFlashcardDeck(sourceByDeckId.get(deckId), dataset))
+    .filter(Boolean);
+}
+
+function resolveRemoteFlashcardDeckId(question) {
+  const rawSubject = normalizeFlashcardText(
+    question.deckId ?? question.subjectId ?? question.subject ?? question.deck ?? question.bookId ?? question.binder
+  );
+  if (!rawSubject) {
+    return FLASHCARD_REMOTE_DEFAULT_DECK_ID;
+  }
+
+  const lowerSubject = rawSubject.toLowerCase();
+  const hyphenSubject = lowerSubject.replace(/\s+/g, "-");
+  const alias = FLASHCARD_REMOTE_SUBJECT_ALIASES[lowerSubject] ?? FLASHCARD_REMOTE_SUBJECT_ALIASES[hyphenSubject];
+  if (alias) {
+    return alias;
+  }
+  if (getFlashcardSubjectCatalogEntry(rawSubject)) {
+    return rawSubject;
+  }
+  const catalogEntry = getFlashcardSubjectCatalogEntryByLabel(rawSubject);
+  if (catalogEntry) {
+    return catalogEntry.id;
+  }
+  return createRemoteFlashcardDeckId(rawSubject) || FLASHCARD_REMOTE_DEFAULT_DECK_ID;
+}
+
+function createRemoteFlashcardDeckId(value) {
+  return normalizeFlashcardText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function createRemoteFlashcardSource(deckId, question) {
+  const catalogEntry = getFlashcardSubjectCatalogEntry(deckId);
+  const rawLabel = normalizeFlashcardText(
+    question.subjectLabel ?? question.subjectName ?? question.deckLabel ?? question.bookLabel ?? question.subject
+  );
+  return {
+    id: deckId,
+    label: catalogEntry?.label || rawLabel || deckId,
+    seriesId: catalogEntry?.seriesId || normalizeFlashcardText(question.seriesId) || FLASHCARD_DEFAULT_SERIES.id,
+    seriesLabel:
+      catalogEntry?.seriesLabel || normalizeFlashcardText(question.seriesLabel) || FLASHCARD_DEFAULT_SERIES.label,
+  };
+}
+
+function resolveRemoteFlashcardUnitName(question) {
+  return (
+    normalizeFlashcardText(
+      question.unit ?? question.unitName ?? question.lesson ?? question.chapter ?? question.section ?? question.category
+    ) || FLASHCARD_REMOTE_DEFAULT_UNIT
+  );
+}
+
+function normalizeRemoteFlashcardQuestion(question) {
+  const prompt = buildRemoteFlashcardPrompt(question);
+  if (!prompt) {
+    return null;
+  }
+
+  const answers = normalizeRemoteFlashcardAnswers(question);
+  return {
+    ...question,
+    q: prompt,
+    a: answers.length > 0 ? answers : question.a,
+    h: question.h ?? question.hint ?? question.note ?? question.explanation,
+    i: question.i ?? question.image ?? question.img ?? question.imageSrc ?? question.imageUrl,
+    iAlt: question.iAlt ?? question.imageAlt ?? question.alt,
+  };
+}
+
+function buildRemoteFlashcardPrompt(question) {
+  const basePrompt = normalizeFlashcardText(
+    question.q ?? question.question ?? question.prompt ?? question.contentText ?? stripFlashcardHtml(question.contentHtml)
+  );
+  const choices = Array.isArray(question.choices)
+    ? question.choices.map((choice) => normalizeFlashcardText(choice)).filter(Boolean)
+    : [];
+  if (choices.length === 0) {
+    return basePrompt;
+  }
+  const choiceText = choices.map((choice, index) => `${index + 1}. ${choice}`).join("\n");
+  if (!basePrompt) {
+    return choiceText;
+  }
+  return `${basePrompt}\n${choiceText}`;
+}
+
+function stripFlashcardHtml(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizeRemoteFlashcardAnswers(question) {
+  const answers = [];
+  const pushAnswer = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(pushAnswer);
+      return;
+    }
+    if (value == null) {
+      return;
+    }
+    if (typeof value === "number" && Array.isArray(question.choices)) {
+      pushAnswer(question.choices[value]);
+      return;
+    }
+    const text = normalizeFlashcardText(value);
+    if (text) {
+      answers.push(text);
+    }
+  };
+
+  pushAnswer(question.correctAnswers);
+  pushAnswer(question.correctAnswer);
+  pushAnswer(question.answers);
+  pushAnswer(question.a);
+  if (answers.length === 0) {
+    pushAnswer(question.answer);
+    pushAnswer(question.answerIndex);
+    pushAnswer(question.correctChoiceIndex);
+  }
+
+  return Array.from(new Set(answers));
+}
+
+function isFlashcardDatasetObject(value) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.values(value).some((cards) => Array.isArray(cards))
+  );
+}
+
+function collectFlashcardDecks(remoteDecks = []) {
+  const safeRemoteDecks = Array.isArray(remoteDecks) ? remoteDecks.filter(Boolean) : [];
+  const remoteDeckIds = new Set(safeRemoteDecks.map((deck) => deck.id).filter(Boolean));
+  const localDecks = FLASHCARD_DATASET_SOURCES.map((source) => normalizeFlashcardDeck(source, source.resolve()))
+    .filter(Boolean)
+    .filter((deck) => !remoteDeckIds.has(deck.id));
+  return safeRemoteDecks.concat(localDecks);
 }
 
 function normalizeFlashcardDeck(source, dataset) {
@@ -1423,7 +3037,7 @@ function normalizeFlashcardCard(rawCard, sourceId, unitIndex, cardIndex) {
   if (!rawCard || typeof rawCard !== "object") {
     return null;
   }
-  const prompt = normalizeFlashcardText(rawCard.q ?? rawCard.question ?? rawCard.prompt);
+  const prompt = normalizeFlashcardText(rawCard.q ?? rawCard.question ?? rawCard.prompt ?? rawCard.contentText);
   if (!prompt) {
     return null;
   }
@@ -1432,8 +3046,14 @@ function normalizeFlashcardCard(rawCard, sourceId, unitIndex, cardIndex) {
   return {
     id: `${sourceId}-u${unitIndex + 1}-c${cardIndex + 1}`,
     prompt,
-    imageSrc: resolveFlashcardImageSrc(rawCard.i ?? rawCard.image ?? rawCard.img),
+    imageSrc: resolveFlashcardImageSrc(
+      rawCard.i ?? rawCard.image ?? rawCard.img ?? rawCard.imageSrc ?? rawCard.imageUrl
+    ),
     imageAlt: normalizeFlashcardText(rawCard.iAlt ?? rawCard.imageAlt ?? rawCard.alt),
+    preKnowledge: normalizeFlashcardText(
+      rawCard.preKnowledge ?? rawCard.pre ?? rawCard.before ?? rawCard.knowledge ?? rawCard.k
+    ),
+    hint: normalizeFlashcardText(rawCard.h ?? rawCard.hint ?? rawCard.note ?? rawCard.explanation),
     answers,
   };
 }
@@ -1444,10 +3064,21 @@ function normalizeFlashcardAnswers(rawCard) {
     sourceAnswers = rawCard.a;
   } else if (Array.isArray(rawCard.answers)) {
     sourceAnswers = rawCard.answers;
+  } else if (Array.isArray(rawCard.correctAnswers)) {
+    sourceAnswers = rawCard.correctAnswers;
   } else if (rawCard.a != null) {
     sourceAnswers = [rawCard.a];
+  } else if (rawCard.correctAnswer != null) {
+    sourceAnswers = [rawCard.correctAnswer];
   } else if (rawCard.answer != null) {
-    sourceAnswers = [rawCard.answer];
+    sourceAnswers =
+      typeof rawCard.answer === "number" && Array.isArray(rawCard.choices)
+        ? [rawCard.choices[rawCard.answer]]
+        : [rawCard.answer];
+  } else if (rawCard.answerIndex != null && Array.isArray(rawCard.choices)) {
+    sourceAnswers = [rawCard.choices[rawCard.answerIndex]];
+  } else if (rawCard.correctChoiceIndex != null && Array.isArray(rawCard.choices)) {
+    sourceAnswers = [rawCard.choices[rawCard.correctChoiceIndex]];
   }
 
   const answers = sourceAnswers.map((answer) => normalizeFlashcardText(answer)).filter(Boolean);
@@ -1513,21 +3144,73 @@ function getFlashcardSeriesList() {
   })).filter((series) => series.id && series.label);
 }
 
+function getFlashcardSubjectCatalogEntry(subjectId) {
+  const normalizedSubjectId = normalizeFlashcardText(subjectId);
+  if (!normalizedSubjectId) {
+    return null;
+  }
+
+  for (const series of FLASHCARD_SERIES_CATALOG) {
+    const seriesId = normalizeFlashcardText(series.id);
+    const seriesLabel = normalizeFlashcardText(series.label);
+    const subject = (series.subjects || []).find((item) => normalizeFlashcardText(item.id) === normalizedSubjectId);
+    if (subject) {
+      return {
+        id: normalizedSubjectId,
+        label: normalizeFlashcardText(subject.label),
+        seriesId,
+        seriesLabel,
+      };
+    }
+  }
+
+  return null;
+}
+
+function getFlashcardSubjectCatalogEntryByLabel(label) {
+  const normalizedLabel = normalizeFlashcardText(label);
+  if (!normalizedLabel) {
+    return null;
+  }
+
+  for (const series of FLASHCARD_SERIES_CATALOG) {
+    const subject = (series.subjects || []).find((item) => normalizeFlashcardText(item.label) === normalizedLabel);
+    if (subject) {
+      return getFlashcardSubjectCatalogEntry(subject.id);
+    }
+  }
+
+  return null;
+}
+
 function getFlashcardSubjectsInSeries(seriesId) {
   const normalizedSeriesId = normalizeFlashcardText(seriesId);
   if (!normalizedSeriesId) {
     return [];
   }
   const series = FLASHCARD_SERIES_CATALOG.find((item) => normalizeFlashcardText(item.id) === normalizedSeriesId);
-  if (!series || !Array.isArray(series.subjects)) {
-    return [];
-  }
-  return series.subjects
-    .map((subject) => ({
-      id: normalizeFlashcardText(subject.id),
-      label: normalizeFlashcardText(subject.label),
-    }))
-    .filter((subject) => subject.id && subject.label);
+  const catalogSubjects =
+    series && Array.isArray(series.subjects)
+      ? series.subjects.map((subject) => ({
+          id: normalizeFlashcardText(subject.id),
+          label: normalizeFlashcardText(subject.label),
+        }))
+      : [];
+  const subjects = catalogSubjects.filter((subject) => subject.id && subject.label);
+  const subjectIds = new Set(subjects.map((subject) => subject.id));
+
+  getFlashcardDecksInSeries(normalizedSeriesId).forEach((deck) => {
+    if (!deck.id || subjectIds.has(deck.id)) {
+      return;
+    }
+    subjects.push({
+      id: deck.id,
+      label: deck.label || deck.id,
+    });
+    subjectIds.add(deck.id);
+  });
+
+  return subjects;
 }
 
 function getFlashcardDecksInSeries(seriesId) {
@@ -1756,10 +3439,6 @@ function startFlashcardBookUseAnimation(seriesId, deckId) {
       deckId: normalizedDeckId,
       phase: "open",
     });
-    flashcardState.selectedDeckId = normalizedDeckId;
-    flashcardState.selectedUnitId = "";
-    flashcardState.cardIndex = 0;
-    flashcardState.answerVisible = false;
     renderFlashcardPanel();
   }, FLASHCARD_BOOK_USE_EXIT_ANIMATION_MS + FLASHCARD_BOOK_USE_DROP_ANIMATION_MS);
 
@@ -1768,6 +3447,10 @@ function startFlashcardBookUseAnimation(seriesId, deckId) {
     if (!animationState || animationState.deckId !== normalizedDeckId) {
       return;
     }
+    flashcardState.selectedDeckId = normalizedDeckId;
+    flashcardState.selectedUnitId = "";
+    flashcardState.cardIndex = 0;
+    flashcardState.answerVisible = false;
     flashcardBookUseAnimationBySeries.delete(normalizedSeriesId);
     flashcardBookUseTimerBySeries.delete(normalizedSeriesId);
     renderFlashcardPanel();
@@ -1995,6 +3678,7 @@ function renderFlashcardPanel() {
   const isBookUseTransitionPhase =
     transitionPhase === "exit" ||
     transitionPhase === "drop" ||
+    transitionPhase === "open" ||
     transitionPhase === "putaway-exit" ||
     transitionPhase === "putaway-drop";
   const hasActiveDeck = Boolean(normalizeFlashcardText(flashcardState.selectedDeckId));
@@ -2193,7 +3877,7 @@ function renderFlashcardSubjectButtons(subjects, decks, activeDeckId) {
       const putAwayButton = document.createElement("button");
       putAwayButton.type = "button";
       putAwayButton.className = "flashcard-book-putaway-btn";
-      putAwayButton.dataset.flashcardBookLift = "1";
+      putAwayButton.dataset.flashcardBookPutaway = "1";
       putAwayButton.dataset.flashcardDeckId = subjectId;
       putAwayButton.textContent = "この教材をしまう";
       putAwayButton.setAttribute("aria-label", `${subject.label}をしまう`);
@@ -2451,7 +4135,7 @@ function setFlashcardFocusMode(nextValue) {
 
 function renderFlashcardFocusMode() {
   const shouldEnableFlashcard = isFlashcardFocusMode && activeScreen === "mypage" && activeMypagePage === "top";
-  const shouldEnableTimer = isSelfcheckTimerFocusMode && activeScreen === "mypage" && activeMypagePage === "selfcheck";
+  const shouldEnableTimer = isSelfcheckTimerFocusMode && activeScreen === "learn";
   if (shouldEnableFlashcard || shouldEnableTimer) {
     closeMypageSubmenu();
   }
@@ -2636,17 +4320,27 @@ function animateReviewCoinValue(fromValue, toValue) {
   reviewCoinAnimationFrameId = window.requestAnimationFrame(tick);
 }
 
-function openMypageCustomizeFromCoinBoard() {
+function openStoreFromCoinBoard() {
+  closeInfoMenu();
   closeMypageSubmenu();
   if (!state.auth.isLoggedIn) {
     promptLoginForMypage();
     return;
   }
-  activateScreen("mypage");
-  setMypagePage("customize");
+  activateScreen("notice");
 }
 
 function renderMypageSettings() {
+  if (elements.authLoginStatusText) {
+    if (!state.auth.isLoggedIn) {
+      elements.authLoginStatusText.textContent = "未ログイン";
+    } else if (state.auth.provider === "guest") {
+      elements.authLoginStatusText.textContent = "Guest Mode";
+    } else {
+      elements.authLoginStatusText.textContent = "ログイン中";
+    }
+  }
+
   if (elements.authEmailText) {
     elements.authEmailText.textContent =
       state.auth.isLoggedIn && state.auth.provider !== "guest" ? state.auth.email ?? "未設定" : "未設定";
@@ -2781,10 +4475,56 @@ function unlockThemeWithCoin(themeKey) {
     return;
   }
 
-  const shouldUnlock = window.confirm(
-    `「${getThemeDisplayName(themeKey)}」を${THEME_UNLOCK_COST}コインで解放しますか？\n現在の所持コイン: ${state.reviewCoin}`
-  );
-  if (!shouldUnlock) {
+  pendingThemeUnlockKey = themeKey;
+  if (!elements.themeUnlockDialog || typeof elements.themeUnlockDialog.showModal !== "function") {
+    const shouldUnlock = window.confirm(
+      `「${getThemeDisplayName(themeKey)}」を${THEME_UNLOCK_COST}コインで解放しますか？\n現在の所持コイン: ${state.reviewCoin}`
+    );
+    if (!shouldUnlock) {
+      pendingThemeUnlockKey = null;
+      return;
+    }
+    proceedThemeUnlock(themeKey);
+    return;
+  }
+
+  if (elements.themeUnlockName) {
+    elements.themeUnlockName.textContent = getThemeDisplayName(themeKey);
+  }
+  if (elements.themeUnlockCost) {
+    elements.themeUnlockCost.textContent = String(THEME_UNLOCK_COST);
+  }
+  if (elements.themeUnlockCurrentCoin) {
+    elements.themeUnlockCurrentCoin.textContent = REVIEW_COIN_FORMATTER.format(state.reviewCoin);
+  }
+  if (!elements.themeUnlockDialog.open) {
+    elements.themeUnlockDialog.showModal();
+  }
+}
+
+function handleThemeUnlockDialogAction(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "cancel") {
+    closeThemeUnlockDialog();
+    pendingThemeUnlockKey = null;
+    return;
+  }
+  if (normalizedAction === "purchase") {
+    const themeKey = pendingThemeUnlockKey;
+    closeThemeUnlockDialog();
+    proceedThemeUnlock(themeKey);
+  }
+}
+
+function closeThemeUnlockDialog() {
+  if (elements.themeUnlockDialog?.open) {
+    elements.themeUnlockDialog.close();
+  }
+}
+
+function proceedThemeUnlock(themeKey) {
+  pendingThemeUnlockKey = null;
+  if (!PREMIUM_THEMES.includes(themeKey) || state.reviewCoin < THEME_UNLOCK_COST) {
     return;
   }
 
@@ -3075,53 +4815,6 @@ function decodeBase64Bytes(base64Text) {
   return bytes;
 }
 
-function openTextResetDialog() {
-  if (!elements.textResetDialog || typeof elements.textResetDialog.showModal !== "function") {
-    return;
-  }
-  if (elements.textResetDialog.open) {
-    return;
-  }
-  elements.textResetDialog.showModal();
-}
-
-function resetTextSettingByAction(action) {
-  const current = state.settings.text;
-  switch (action) {
-    case "size":
-      state.settings.text = {
-        ...current,
-        size: DEFAULT_TEXT_SETTINGS.size,
-      };
-      break;
-    case "weight":
-      state.settings.text = {
-        ...current,
-        weight: DEFAULT_TEXT_SETTINGS.weight,
-      };
-      break;
-    case "spacing":
-      state.settings.text = {
-        ...current,
-        spacing: DEFAULT_TEXT_SETTINGS.spacing,
-      };
-      break;
-    case "all":
-      state.settings.text = { ...DEFAULT_TEXT_SETTINGS };
-      break;
-    default:
-      return;
-  }
-
-  state.settings.text = normalizeTextSettings(state.settings.text);
-  applyTypographySettings();
-  saveState();
-  renderTextSettingIndicators();
-  if (elements.textResetDialog?.open) {
-    elements.textResetDialog.close();
-  }
-}
-
 function applyTheme(theme, options = {}) {
   const normalizedTheme = normalizeTheme(theme);
   if (options.withFade && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -3162,6 +4855,34 @@ function setThemeAttribute(theme) {
   document.body.setAttribute("data-theme", theme);
 }
 
+function toggleInfoMenu() {
+  if (isInfoMenuOpen()) {
+    closeInfoMenu();
+    return;
+  }
+  openInfoMenu();
+}
+
+function isInfoMenuOpen() {
+  return Boolean(elements.infoMenuPanel && !elements.infoMenuPanel.hidden);
+}
+
+function openInfoMenu() {
+  if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
+    return;
+  }
+  elements.infoMenuPanel.hidden = false;
+  elements.infoMenuTrigger.setAttribute("aria-expanded", "true");
+}
+
+function closeInfoMenu() {
+  if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
+    return;
+  }
+  elements.infoMenuPanel.hidden = true;
+  elements.infoMenuTrigger.setAttribute("aria-expanded", "false");
+}
+
 function toggleMypageSubmenu() {
   if (isMypageSubmenuOpen()) {
     closeMypageSubmenu();
@@ -3190,6 +4911,53 @@ function closeMypageSubmenu() {
   elements.mypageNavButton?.setAttribute("aria-expanded", "false");
 }
 
+function setSettingsTab(tab) {
+  const normalizedTab = normalizeSettingsTab(tab);
+  activeSettingsTab = normalizedTab;
+
+  elements.settingsTabButtons.forEach((button) => {
+    const isActive = button.dataset.settingsTab === normalizedTab;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+    button.tabIndex = isActive ? 0 : -1;
+  });
+
+  elements.settingsTabPanels.forEach((panel) => {
+    const isActive = panel.dataset.settingsPanel === normalizedTab;
+    panel.classList.toggle("is-active", isActive);
+    panel.hidden = !isActive;
+  });
+}
+
+function handleSettingsTabKeydown(event) {
+  const currentIndex = elements.settingsTabButtons.findIndex((button) => button === event.currentTarget);
+  if (currentIndex < 0) {
+    return;
+  }
+
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowRight") {
+    nextIndex = (currentIndex + 1) % elements.settingsTabButtons.length;
+  } else if (event.key === "ArrowLeft") {
+    nextIndex = (currentIndex - 1 + elements.settingsTabButtons.length) % elements.settingsTabButtons.length;
+  } else if (event.key === "Home") {
+    nextIndex = 0;
+  } else if (event.key === "End") {
+    nextIndex = elements.settingsTabButtons.length - 1;
+  } else {
+    return;
+  }
+
+  event.preventDefault();
+  const nextButton = elements.settingsTabButtons[nextIndex];
+  setSettingsTab(nextButton?.dataset.settingsTab);
+  nextButton?.focus();
+}
+
+function normalizeSettingsTab(tab) {
+  return SETTINGS_TAB_IDS.includes(tab) ? tab : "account";
+}
+
 function setMypagePage(page) {
   const normalizedPage = normalizeMypagePage(page);
   activeMypagePage = normalizedPage;
@@ -3201,10 +4969,8 @@ function setMypagePage(page) {
     section.style.display = isActive ? "grid" : "none";
   });
 
-  if (normalizedPage === "selfcheck") {
-    renderSelfcheckCalendar();
-  }
   if (normalizedPage !== "top") {
+    clearAllFlashcardBookIntentTimers();
     setFlashcardPanelBookDimmed(false);
   }
 
@@ -3403,6 +5169,7 @@ function renderDailyLogin() {
   const count = Object.keys(state.loginDays).length;
   const displayCount = Math.max(1, count);
   const cycleDay = ((displayCount - 1) % 7) + 1;
+  const isCurrentDayOne = cycleDay === 1;
   const windowRadius = getDailyLoginWindowRadius();
   const windowSize = windowRadius * 2 + 1;
   const currentSlot = windowRadius;
@@ -3440,12 +5207,14 @@ function renderDailyLogin() {
       label.classList.toggle("is-visible", Boolean(slot && slot.day != null));
       label.classList.toggle("is-active", Boolean(slot?.isCurrent));
       label.classList.toggle("is-faded", Boolean(slot?.isFaded && slot.day !== null));
+      label.classList.toggle("is-digit-one", Boolean(slot?.day === 1));
     });
   }
 
   if (elements.dailyLoginTrack) {
     elements.dailyLoginTrack.style.setProperty("--daily-login-track-start", `${lineStartPercent}%`);
     elements.dailyLoginTrack.style.setProperty("--daily-login-track-end", `${lineEndPercent}%`);
+    elements.dailyLoginTrack.classList.toggle("is-digit-one", isCurrentDayOne);
   }
 
   if (elements.dailyLoginProgressFill) {
@@ -3456,6 +5225,7 @@ function renderDailyLogin() {
   if (elements.dailyLoginCurrentNode) {
     elements.dailyLoginCurrentNode.style.left = `${currentPercent}%`;
     elements.dailyLoginCurrentNode.hidden = false;
+    elements.dailyLoginCurrentNode.classList.toggle("is-digit-one", isCurrentDayOne);
   }
 
   renderDailyLoginNode(elements.dailyLoginPrevOuterNode, slots[currentSlot - 3], windowSize);

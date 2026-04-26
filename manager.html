@@ -1,0 +1,2376 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Review Manager</title>
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has("code") && params.has("state")) {
+          return;
+        }
+        try {
+          const raw = window.localStorage.getItem("the-review-quest-v1");
+          const saved = raw ? JSON.parse(raw) : null;
+          if (!saved?.auth?.isLoggedIn) {
+            window.location.replace("./login.html");
+          }
+        } catch {
+          window.location.replace("./login.html");
+        }
+      })();
+    </script>
+    <link rel="icon" type="image/png" href="./assets/favicon/favicon.png?v=20260326-1" />
+    <link rel="apple-touch-icon" href="./assets/favicon/favicon.png?v=20260326-1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./app.css?v=20260423-1" />
+    <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
+    <style>
+      body.manager-page {
+        --bg-sky: #f1f1f1;
+        --bg-warm: #f3f3f3;
+        --bg-cool: #e6e6e6;
+        --panel: rgba(255, 255, 255, 0.96);
+        --panel-line: rgba(0, 0, 0, 0.14);
+        --text-main: #1d1d1d;
+        --text-soft: #1d1d1d;
+        --primary: #1d1d1d;
+        --primary-hover: #1d1d1d;
+        --danger: #1d1d1d;
+        --success: #1d1d1d;
+        --shadow: 0 16px 30px rgba(0, 0, 0, 0.12);
+      }
+
+      body.manager-page.mode-monochrome .screens {
+        filter: none;
+      }
+
+      body.manager-page .app-header {
+        background: #1d1d1d;
+      }
+
+      body.manager-page .app-logo.manager-logo {
+        width: clamp(270px, 27vw, 375px);
+        top: 1.5rem;
+      }
+
+      body.manager-page .top-nav.manager-nav {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 0.32rem;
+        width: min(560px, 100%);
+        padding: 0.45rem;
+        border-radius: 18px;
+      }
+
+      body.manager-page .manager-nav .top-nav-item {
+        width: auto;
+        min-height: 58px;
+        border-radius: 14px;
+        padding: 0.44rem 0.2rem;
+        font-size: 0.74rem;
+        line-height: 1.2;
+        text-align: center;
+      }
+
+      body.manager-page .manager-nav .top-nav-item.is-active {
+        color: #ffffff;
+        background: #1d1d1d;
+      }
+
+      body.manager-page .manager-home-grid {
+        margin-top: 0.9rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.9rem;
+      }
+
+      body.manager-page .manager-home-card {
+        text-align: left;
+      }
+
+      body.manager-page .manager-home-card h3 {
+        font-size: 1rem;
+      }
+
+      body.manager-page .manager-home-card p {
+        margin: 0.5rem 0 0.86rem;
+        color: var(--text-soft);
+        font-size: 0.88rem;
+      }
+
+      body.manager-page .manager-screen-grid {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      body.manager-page .problem-workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 0.9rem;
+      }
+
+      body.manager-page .problem-list-panel {
+        position: static;
+      }
+
+      body.manager-page .problem-list-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin: -1rem -1rem 0.75rem;
+        padding: 0.46rem 1rem;
+      }
+
+      body.manager-page .problem-list-header h2 {
+        margin: 0;
+      }
+
+      body.manager-page .problem-list-updated {
+        color: #555555;
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      body.manager-page .published-question-layout {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
+        gap: 0.82rem;
+        align-items: start;
+      }
+
+      body.manager-page .published-filter-block {
+        display: grid;
+        gap: 0.56rem;
+      }
+
+      body.manager-page .published-filter-block label,
+      body.manager-page .published-question-main label {
+        display: grid;
+        gap: 0.32rem;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .published-filter-block select,
+      body.manager-page .published-question-main select {
+        width: 100%;
+        min-width: 0;
+        border: 1px solid rgba(0, 0, 0, 0.22);
+        border-radius: 11px;
+        background: #ffffff;
+        color: #1d1d1d;
+        font: inherit;
+        padding: 0.58rem 0.68rem;
+      }
+
+      body.manager-page .published-note-menu {
+        display: grid;
+        gap: 0.36rem;
+      }
+
+      body.manager-page .published-note-button {
+        width: 100%;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 11px;
+        background: #ffffff;
+        color: #1d1d1d;
+        padding: 0.5rem 0.58rem;
+        text-align: left;
+        font-weight: 700;
+      }
+
+      body.manager-page .published-note-button.is-active {
+        background: #1d1d1d;
+        color: #ffffff;
+      }
+
+      body.manager-page .published-question-main {
+        display: grid;
+        gap: 0.62rem;
+        min-width: 0;
+      }
+
+      body.manager-page .problem-section-head {
+        display: grid;
+        align-items: start;
+        gap: 0.9rem;
+        margin-bottom: 0.72rem;
+      }
+
+      body.manager-page .problem-section-head h2,
+      body.manager-page .problem-section-head p {
+        margin-bottom: 0;
+      }
+
+      body.manager-page .problem-stepper {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.42rem;
+      }
+
+      body.manager-page .problem-step {
+        display: flex;
+        align-items: center;
+        gap: 0.42rem;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 11px;
+        background: #f6f6f6;
+        padding: 0.42rem 0.5rem;
+        color: #1d1d1d;
+        font-size: 0.78rem;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      body.manager-page .problem-step.is-active {
+        border-color: #1d1d1d;
+        background: #eaeaea;
+      }
+
+      body.manager-page .problem-step.is-complete {
+        background: #ffffff;
+      }
+
+      body.manager-page .problem-step-number {
+        flex: 0 0 auto;
+        width: 1.45rem;
+        height: 1.45rem;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: #1d1d1d;
+        color: #ffffff;
+        font-size: 0.78rem;
+      }
+
+      body.manager-page .manager-field-grid {
+        display: grid;
+        gap: 0.68rem;
+      }
+
+      body.manager-page .problem-compose-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 0.86rem;
+      }
+
+      body.manager-page .problem-form-main {
+        display: grid;
+        gap: 0.72rem;
+      }
+
+      body.manager-page .problem-fieldset {
+        display: grid;
+        gap: 0.66rem;
+        margin: 0;
+        padding: 0.78rem;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 13px;
+        background: #fbfbfb;
+      }
+
+      body.manager-page .problem-fieldset legend {
+        padding: 0 0.25rem;
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .problem-field-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.62rem;
+      }
+
+      body.manager-page .field-block {
+        display: grid;
+        gap: 0.32rem;
+        min-width: 0;
+      }
+
+      body.manager-page .field-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .field-help {
+        margin: 0;
+        color: #555555;
+        font-size: 0.76rem;
+        line-height: 1.45;
+      }
+
+      body.manager-page .field-badge {
+        flex: 0 0 auto;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        padding: 0.12rem 0.42rem;
+        background: #eeeeee;
+        color: #1d1d1d;
+        font-size: 0.68rem;
+        font-weight: 800;
+      }
+
+      body.manager-page .field-badge.is-optional {
+        background: #ffffff;
+        color: #555555;
+      }
+
+      body.manager-page .manager-field-grid label {
+        display: grid;
+        gap: 0.32rem;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .manager-field-grid .field-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      body.manager-page .manager-field-grid input,
+      body.manager-page .manager-field-grid select,
+      body.manager-page .manager-field-grid textarea {
+        width: 100%;
+        min-width: 0;
+        border: 1px solid rgba(0, 0, 0, 0.22);
+        border-radius: 11px;
+        background: #ffffff;
+        color: #1d1d1d;
+        font: inherit;
+        padding: 0.58rem 0.68rem;
+      }
+
+      body.manager-page .manager-field-grid input[type="file"] {
+        padding: 0.4rem 0.5rem;
+        background: #f7f7f7;
+      }
+
+      body.manager-page .manager-field-grid textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      body.manager-page .image-picker {
+        display: grid;
+        gap: 0.38rem;
+        border: 1px dashed rgba(0, 0, 0, 0.28);
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 0.62rem;
+      }
+
+      body.manager-page .image-picker-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      body.manager-page .image-picker-filename {
+        min-height: 1.2em;
+        margin: 0;
+        color: #555555;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      body.manager-page .white-button,
+      body.manager-page .problem-action-row .secondary,
+      body.manager-page .manager-dialog-actions .secondary {
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        background: #ffffff;
+        color: #1d1d1d;
+        font-weight: 700;
+      }
+
+      body.manager-page .problem-preview-panel {
+        position: sticky;
+        top: 7.2rem;
+        display: grid;
+        gap: 0.62rem;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 13px;
+        background: #f8f8f8;
+        padding: 0.78rem;
+      }
+
+      body.manager-page .problem-preview-panel h3 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      body.manager-page .problem-preview-list {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.34rem 0.54rem;
+        margin: 0;
+        font-size: 0.78rem;
+      }
+
+      body.manager-page .problem-preview-list dt {
+        color: #555555;
+        font-weight: 700;
+      }
+
+      body.manager-page .problem-preview-list dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-weight: 700;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .problem-preview-content {
+        margin: 0;
+        min-height: 5.2rem;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 0.58rem 0.64rem;
+        color: #1d1d1d;
+        font-size: 0.82rem;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      body.manager-page .problem-preview-content.is-empty {
+        color: #666666;
+      }
+
+      body.manager-page .problem-form-status {
+        margin: 0;
+        border-radius: 10px;
+        background: #eeeeee;
+        padding: 0.5rem 0.58rem;
+        color: #1d1d1d;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      body.manager-page .problem-action-row {
+        position: sticky;
+        bottom: 0.75rem;
+        z-index: 3;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.94);
+        padding: 0.62rem;
+        backdrop-filter: blur(8px);
+      }
+
+      body.manager-page .editor-shell {
+        border: 1px solid rgba(0, 0, 0, 0.26);
+        border-radius: 12px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      body.manager-page .editor-shell:focus-within {
+        box-shadow: 0 0 0 2px rgba(29, 29, 29, 0.24);
+      }
+
+      body.manager-page .editor-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+        padding: 0.48rem 0.56rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+        background: #f7f7f7;
+      }
+
+      body.manager-page .editor-tool-btn {
+        min-width: 2.35rem;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.24);
+        background: #f4f4f4;
+        color: #1d1d1d;
+        font-weight: 700;
+      }
+
+      body.manager-page .editor-tool-btn:hover {
+        background: #e8e8e8;
+      }
+
+      body.manager-page .editor-surface {
+        min-height: 170px;
+        border: 0;
+        border-radius: 0;
+        background: #ffffff;
+        color: #1d1d1d;
+        padding: 0.7rem 0.72rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      body.manager-page .editor-surface:focus {
+        outline: none;
+      }
+
+      body.manager-page .editor-surface:empty::before {
+        content: attr(data-placeholder);
+        color: #1d1d1d;
+      }
+
+      body.manager-page .editor-footer {
+        border-top: 1px dashed rgba(0, 0, 0, 0.16);
+        background: #fafafa;
+        padding: 0.3rem 0.58rem 0.34rem;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      body.manager-page .editor-counter {
+        margin: 0;
+        font-size: 0.77rem;
+        color: #1d1d1d;
+        text-align: right;
+      }
+
+      body.manager-page .problem-image-preview-wrap {
+        margin-top: 0.42rem;
+        display: grid;
+        gap: 0.36rem;
+      }
+
+      body.manager-page .problem-image-preview {
+        display: block;
+        width: 100%;
+        max-height: 230px;
+        object-fit: contain;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 10px;
+        background: #ffffff;
+      }
+
+      body.manager-page .problem-image-meta {
+        margin: 0;
+        font-size: 0.78rem;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .problem-image-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      body.manager-page .manager-dialog-image {
+        display: block;
+        width: 100%;
+        max-height: min(56vh, 420px);
+        object-fit: contain;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 10px;
+        background: #ffffff;
+      }
+
+      body.manager-page .text-reset-dialog {
+        width: min(520px, calc(100vw - 2rem));
+      }
+
+      body.manager-page .manager-dialog-summary {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.34rem 0.6rem;
+        margin: 0;
+        font-size: 0.84rem;
+      }
+
+      body.manager-page .manager-dialog-summary dt {
+        color: #555555;
+        font-weight: 700;
+      }
+
+      body.manager-page .manager-dialog-summary dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-weight: 700;
+      }
+
+      body.manager-page .manager-dialog-content {
+        max-height: 28vh;
+        overflow: auto;
+        margin: 0;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 0.58rem 0.64rem;
+        white-space: pre-wrap;
+      }
+
+      body.manager-page .manager-dialog-actions {
+        display: grid;
+        gap: 0.44rem;
+      }
+
+      body.manager-page .manager-question-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      body.manager-page .manager-question-item {
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        background: #f9f9f9;
+        padding: 0.58rem 0.68rem;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.58rem;
+        position: relative;
+        transition: box-shadow 160ms ease, opacity 160ms ease;
+        will-change: transform;
+      }
+
+      body.manager-page .published-question-main .manager-question-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      body.manager-page .manager-question-item.is-dragging {
+        opacity: 0.35;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+      }
+
+      body.manager-page .manager-question-main {
+        min-width: 0;
+      }
+
+      body.manager-page .manager-question-title {
+        margin: 0;
+        font-weight: 700;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .manager-question-meta {
+        margin: 0.18rem 0 0;
+        font-size: 0.82rem;
+        color: #1d1d1d;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      body.manager-page .manager-empty-note {
+        margin: 0;
+        color: #1d1d1d;
+      }
+
+      body.manager-page .drag-handle {
+        appearance: none;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 9px;
+        background: #ededed;
+        width: 1.95rem;
+        height: 2.1rem;
+        padding: 0;
+        display: grid;
+        place-items: center;
+        cursor: move;
+      }
+
+      body.manager-page .drag-handle::before {
+        content: "";
+        width: 12px;
+        height: 16px;
+        display: block;
+        background: radial-gradient(circle, #1d1d1d 1.2px, transparent 1.3px) 0 0 / 6px 6px;
+      }
+
+      body.manager-page .status-chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0.23rem 0.55rem;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        background: #ebebeb;
+        color: #1d1d1d;
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      body.manager-page .status-chip.approved {
+        background: #dddddd;
+      }
+
+      body.manager-page .status-chip.pending {
+        background: #f2f2f2;
+      }
+
+      body.manager-page .status-chip.draft {
+        background: #f5f5f5;
+      }
+
+      body.manager-page .status-chip.rejected {
+        background: #d7d7d7;
+      }
+
+      body.manager-page .manager-info-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 0.44rem;
+      }
+
+      body.manager-page .manager-info-list li {
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 10px;
+        background: #f7f7f7;
+        padding: 0.58rem 0.68rem;
+      }
+
+      body.manager-page .notice-preparing {
+        min-height: 42vh;
+        display: grid;
+        place-items: center;
+        text-align: center;
+      }
+
+      body.manager-page .notice-preparing h2 {
+        margin: 0;
+        font-size: 1.35rem;
+      }
+
+      body.manager-page .profile-card {
+        display: grid;
+        grid-template-columns: minmax(120px, 0.38fr) minmax(0, 1fr);
+        gap: 0.95rem;
+        align-items: stretch;
+      }
+
+      body.manager-page .profile-character {
+        min-height: 220px;
+        display: grid;
+        place-items: end center;
+        overflow: hidden;
+      }
+
+      body.manager-page .profile-character img {
+        display: block;
+        width: min(210px, 100%);
+        height: auto;
+      }
+
+      body.manager-page .profile-details {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        gap: 0.7rem;
+      }
+
+      body.manager-page .profile-info-block {
+        display: grid;
+        align-content: center;
+        gap: 0.32rem;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 0.8rem;
+      }
+
+      body.manager-page .profile-info-label {
+        margin: 0;
+        color: #555555;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      body.manager-page .profile-info-value {
+        margin: 0;
+        color: #1d1d1d;
+        font-size: 1rem;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+      }
+
+      body.manager-page .hint-compact {
+        margin: 0.46rem 0 0;
+        color: #1d1d1d;
+        font-size: 0.82rem;
+      }
+
+      body.manager-page .api-base-line {
+        margin-top: 0.7rem;
+        font-size: 0.8rem;
+        color: #1d1d1d;
+      }
+
+      @media (max-width: 760px) {
+        body.manager-page .app-logo.manager-logo {
+          width: min(246px, 64vw);
+          max-width: none;
+          top: 0.875rem;
+        }
+      }
+
+      @media (max-width: 720px) {
+        body.manager-page .manager-home-grid {
+          grid-template-columns: 1fr;
+        }
+
+        body.manager-page .problem-compose-grid {
+          grid-template-columns: 1fr;
+        }
+
+        body.manager-page .published-question-layout,
+        body.manager-page .profile-card {
+          grid-template-columns: 1fr;
+        }
+
+        body.manager-page .problem-preview-panel {
+          position: static;
+        }
+      }
+
+      @media (min-width: 640px) {
+        body.manager-page .manager-dialog-actions {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        body.manager-page .manager-nav {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          row-gap: 0.36rem;
+          width: min(460px, calc(100% - 1rem));
+          bottom: max(0.45rem, env(safe-area-inset-bottom));
+        }
+
+        body.manager-page .problem-stepper,
+        body.manager-page .problem-field-row {
+          grid-template-columns: 1fr;
+        }
+
+        body.manager-page .problem-action-row {
+          position: static;
+        }
+      }
+    </style>
+  </head>
+  <body class="manager-page mode-monochrome" data-theme="the-paper">
+    <div id="appLoader" class="app-loader" role="status" aria-live="polite" aria-label="読み込み中">
+      <div class="loader-inner ball-scale" aria-hidden="true">
+        <div></div>
+      </div>
+    </div>
+    <div class="aurora aurora-left"></div>
+    <div class="aurora aurora-right"></div>
+
+    <header class="app-header">
+      <div class="header-info-block">
+        <button
+          id="infoMenuTrigger"
+          class="info-menu-trigger"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="infoMenuPanel"
+          aria-label="Informationメニューを開く"
+        >
+          <img class="review-coin-icon info-menu-icon" src="./private/icon/Information.png" alt="" aria-hidden="true" />
+        </button>
+        <section id="infoMenuPanel" class="info-menu-panel" aria-label="Informationメニュー" hidden>
+          <div class="info-menu-list">
+            <button class="info-menu-item" type="button" data-menu-link="home">ホームへ</button>
+            <button class="info-menu-item" type="button" data-menu-url="./index.html">The Reviewへ戻る</button>
+          </div>
+        </section>
+      </div>
+
+      <img class="app-logo manager-logo" src="./assets/logos/manager.png?v=20260326-1" alt="The Review Manager" />
+
+      <div class="header-menu-block">
+        <div class="review-coin-board" aria-label="Manager">
+          <strong class="review-coin-value">MANAGER</strong>
+        </div>
+
+        <nav class="top-nav manager-nav" aria-label="画面切替">
+          <button class="top-nav-item is-active" type="button" data-screen="home">
+            <span>ホーム</span>
+          </button>
+          <button class="top-nav-item" type="button" data-screen="problem">
+            <span>問題</span>
+          </button>
+          <button class="top-nav-item" type="button" data-screen="notice">
+            <span>お知らせ</span>
+          </button>
+          <button class="top-nav-item" type="button" data-screen="profile">
+            <span>プロフィール</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="screens">
+      <section id="screen-home" class="screen is-active">
+        <div class="panel">
+          <h2>ホーム</h2>
+          <p class="hint-text">ご希望の項目を選択してください。</p>
+          <div class="manager-home-grid">
+            <article class="panel manager-home-card">
+              <h3>問題を作成する</h3>
+              <p>問題の作成と提出ができます。</p>
+              <button class="primary" type="button" data-home-link="problem">開く</button>
+            </article>
+            <article class="panel manager-home-card">
+              <h3>お知らせを管理する</h3>
+              <p>お知らせの作成と提出ができます。</p>
+              <button class="primary" type="button" data-home-link="notice">開く</button>
+            </article>
+            <article class="panel manager-home-card">
+              <h3>プロフィール</h3>
+              <p>ログイン情報と権限情報を確認します。</p>
+              <button class="primary" type="button" data-home-link="profile">開く</button>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-problem" class="screen" hidden>
+        <div class="problem-workspace">
+          <section class="panel problem-list-panel">
+            <div class="problem-list-header">
+              <h2>配信している問題</h2>
+              <time id="questionListUpdatedAt" class="problem-list-updated" datetime="">最終更新: -</time>
+            </div>
+            <div class="published-question-layout">
+              <aside class="published-filter-block" aria-label="ノート選択">
+                <label class="field-block" for="publishedBinderSelect">
+                  <span class="field-label-row">バインダー</span>
+                  <select id="publishedBinderSelect"></select>
+                </label>
+                <div id="publishedNoteMenu" class="published-note-menu" role="listbox" aria-label="ノート"></div>
+              </aside>
+              <div class="published-question-main">
+                <label class="field-block" for="publishedChapterSelect">
+                  <span id="publishedChapterLabel" class="field-label-row">章</span>
+                  <select id="publishedChapterSelect"></select>
+                </label>
+                <ul id="createdQuestionList" class="manager-question-list" aria-label="配信している問題一覧"></ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel problem-composer-panel">
+            <div class="problem-section-head">
+              <div>
+                <h2>問題を作成する</h2>
+                <p class="hint-text">問題の種別わけを選び、問題を入力してから確認へ進みます。</p>
+              </div>
+              <ol class="problem-stepper" aria-label="作成手順">
+                <li class="problem-step is-active" data-problem-step="create"><span class="problem-step-number">1</span><span>問題の作成</span></li>
+                <li class="problem-step" data-problem-step="confirm"><span class="problem-step-number">2</span><span>確認</span></li>
+                <li class="problem-step" data-problem-step="submit"><span class="problem-step-number">3</span><span>提出</span></li>
+              </ol>
+            </div>
+            <form id="problemCreateForm" class="manager-field-grid">
+              <div class="problem-compose-grid">
+                <div class="problem-form-main">
+                  <fieldset class="problem-fieldset">
+                    <legend>問題の種別わけ</legend>
+                    <div class="problem-field-row">
+                      <div class="field-block">
+                        <label class="field-label-row" for="binderSelect">
+                          <span>バインダー</span>
+                          <span class="field-badge">必須</span>
+                        </label>
+                        <select id="binderSelect" name="binder" required></select>
+                      </div>
+                      <div class="field-block">
+                        <label class="field-label-row" for="noteSelect">
+                          <span>ノート</span>
+                          <span class="field-badge">必須</span>
+                        </label>
+                        <select id="noteSelect" name="note" required></select>
+                      </div>
+                    </div>
+                    <div class="problem-field-row">
+                      <div class="field-block">
+                        <label class="field-label-row" for="chapterSelect">
+                          <span id="chapterFieldLabel">章</span>
+                          <span class="field-badge">必須</span>
+                        </label>
+                        <select id="chapterSelect" name="chapter" required></select>
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset">
+                    <legend>問題</legend>
+                    <div class="field-block">
+                      <div class="field-label-row">
+                        <span>問題</span>
+                        <span class="field-badge">必須</span>
+                      </div>
+                      <div class="editor-shell">
+                        <div id="editorToolbar" class="editor-toolbar" role="toolbar" aria-label="内容エディター">
+                          <button class="editor-tool-btn" type="button" data-command="bold" aria-label="太字"><strong>B</strong></button>
+                          <button class="editor-tool-btn" type="button" data-command="italic" aria-label="斜体"><em>I</em></button>
+                          <button class="editor-tool-btn" type="button" data-command="underline" aria-label="下線"><u>U</u></button>
+                          <button class="editor-tool-btn" type="button" data-insert="choice">選択肢</button>
+                        </div>
+                        <div
+                          id="problemEditor"
+                          class="editor-surface"
+                          contenteditable="true"
+                          role="textbox"
+                          aria-multiline="true"
+                          aria-label="問題"
+                          data-placeholder="問題を入力してください（例: 次の文を読んで正しいものを選びなさい。）"
+                        ></div>
+                        <div class="editor-footer">
+                          <p class="editor-counter">
+                            単語数: <span id="editorWordCount">0</span> / 文字数: <span id="editorCharCount">0</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset">
+                    <legend>画像</legend>
+                    <div class="field-block">
+                      <label class="field-label-row" for="problemImageInput">
+                        <span>添付画像</span>
+                        <span class="field-badge is-optional">任意</span>
+                      </label>
+                      <div class="image-picker">
+                        <input id="problemImageInput" name="image" type="file" accept="image/*" hidden />
+                        <div class="image-picker-actions">
+                          <button id="selectProblemImageBtn" class="secondary white-button" type="button">画像を選択</button>
+                          <button id="viewProblemImageBtn" class="secondary white-button" type="button" disabled>画像を確認</button>
+                        </div>
+                        <p id="problemImageMeta" class="image-picker-filename"></p>
+                        <p class="field-help">図などが必要な場合は添付してください。</p>
+                      </div>
+                      <div id="problemImagePreviewWrap" class="problem-image-preview-wrap" hidden>
+                        <div class="problem-image-actions">
+                          <button id="clearProblemImageBtn" class="secondary white-button" type="button">画像を削除</button>
+                        </div>
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <div class="action-row problem-action-row">
+                    <button id="proofreadingSubmitBtn" class="primary" type="submit">問題の確認</button>
+                    <button id="saveProblemDraftBtn" class="secondary" type="button">下書き保存</button>
+                    <button id="resetProblemFormBtn" class="secondary" type="button">入力をクリア</button>
+                  </div>
+                  <p id="proofreadingFeedback" class="feedback" aria-live="polite"></p>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      </section>
+
+      <section id="screen-notice" class="screen" hidden>
+        <section class="panel notice-preparing">
+          <h2>準備中</h2>
+        </section>
+      </section>
+
+      <section id="screen-profile" class="screen" hidden>
+        <section class="panel profile-card">
+          <div class="profile-character" aria-hidden="true">
+            <img src="./private/avatar/らーん/らーん1-1.png?v=20260326-1" alt="" />
+          </div>
+          <div class="profile-details">
+            <div class="profile-info-block">
+              <p class="profile-info-label">表示名</p>
+              <p id="profileDisplayName" class="profile-info-value">未設定</p>
+            </div>
+            <div class="profile-info-block">
+              <p class="profile-info-label">役割</p>
+              <p class="profile-info-value">Manager</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="problemImageDialog" class="text-reset-dialog" aria-labelledby="problemImageDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="problemImageDialogTitle">添付画像</h3>
+        <img id="problemDialogImage" class="manager-dialog-image" alt="" />
+        <p id="problemDialogImageMeta"></p>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-image-dialog-action="close">閉じる</button>
+          <button id="dialogClearProblemImageBtn" class="secondary" type="button" data-image-dialog-action="clear">画像を削除</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="problemResetDialog" class="text-reset-dialog" aria-labelledby="problemResetDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="problemResetDialogTitle">入力をクリア</h3>
+        <p>入力中の内容を削除します。よろしいですか？</p>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-reset-dialog-action="cancel">キャンセル</button>
+          <button class="primary" type="button" data-reset-dialog-action="clear">クリア</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="problemConfirmDialog" class="text-reset-dialog" aria-labelledby="problemConfirmDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="problemConfirmDialogTitle">問題の確認</h3>
+        <dl class="manager-dialog-summary">
+          <dt>バインダー</dt>
+          <dd id="confirmProblemBinder">-</dd>
+          <dt>ノート</dt>
+          <dd id="confirmProblemNote">-</dd>
+          <dt>章</dt>
+          <dd id="confirmProblemChapter">-</dd>
+          <dt>画像</dt>
+          <dd id="confirmProblemImage">画像なし</dd>
+        </dl>
+        <p id="confirmProblemContent" class="manager-dialog-content"></p>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-confirm-dialog-action="cancel">戻る</button>
+          <button class="primary" type="button" data-confirm-dialog-action="submit">提出</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./auth0-config.js?v=20260326-1"></script>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
+    <script>
+      (() => {
+        const APP_STATE_KEY = "the-review-quest-v1";
+        const MANAGER_DRAFT_KEY = "the-review-manager-drafts-v1";
+        const MANAGER_OUTBOX_KEY = "the-review-manager-outbox-v1";
+        const MANAGER_API_BASE_KEY = "the-review-manager-api-base";
+        const DEFAULT_API_BASE = `${window.location.origin}/api/manager`;
+
+        const NOTE_BY_BINDER = {
+          "Reboot 1st Edition (JESH)": ["現代の国語", "言語文化", "論理・表現Ⅰ", "ＥＣⅠ", "公共", "保健"],
+          "Reboot 1st Edition (STIM)": ["数学Ⅰ", "数学Ａ", "物理基礎", "化学基礎", "生物基礎", "情報（工業情報数理）"],
+          "Refine 2nd Edition (JESH)": ["論理国語", "論理・表現Ⅱ", "ＥＣⅡ", "地理総合", "家庭基礎", "保健"],
+          "Refine 2nd Edition (MASC)": ["数学Ⅱ", "数学Ｃ", "数学Ｂ", "物理", "化学", "生物"],
+          "Refine 2nd Edition (STEAMI)": ["ＳＳ科学技術理論Ⅰ（１分野）", "ＳＳ科学技術理論Ⅰ（２分野）", "ＳＳ科学技術理論Ⅰ（３分野）"],
+          "On COLORFUL": ["朝学習テスト（１学年）", "朝学習テスト（２学年）"],
+        };
+
+        const DEFAULT_CHAPTER_CONFIG = {
+          label: "章",
+          options: ["共通"],
+        };
+
+        const CHAPTER_CONFIG_BY_NOTE = {
+          "現代の国語": { label: "章", options: createNumberedOptions("第", "章", 10) },
+          "言語文化": { label: "Part", options: createNumberedOptions("Part ", "", 8) },
+          "論理国語": { label: "章", options: createNumberedOptions("第", "章", 10) },
+          "数学Ⅰ": { label: "章", options: createNumberedOptions("第", "章", 8) },
+          "数学Ⅱ": { label: "章", options: createNumberedOptions("第", "章", 8) },
+          "数学Ａ": { label: "章", options: createNumberedOptions("第", "章", 8) },
+          "数学Ｂ": { label: "章", options: createNumberedOptions("第", "章", 8) },
+          "数学Ｃ": { label: "章", options: createNumberedOptions("第", "章", 8) },
+          "論理・表現Ⅰ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
+          "論理・表現Ⅱ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
+          "ＥＣⅠ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
+          "ＥＣⅡ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
+          "公共": { label: "章", options: createNumberedOptions("第", "章", 8) },
+          "地理総合": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
+          "物理": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
+          "化学": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
+          "生物": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
+        };
+
+        const STATUS_LABEL = {
+          draft: "下書き",
+          pending: "承認待ち",
+          approved: "公開済み",
+          rejected: "差し戻し",
+        };
+
+        const state = {
+          activeScreen: "home",
+          auth0Client: null,
+          drafts: loadJson(MANAGER_DRAFT_KEY, []),
+          auth: loadAuthSummary(),
+          draggingId: null,
+          lastDragOverKey: null,
+          problemImageData: null,
+          selectedListBinder: "",
+          selectedListNote: "",
+          selectedListChapter: "all",
+          pendingProblemDraft: null,
+          lastProblemStep: "create",
+        };
+
+        const elements = {
+          appLoader: document.getElementById("appLoader"),
+          infoMenuTrigger: document.getElementById("infoMenuTrigger"),
+          infoMenuPanel: document.getElementById("infoMenuPanel"),
+          menuItems: Array.from(document.querySelectorAll(".info-menu-item")),
+          screens: Array.from(document.querySelectorAll(".screen")),
+          navButtons: Array.from(document.querySelectorAll("[data-screen]")),
+          homeLinks: Array.from(document.querySelectorAll("[data-home-link]")),
+          publishedBinderSelect: document.getElementById("publishedBinderSelect"),
+          publishedNoteMenu: document.getElementById("publishedNoteMenu"),
+          publishedChapterSelect: document.getElementById("publishedChapterSelect"),
+          publishedChapterLabel: document.getElementById("publishedChapterLabel"),
+          questionListUpdatedAt: document.getElementById("questionListUpdatedAt"),
+          createdQuestionList: document.getElementById("createdQuestionList"),
+          problemCreateForm: document.getElementById("problemCreateForm"),
+          problemSteps: Array.from(document.querySelectorAll("[data-problem-step]")),
+          saveProblemDraftBtn: document.getElementById("saveProblemDraftBtn"),
+          resetProblemFormBtn: document.getElementById("resetProblemFormBtn"),
+          binderSelect: document.getElementById("binderSelect"),
+          noteSelect: document.getElementById("noteSelect"),
+          chapterSelect: document.getElementById("chapterSelect"),
+          chapterFieldLabel: document.getElementById("chapterFieldLabel"),
+          problemImageInput: document.getElementById("problemImageInput"),
+          selectProblemImageBtn: document.getElementById("selectProblemImageBtn"),
+          viewProblemImageBtn: document.getElementById("viewProblemImageBtn"),
+          problemImagePreviewWrap: document.getElementById("problemImagePreviewWrap"),
+          problemImageMeta: document.getElementById("problemImageMeta"),
+          clearProblemImageBtn: document.getElementById("clearProblemImageBtn"),
+          problemEditor: document.getElementById("problemEditor"),
+          editorToolbar: document.getElementById("editorToolbar"),
+          editorWordCount: document.getElementById("editorWordCount"),
+          editorCharCount: document.getElementById("editorCharCount"),
+          proofreadingFeedback: document.getElementById("proofreadingFeedback"),
+          profileDisplayName: document.getElementById("profileDisplayName"),
+          problemImageDialog: document.getElementById("problemImageDialog"),
+          problemDialogImage: document.getElementById("problemDialogImage"),
+          problemDialogImageMeta: document.getElementById("problemDialogImageMeta"),
+          imageDialogButtons: Array.from(document.querySelectorAll("[data-image-dialog-action]")),
+          problemResetDialog: document.getElementById("problemResetDialog"),
+          resetDialogButtons: Array.from(document.querySelectorAll("[data-reset-dialog-action]")),
+          problemConfirmDialog: document.getElementById("problemConfirmDialog"),
+          confirmProblemBinder: document.getElementById("confirmProblemBinder"),
+          confirmProblemNote: document.getElementById("confirmProblemNote"),
+          confirmProblemChapter: document.getElementById("confirmProblemChapter"),
+          confirmProblemImage: document.getElementById("confirmProblemImage"),
+          confirmProblemContent: document.getElementById("confirmProblemContent"),
+          confirmDialogButtons: Array.from(document.querySelectorAll("[data-confirm-dialog-action]")),
+        };
+
+        initialize();
+
+        function initialize() {
+          initializeMenu();
+          initializeNavigation();
+          pruneSeedDrafts();
+          initializePublishedFilters();
+          initializeProblemForm();
+          initializeQuestionListDnD();
+          renderQuestionList();
+          renderProfile();
+          renderProblemImagePreview();
+          updateEditorCounts();
+          window.setTimeout(() => {
+            if (elements.appLoader) {
+              elements.appLoader.style.display = "none";
+            }
+          }, 180);
+        }
+
+        function pruneSeedDrafts() {
+          const cleanedDrafts = state.drafts.filter((draft) => {
+            if (typeof draft?.id === "string" && draft.id.startsWith("seed-test-")) {
+              return false;
+            }
+            return !/^テスト0[1-3]$/.test(String(draft?.contentText || ""));
+          });
+          if (cleanedDrafts.length !== state.drafts.length) {
+            state.drafts = cleanedDrafts;
+            saveJson(MANAGER_DRAFT_KEY, state.drafts);
+          }
+        }
+
+        function initializeMenu() {
+          if (!elements.infoMenuTrigger || !elements.infoMenuPanel) {
+            return;
+          }
+
+          elements.infoMenuTrigger.addEventListener("click", () => {
+            const nextHidden = !elements.infoMenuPanel.hidden;
+            elements.infoMenuPanel.hidden = nextHidden;
+            elements.infoMenuTrigger.setAttribute("aria-expanded", String(!nextHidden));
+          });
+
+          elements.menuItems.forEach((item) => {
+            item.addEventListener("click", () => {
+              const linkScreen = item.dataset.menuLink;
+              const linkUrl = item.dataset.menuUrl;
+
+              if (linkScreen) {
+                switchScreen(linkScreen);
+              }
+              if (linkUrl) {
+                window.location.href = linkUrl;
+              }
+              elements.infoMenuPanel.hidden = true;
+              elements.infoMenuTrigger.setAttribute("aria-expanded", "false");
+            });
+          });
+
+          document.addEventListener("click", (event) => {
+            if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
+              return;
+            }
+            if (
+              event.target instanceof Element &&
+              !elements.infoMenuPanel.contains(event.target) &&
+              !elements.infoMenuTrigger.contains(event.target)
+            ) {
+              elements.infoMenuPanel.hidden = true;
+              elements.infoMenuTrigger.setAttribute("aria-expanded", "false");
+            }
+          });
+        }
+
+        function initializeNavigation() {
+          elements.navButtons.forEach((button) => {
+            button.addEventListener("click", () => switchScreen(button.dataset.screen || "home"));
+          });
+          elements.homeLinks.forEach((button) => {
+            button.addEventListener("click", () => switchScreen(button.dataset.homeLink || "home"));
+          });
+        }
+
+        function switchScreen(screenName) {
+          state.activeScreen = screenName;
+          elements.screens.forEach((screen) => {
+            const isActive = screen.id === `screen-${screenName}`;
+            screen.classList.toggle("is-active", isActive);
+            screen.hidden = !isActive;
+          });
+          elements.navButtons.forEach((button) => {
+            button.classList.toggle("is-active", button.dataset.screen === screenName);
+          });
+        }
+
+        function initializePublishedFilters() {
+          const binders = Object.keys(NOTE_BY_BINDER);
+          if (!elements.publishedBinderSelect || !elements.publishedNoteMenu || !elements.publishedChapterSelect) {
+            return;
+          }
+
+          state.selectedListBinder = state.selectedListBinder || binders[0] || "";
+          elements.publishedBinderSelect.innerHTML = binders
+            .map((binder) => `<option value="${escapeHtml(binder)}">${escapeHtml(binder)}</option>`)
+            .join("");
+          elements.publishedBinderSelect.value = state.selectedListBinder;
+
+          elements.publishedBinderSelect.addEventListener("change", () => {
+            state.selectedListBinder = elements.publishedBinderSelect.value;
+            state.selectedListNote = "";
+            state.selectedListChapter = "all";
+            renderPublishedNoteMenu();
+            updatePublishedChapterOptions();
+            renderQuestionList();
+          });
+
+          elements.publishedChapterSelect.addEventListener("change", () => {
+            state.selectedListChapter = elements.publishedChapterSelect.value || "all";
+            renderQuestionList();
+          });
+
+          renderPublishedNoteMenu();
+          updatePublishedChapterOptions();
+        }
+
+        function renderPublishedNoteMenu() {
+          if (!elements.publishedNoteMenu) {
+            return;
+          }
+          const notes = NOTE_BY_BINDER[state.selectedListBinder] ?? [];
+          if (!notes.includes(state.selectedListNote)) {
+            state.selectedListNote = notes[0] || "";
+          }
+
+          elements.publishedNoteMenu.innerHTML = notes
+            .map(
+              (note) => `
+                <button
+                  class="published-note-button${note === state.selectedListNote ? " is-active" : ""}"
+                  type="button"
+                  role="option"
+                  aria-selected="${note === state.selectedListNote ? "true" : "false"}"
+                  data-note="${escapeHtml(note)}"
+                >${escapeHtml(note)}</button>
+              `,
+            )
+            .join("");
+
+          elements.publishedNoteMenu.querySelectorAll("[data-note]").forEach((button) => {
+            button.addEventListener("click", () => {
+              state.selectedListNote = button.dataset.note || "";
+              state.selectedListChapter = "all";
+              renderPublishedNoteMenu();
+              updatePublishedChapterOptions();
+              renderQuestionList();
+            });
+          });
+        }
+
+        function updatePublishedChapterOptions() {
+          if (!elements.publishedChapterSelect) {
+            return;
+          }
+          const config = getChapterConfig(state.selectedListNote);
+          if (elements.publishedChapterLabel) {
+            elements.publishedChapterLabel.textContent = config.label;
+          }
+
+          const options = [{ value: "all", label: "すべて" }, ...config.options.map((option) => ({ value: option, label: option }))];
+          if (!options.some((option) => option.value === state.selectedListChapter)) {
+            state.selectedListChapter = "all";
+          }
+          elements.publishedChapterSelect.innerHTML = options
+            .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
+            .join("");
+          elements.publishedChapterSelect.value = state.selectedListChapter;
+        }
+
+        function initializeProblemForm() {
+          populateBinderOptions();
+          updateNoteOptions();
+
+          elements.binderSelect.addEventListener("change", () => {
+            updateNoteOptions();
+            updateProblemPreview();
+          });
+          elements.noteSelect.addEventListener("change", () => {
+            updateChapterOptions();
+            updateProblemPreview();
+          });
+          elements.chapterSelect?.addEventListener("change", updateProblemPreview);
+
+          elements.editorToolbar.addEventListener("click", (event) => {
+            const button = event.target instanceof Element ? event.target.closest("button") : null;
+            if (!button) {
+              return;
+            }
+            event.preventDefault();
+            elements.problemEditor.focus();
+
+            const command = button.dataset.command;
+            if (command) {
+              document.execCommand(command, false);
+              updateEditorCounts();
+              return;
+            }
+
+            const insertType = button.dataset.insert;
+            if (insertType === "choice") {
+              insertTextAtCursor("ア. \nイ. \nウ. ");
+              updateEditorCounts();
+            }
+          });
+
+          elements.problemEditor.addEventListener("input", () => {
+            updateEditorCounts();
+          });
+
+          elements.problemImageInput?.addEventListener("change", async () => {
+            await syncProblemImageFromInput();
+          });
+
+          elements.selectProblemImageBtn?.addEventListener("click", () => {
+            elements.problemImageInput?.click();
+          });
+
+          elements.viewProblemImageBtn?.addEventListener("click", () => {
+            showProblemImageDialog();
+          });
+
+          elements.clearProblemImageBtn?.addEventListener("click", () => {
+            clearProblemImage();
+          });
+
+          elements.imageDialogButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              if (button.dataset.imageDialogAction === "clear") {
+                clearProblemImage();
+              }
+              closeDialog(elements.problemImageDialog);
+            });
+          });
+
+          elements.problemCreateForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            await prepareProblemConfirmation();
+          });
+
+          elements.saveProblemDraftBtn?.addEventListener("click", async () => {
+            await saveProblemAsDraft();
+          });
+
+          elements.resetProblemFormBtn?.addEventListener("click", () => {
+            showResetProblemDialog();
+          });
+
+          elements.resetDialogButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              if (button.dataset.resetDialogAction === "clear") {
+                resetProblemComposer();
+                elements.proofreadingFeedback.textContent = "";
+              }
+              closeDialog(elements.problemResetDialog);
+            });
+          });
+
+          elements.confirmDialogButtons.forEach((button) => {
+            button.addEventListener("click", async () => {
+              if (button.dataset.confirmDialogAction === "submit") {
+                await submitConfirmedProblem();
+                return;
+              }
+              state.pendingProblemDraft = null;
+              setProblemStep("create");
+              closeDialog(elements.problemConfirmDialog);
+            });
+          });
+
+          updateProblemPreview();
+        }
+
+        function populateBinderOptions() {
+          const binders = Object.keys(NOTE_BY_BINDER);
+          elements.binderSelect.innerHTML = binders
+            .map((binder) => `<option value="${escapeHtml(binder)}">${escapeHtml(binder)}</option>`)
+            .join("");
+        }
+
+        function updateNoteOptions() {
+          const binder = elements.binderSelect.value;
+          const notes = NOTE_BY_BINDER[binder] ?? [];
+          elements.noteSelect.innerHTML = notes
+            .map((note) => `<option value="${escapeHtml(note)}">${escapeHtml(note)}</option>`)
+            .join("");
+          updateChapterOptions();
+          updateProblemPreview();
+        }
+
+        function updateChapterOptions() {
+          if (!elements.chapterSelect) {
+            return;
+          }
+          const config = getChapterConfig(elements.noteSelect?.value || "");
+          const currentValue = elements.chapterSelect.value;
+          if (elements.chapterFieldLabel) {
+            elements.chapterFieldLabel.textContent = config.label;
+          }
+          elements.chapterSelect.innerHTML = [
+            `<option value="" disabled>${escapeHtml(config.label)}を選択してください</option>`,
+            ...config.options.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`),
+          ].join("");
+          elements.chapterSelect.value = config.options.includes(currentValue) ? currentValue : "";
+        }
+
+        function updateProblemPreview() {
+          const binder = elements.binderSelect?.value.trim() || "";
+          const note = elements.noteSelect?.value.trim() || "";
+          const chapter = elements.chapterSelect?.value.trim() || "";
+          const contentText = elements.problemEditor?.innerText.replace(/\s+/g, " ").trim() || "";
+
+          const missingFields = [];
+          if (!binder) {
+            missingFields.push("バインダー");
+          }
+          if (!note) {
+            missingFields.push("ノート");
+          }
+          if (!chapter) {
+            missingFields.push(getChapterConfig(note).label);
+          }
+          if (!contentText) {
+            missingFields.push("問題");
+          }
+
+          elements.problemCreateForm?.classList.toggle("is-ready", missingFields.length === 0);
+          setProblemStep(missingFields.length === 0 ? "confirm" : "create");
+        }
+
+        function setPreviewText(element, value, fallback) {
+          if (!element) {
+            return;
+          }
+          element.textContent = value || fallback;
+        }
+
+        async function prepareProblemConfirmation() {
+          const draft = await createProblemDraftFromForm("pending");
+          if (!draft) {
+            return;
+          }
+
+          state.pendingProblemDraft = draft;
+          populateProblemConfirmDialog(draft);
+          setProblemStep("confirm");
+          showDialog(elements.problemConfirmDialog, () => {
+            if (window.confirm("問題を提出します。よろしいですか？")) {
+              submitConfirmedProblem();
+            }
+          });
+        }
+
+        async function submitConfirmedProblem() {
+          const draft = state.pendingProblemDraft;
+          if (!draft) {
+            closeDialog(elements.problemConfirmDialog);
+            setProblemStep("create");
+            return;
+          }
+
+          draft.submittedAt = new Date().toISOString();
+          setProblemStep("submit");
+          await submitProblemForProofreading(draft);
+        }
+
+        async function submitProblemForProofreading(draft) {
+          if (!draft) {
+            return;
+          }
+
+          const submitButton = elements.problemCreateForm.querySelector('button[type="submit"]');
+          if (submitButton instanceof HTMLButtonElement) {
+            submitButton.disabled = true;
+          }
+          elements.proofreadingFeedback.textContent = "送信しています...";
+
+          try {
+            const result = await submitToManagerApi(draft);
+            draft.transport = result.transport;
+            draft.remoteId = result.remoteId;
+            draft.status = result.status;
+
+            state.drafts.unshift(draft);
+            saveJson(MANAGER_DRAFT_KEY, state.drafts);
+            renderQuestionList();
+
+            resetProblemComposer();
+            state.pendingProblemDraft = null;
+            closeDialog(elements.problemConfirmDialog);
+            elements.proofreadingFeedback.textContent =
+              result.transport === "api"
+                ? "提出しました。承認後にアプリ内へ公開されます。"
+                : "APIに接続できなかったため、ローカル下書きとして保存しました。";
+          } catch {
+            elements.proofreadingFeedback.textContent = "送信に失敗しました。しばらくして再試行してください。";
+          } finally {
+            if (submitButton instanceof HTMLButtonElement) {
+              submitButton.disabled = false;
+            }
+            setProblemStep("create");
+          }
+        }
+
+        async function saveProblemAsDraft() {
+          const draft = await createProblemDraftFromForm("draft");
+          if (!draft) {
+            return;
+          }
+
+          state.drafts.unshift(draft);
+          saveJson(MANAGER_DRAFT_KEY, state.drafts);
+          renderQuestionList();
+          resetProblemComposer();
+          elements.proofreadingFeedback.textContent = "下書きとして保存しました。";
+        }
+
+        async function createProblemDraftFromForm(status) {
+          const binder = elements.binderSelect.value.trim();
+          const note = elements.noteSelect.value.trim();
+          const chapter = elements.chapterSelect?.value.trim() || "";
+          const contentHtml = normalizeEditorHtml(elements.problemEditor.innerHTML);
+          const contentText = elements.problemEditor.innerText.trim();
+
+          const missingFields = [];
+          if (!binder) {
+            missingFields.push("バインダー");
+          }
+          if (!note) {
+            missingFields.push("ノート");
+          }
+          if (!chapter) {
+            missingFields.push(getChapterConfig(note).label);
+          }
+          if (!contentText) {
+            missingFields.push("問題");
+          }
+          if (missingFields.length) {
+            elements.proofreadingFeedback.textContent = `${missingFields.join("・")}を入力してください。`;
+            updateProblemPreview();
+            return null;
+          }
+
+          const image = await getProblemImagePayload();
+          if (image === undefined) {
+            return null;
+          }
+
+          return {
+            id: `draft_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+            binder,
+            note,
+            chapter,
+            section: "",
+            image,
+            contentHtml,
+            contentText,
+            submittedAt: new Date().toISOString(),
+            status,
+            remoteId: null,
+            transport: "local",
+          };
+        }
+
+        async function syncProblemImageFromInput() {
+          const file = elements.problemImageInput?.files?.[0] || null;
+          if (!file) {
+            state.problemImageData = null;
+            renderProblemImagePreview();
+            updateProblemPreview();
+            return;
+          }
+
+          try {
+            const dataUrl = await fileToDataUrl(file);
+            state.problemImageData = {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              dataUrl,
+            };
+            renderProblemImagePreview();
+            updateProblemPreview();
+          } catch {
+            state.problemImageData = null;
+            renderProblemImagePreview();
+            updateProblemPreview();
+            elements.proofreadingFeedback.textContent = "画像の読み込みに失敗しました。別の画像で試してください。";
+          }
+        }
+
+        async function getProblemImagePayload() {
+          const file = elements.problemImageInput?.files?.[0] || null;
+          if (!file) {
+            state.problemImageData = null;
+            renderProblemImagePreview();
+            return null;
+          }
+
+          const cached = state.problemImageData;
+          if (cached && cached.name === file.name && cached.size === file.size && cached.type === file.type) {
+            return { ...cached };
+          }
+
+          try {
+            const dataUrl = await fileToDataUrl(file);
+            state.problemImageData = {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              dataUrl,
+            };
+            renderProblemImagePreview();
+            return { ...state.problemImageData };
+          } catch {
+            elements.proofreadingFeedback.textContent = "画像の読み込みに失敗しました。別の画像で試してください。";
+            return undefined;
+          }
+        }
+
+        function populateProblemConfirmDialog(draft) {
+          setPreviewText(elements.confirmProblemBinder, draft.binder, "-");
+          setPreviewText(elements.confirmProblemNote, draft.note, "-");
+          setPreviewText(elements.confirmProblemChapter, draft.chapter, "-");
+          setPreviewText(elements.confirmProblemImage, draft.image?.name ? draft.image.name : "", "画像なし");
+          if (elements.confirmProblemContent) {
+            elements.confirmProblemContent.textContent = draft.contentText || "";
+          }
+        }
+
+        function showProblemImageDialog() {
+          if (!state.problemImageData) {
+            return;
+          }
+          if (elements.problemDialogImage) {
+            elements.problemDialogImage.src = state.problemImageData.dataUrl;
+            elements.problemDialogImage.alt = state.problemImageData.name || "添付画像";
+          }
+          if (elements.problemDialogImageMeta) {
+            const sizeKb = Math.max(1, Math.round(state.problemImageData.size / 1024));
+            elements.problemDialogImageMeta.textContent = `${state.problemImageData.name} (${sizeKb}KB)`;
+          }
+          showDialog(elements.problemImageDialog);
+        }
+
+        function showResetProblemDialog() {
+          showDialog(elements.problemResetDialog, () => {
+            const shouldClear = window.confirm("入力中の内容を削除します。よろしいですか？");
+            if (shouldClear) {
+              resetProblemComposer();
+              elements.proofreadingFeedback.textContent = "";
+            }
+          });
+        }
+
+        function renderProblemImagePreview() {
+          if (!elements.problemImagePreviewWrap || !elements.problemImageMeta) {
+            return;
+          }
+
+          if (!state.problemImageData) {
+            elements.problemImagePreviewWrap.hidden = true;
+            elements.problemImageMeta.textContent = "";
+            if (elements.viewProblemImageBtn) {
+              elements.viewProblemImageBtn.disabled = true;
+            }
+            updateProblemPreview();
+            return;
+          }
+
+          elements.problemImagePreviewWrap.hidden = false;
+          const sizeKb = Math.max(1, Math.round(state.problemImageData.size / 1024));
+          elements.problemImageMeta.textContent = `${state.problemImageData.name} (${sizeKb}KB)`;
+          if (elements.viewProblemImageBtn) {
+            elements.viewProblemImageBtn.disabled = false;
+          }
+          updateProblemPreview();
+        }
+
+        function clearProblemImage() {
+          if (elements.problemImageInput) {
+            elements.problemImageInput.value = "";
+          }
+          state.problemImageData = null;
+          renderProblemImagePreview();
+          updateProblemPreview();
+        }
+
+        function fileToDataUrl(file) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+            reader.onerror = () => reject(new Error("file-read-failed"));
+            reader.readAsDataURL(file);
+          });
+        }
+
+        function resetProblemComposer() {
+          elements.problemEditor.innerHTML = "";
+          if (elements.chapterSelect) {
+            elements.chapterSelect.value = "";
+          }
+          clearProblemImage();
+          updateEditorCounts();
+          updateProblemPreview();
+        }
+
+        function updateEditorCounts() {
+          const text = elements.problemEditor?.innerText || "";
+          const normalized = text.replace(/\s+/g, " ").trim();
+          const charCount = normalized.length;
+          const wordCount = countWords(normalized);
+
+          if (elements.editorWordCount) {
+            elements.editorWordCount.textContent = String(wordCount);
+          }
+          if (elements.editorCharCount) {
+            elements.editorCharCount.textContent = String(charCount);
+          }
+          updateProblemPreview();
+        }
+
+        function countWords(text) {
+          if (!text) {
+            return 0;
+          }
+          const tokens = text.match(/[A-Za-z0-9]+|[ぁ-んァ-ン一-龯ー]+/g);
+          return tokens ? tokens.length : 0;
+        }
+
+        async function submitToManagerApi(draft) {
+          const token = await getAuth0AccessToken();
+          const endpoint = `${resolveApiBase()}/question-submissions`;
+          const payload = {
+            binder: draft.binder,
+            note: draft.note,
+            chapter: draft.chapter,
+            section: draft.section,
+            image: draft.image,
+            contentHtml: draft.contentHtml,
+            contentText: draft.contentText,
+            submittedAt: draft.submittedAt,
+            status: "pending",
+            sourceApp: "The Review Manager",
+            author: {
+              displayName: state.auth.displayName,
+              email: state.auth.email,
+              provider: state.auth.provider,
+            },
+          };
+
+          const headers = {
+            "Content-Type": "application/json",
+          };
+          if (token) {
+            headers.Authorization = `Bearer ${token}`;
+          }
+
+          try {
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              throw new Error(`API ${response.status}`);
+            }
+
+            let json = null;
+            try {
+              json = await response.json();
+            } catch {
+              json = null;
+            }
+
+            return {
+              transport: "api",
+              remoteId: json?.id ?? null,
+              status: json?.status ?? "pending",
+            };
+          } catch {
+            queueOutbox(payload);
+            return {
+              transport: "outbox",
+              remoteId: null,
+              status: "pending",
+            };
+          }
+        }
+
+        function queueOutbox(payload) {
+          const outbox = loadJson(MANAGER_OUTBOX_KEY, []);
+          outbox.push({
+            queuedAt: new Date().toISOString(),
+            payload,
+          });
+          saveJson(MANAGER_OUTBOX_KEY, outbox);
+        }
+
+        async function getAuth0AccessToken() {
+          const auth0Lib = window.auth0;
+          const config = window.AUTH0_CONFIG;
+          if (!auth0Lib?.createAuth0Client || !config?.domain || !config?.clientId) {
+            return null;
+          }
+
+          if (!state.auth0Client) {
+            state.auth0Client = await auth0Lib.createAuth0Client({
+              domain: config.domain,
+              clientId: config.clientId,
+              authorizationParams: {
+                redirect_uri: window.location.href,
+                scope: config.scope || "openid profile email",
+                ...(config.audience ? { audience: config.audience } : {}),
+              },
+            });
+          }
+
+          try {
+            const authenticated = await state.auth0Client.isAuthenticated();
+            if (!authenticated) {
+              return null;
+            }
+            return await state.auth0Client.getTokenSilently();
+          } catch {
+            return null;
+          }
+        }
+
+        function initializeQuestionListDnD() {
+          elements.createdQuestionList.addEventListener("dragstart", (event) => {
+            const row = event.target instanceof Element ? event.target.closest(".manager-question-item") : null;
+            if (!row) {
+              return;
+            }
+            state.draggingId = row.dataset.id || null;
+            state.lastDragOverKey = null;
+            row.classList.add("is-dragging");
+            if (event.dataTransfer) {
+              event.dataTransfer.setData("text/plain", state.draggingId || "");
+              event.dataTransfer.effectAllowed = "move";
+            }
+          });
+
+          elements.createdQuestionList.addEventListener("dragend", (event) => {
+            const row = event.target instanceof Element ? event.target.closest(".manager-question-item") : null;
+            if (row) {
+              row.classList.remove("is-dragging");
+            }
+            persistDraftOrderFromDom();
+            state.draggingId = null;
+            state.lastDragOverKey = null;
+          });
+
+          elements.createdQuestionList.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            if (!state.draggingId) {
+              return;
+            }
+
+            const draggingRow = getQuestionRowById(state.draggingId);
+            const targetRow = event.target instanceof Element ? event.target.closest(".manager-question-item") : null;
+            if (!draggingRow || !targetRow || draggingRow === targetRow) {
+              return;
+            }
+
+            const targetRect = targetRow.getBoundingClientRect();
+            const shouldInsertBefore = event.clientY < targetRect.top + targetRect.height / 2;
+            const hoverKey = `${targetRow.dataset.id}:${shouldInsertBefore ? "before" : "after"}`;
+            if (state.lastDragOverKey === hoverKey) {
+              return;
+            }
+            state.lastDragOverKey = hoverKey;
+
+            const previousRects = snapshotQuestionRowRects();
+            if (shouldInsertBefore) {
+              if (targetRow.previousElementSibling === draggingRow) {
+                return;
+              }
+              elements.createdQuestionList.insertBefore(draggingRow, targetRow);
+            } else {
+              if (targetRow.nextElementSibling === draggingRow) {
+                return;
+              }
+              elements.createdQuestionList.insertBefore(draggingRow, targetRow.nextElementSibling);
+            }
+            animateQuestionRowShift(previousRects);
+          });
+
+          elements.createdQuestionList.addEventListener("drop", (event) => {
+            event.preventDefault();
+            persistDraftOrderFromDom();
+          });
+        }
+
+        function getQuestionRowById(id) {
+          if (!id) {
+            return null;
+          }
+          const rows = Array.from(elements.createdQuestionList.querySelectorAll(".manager-question-item"));
+          return rows.find((row) => row.dataset.id === id) || null;
+        }
+
+        function snapshotQuestionRowRects() {
+          const rects = new Map();
+          const rows = elements.createdQuestionList.querySelectorAll(".manager-question-item");
+          rows.forEach((row) => {
+            if (row instanceof HTMLElement && row.dataset.id) {
+              rects.set(row.dataset.id, row.getBoundingClientRect());
+            }
+          });
+          return rects;
+        }
+
+        function animateQuestionRowShift(previousRects) {
+          const rows = elements.createdQuestionList.querySelectorAll(".manager-question-item");
+          rows.forEach((row) => {
+            if (!(row instanceof HTMLElement) || !row.dataset.id) {
+              return;
+            }
+            const previous = previousRects.get(row.dataset.id);
+            if (!previous) {
+              return;
+            }
+
+            const current = row.getBoundingClientRect();
+            const deltaY = previous.top - current.top;
+            if (Math.abs(deltaY) < 1) {
+              return;
+            }
+
+            row.getAnimations().forEach((animation) => animation.cancel());
+            row.animate(
+              [
+                { transform: `translateY(${deltaY}px)` },
+                { transform: "translateY(0px)" },
+              ],
+              {
+                duration: 180,
+                easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+              },
+            );
+          });
+        }
+
+        function persistDraftOrderFromDom() {
+          const ids = Array.from(elements.createdQuestionList.querySelectorAll(".manager-question-item"))
+            .map((row) => row.dataset.id || "")
+            .filter(Boolean);
+          if (!ids.length) {
+            return;
+          }
+
+          const draftMap = new Map(state.drafts.map((draft) => [draft.id, draft]));
+          const orderedDrafts = ids.map((id) => draftMap.get(id)).filter(Boolean);
+          if (orderedDrafts.length !== state.drafts.length) {
+            const idSet = new Set(ids);
+            state.drafts.forEach((draft) => {
+              if (!idSet.has(draft.id)) {
+                orderedDrafts.push(draft);
+              }
+            });
+          }
+
+          state.drafts = orderedDrafts;
+          saveJson(MANAGER_DRAFT_KEY, state.drafts);
+        }
+
+        function renderQuestionList() {
+          const list = elements.createdQuestionList;
+          list.innerHTML = "";
+          updateQuestionListTimestamp();
+
+          const visibleDrafts = state.drafts.filter((draft) => {
+            if (state.selectedListBinder && draft.binder !== state.selectedListBinder) {
+              return false;
+            }
+            if (state.selectedListNote && draft.note !== state.selectedListNote) {
+              return false;
+            }
+            if (state.selectedListChapter && state.selectedListChapter !== "all" && draft.chapter !== state.selectedListChapter) {
+              return false;
+            }
+            return true;
+          });
+
+          if (!visibleDrafts.length) {
+            list.innerHTML = `<li class="manager-empty-note">まだ問題はありません。新しい問題を作成してください。</li>`;
+            return;
+          }
+
+          const rows = visibleDrafts.map((draft) => {
+            const status = normalizeStatus(draft.status);
+            const textSnippet = truncateText(draft.contentText || "", 32);
+            const imageMeta = draft.image?.name ? `画像: ${truncateText(draft.image.name, 24)}` : "画像なし";
+            const metaText = [formatDate(draft.submittedAt), draft.chapter || "-", textSnippet, imageMeta].join(" / ");
+            const titleText = [draft.binder, draft.note, draft.chapter].filter(Boolean).join(" / ");
+            const draggingClass = draft.id === state.draggingId ? " is-dragging" : "";
+            return `
+              <li class="manager-question-item${draggingClass}" data-id="${escapeHtml(draft.id)}">
+                <div class="manager-question-main">
+                  <p class="manager-question-title">${escapeHtml(titleText)}</p>
+                  <p class="manager-question-meta">${escapeHtml(metaText)}</p>
+                </div>
+                <span class="status-chip ${escapeHtml(status)}">${escapeHtml(STATUS_LABEL[status])}</span>
+              </li>
+            `;
+          });
+
+          list.innerHTML = rows.join("");
+        }
+
+        function updateQuestionListTimestamp() {
+          if (!elements.questionListUpdatedAt) {
+            return;
+          }
+          const latestTime = state.drafts.reduce((latest, draft) => {
+            const time = new Date(draft.submittedAt || "").getTime();
+            return Number.isNaN(time) ? latest : Math.max(latest, time);
+          }, 0);
+
+          if (!latestTime) {
+            elements.questionListUpdatedAt.textContent = "最終更新: -";
+            elements.questionListUpdatedAt.removeAttribute("datetime");
+            return;
+          }
+
+          const latestDate = new Date(latestTime);
+          elements.questionListUpdatedAt.textContent = `最終更新: ${formatDateTime(latestDate)}`;
+          elements.questionListUpdatedAt.dateTime = latestDate.toISOString();
+        }
+
+        function renderProfile() {
+          elements.profileDisplayName.textContent = state.auth.displayName || "未設定";
+        }
+
+        function normalizeEditorHtml(html) {
+          return html.replace(/<div><br><\/div>/g, "").replace(/^\s+|\s+$/g, "");
+        }
+
+        function loadAuthSummary() {
+          const fallback = {
+            displayName: "未設定",
+            email: "未設定",
+            provider: "未設定",
+          };
+          try {
+            const raw = window.localStorage.getItem(APP_STATE_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            const auth = parsed?.auth ?? {};
+            return {
+              displayName: auth.displayName || fallback.displayName,
+              email: auth.email || fallback.email,
+              provider: auth.provider || fallback.provider,
+            };
+          } catch {
+            return fallback;
+          }
+        }
+
+        function insertTextAtCursor(text) {
+          const selection = window.getSelection();
+          if (!selection || selection.rangeCount === 0) {
+            elements.problemEditor.textContent = `${elements.problemEditor.textContent || ""}${text}`;
+            return;
+          }
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
+          const node = document.createTextNode(text);
+          range.insertNode(node);
+          range.setStartAfter(node);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
+        function resolveApiBase() {
+          const saved = window.localStorage.getItem(MANAGER_API_BASE_KEY);
+          const base = (saved || DEFAULT_API_BASE).replace(/\/+$/, "");
+          return base;
+        }
+
+        function getChapterConfig(note) {
+          return CHAPTER_CONFIG_BY_NOTE[note] || DEFAULT_CHAPTER_CONFIG;
+        }
+
+        function createNumberedOptions(prefix, suffix, count) {
+          return Array.from({ length: count }, (_, index) => `${prefix}${index + 1}${suffix}`);
+        }
+
+        function setProblemStep(stepName) {
+          state.lastProblemStep = stepName;
+          elements.problemSteps.forEach((step) => {
+            const stepId = step.dataset.problemStep;
+            const isCreate = stepId === "create";
+            const isConfirm = stepId === "confirm";
+            const isSubmit = stepId === "submit";
+            step.classList.toggle("is-active", stepId === stepName);
+            step.classList.toggle("is-complete", (stepName === "confirm" && isCreate) || (stepName === "submit" && (isCreate || isConfirm)));
+            if (stepName === "create" && (isConfirm || isSubmit)) {
+              step.classList.remove("is-complete");
+            }
+          });
+        }
+
+        function showDialog(dialog, fallback) {
+          if (dialog && typeof dialog.showModal === "function") {
+            if (!dialog.open) {
+              dialog.showModal();
+            }
+            return;
+          }
+          if (typeof fallback === "function") {
+            fallback();
+          }
+        }
+
+        function closeDialog(dialog) {
+          if (dialog?.open) {
+            dialog.close();
+          }
+        }
+
+        function normalizeStatus(status) {
+          if (status === "draft" || status === "approved" || status === "rejected") {
+            return status;
+          }
+          return "pending";
+        }
+
+        function truncateText(text, length) {
+          if (text.length <= length) {
+            return text;
+          }
+          return `${text.slice(0, length)}...`;
+        }
+
+        function formatDate(value) {
+          if (!value) {
+            return "-";
+          }
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return "-";
+          }
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          return `${year}/${month}/${day}`;
+        }
+
+        function formatDateTime(date) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          const hours = String(date.getHours()).padStart(2, "0");
+          const minutes = String(date.getMinutes()).padStart(2, "0");
+          return `${year}/${month}/${day} ${hours}:${minutes}`;
+        }
+
+        function escapeHtml(value) {
+          return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+
+        function loadJson(key, fallback) {
+          try {
+            const raw = window.localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : fallback;
+          } catch {
+            return fallback;
+          }
+        }
+
+        function saveJson(key, value) {
+          try {
+            window.localStorage.setItem(key, JSON.stringify(value));
+          } catch {
+            return;
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>
