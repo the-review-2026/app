@@ -1334,9 +1334,18 @@ async function initializeAuth() {
 
   let appStateFromRedirect = null;
   if (hasAuth0CallbackParams()) {
-    const redirectResult = await auth0Client.handleRedirectCallback();
-    appStateFromRedirect = redirectResult?.appState ?? null;
-    clearAuth0CallbackParamsFromUrl();
+    try {
+      const redirectResult = await auth0Client.handleRedirectCallback();
+      appStateFromRedirect = redirectResult?.appState ?? null;
+    } catch (error) {
+      console.error("Auth0 redirect callback failed:", error);
+      if (!shouldPreserveGuest) {
+        setLoggedOutAuthState();
+        saveState();
+      }
+    } finally {
+      clearAuth0CallbackParamsFromUrl();
+    }
   }
 
   await syncAuthStateFromAuth0({ preserveGuest: shouldPreserveGuest });
@@ -1361,12 +1370,10 @@ function isAuth0Configured() {
 }
 
 function buildAuth0AuthorizationParams() {
-  const params = {
+  return {
     redirect_uri: AUTH0_CONFIG.redirectUri,
     scope: AUTH0_CONFIG.scope || AUTH0_DEFAULT_SCOPE,
   };
-  params.audience = AUTH0_CONFIG.audience || REVIEW_API_AUDIENCE;
-  return params;
 }
 
 async function getAuth0AccessTokenForApi() {
@@ -1470,7 +1477,7 @@ function detectAuthProviderFromUser(user) {
 
 function hasAuth0CallbackParams() {
   const params = new URLSearchParams(window.location.search);
-  return params.has("code") && params.has("state");
+  return params.has("state") && (params.has("code") || params.has("error"));
 }
 
 function clearAuth0CallbackParamsFromUrl() {
