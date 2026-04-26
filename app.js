@@ -1,5 +1,8 @@
 ﻿const STORAGE_KEY = "the-review-quest-v1";
 const HOME_GREETING_REFRESH_MS = 60 * 1000;
+const AUTH_INIT_TIMEOUT_MS = 7000;
+const FLASHCARD_INIT_TIMEOUT_MS = 5000;
+const FLASHCARD_QUESTIONS_FETCH_TIMEOUT_MS = 4500;
 const JP_HOLIDAY_CACHE = new Map();
 const DEFAULT_THEME = "sea";
 const AVAILABLE_THEMES = [
@@ -490,9 +493,28 @@ function isCurrentLoginPage() {
   return Boolean(document.body?.classList.contains("login-page"));
 }
 
+async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation") {
+  let timeoutId = 0;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timeoutId = window.setTimeout(() => {
+          console.warn(`${label} timed out after ${timeoutMs}ms`);
+          resolve(fallbackValue);
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
 async function init() {
   ensureInitialCoinGrant();
-  const authRedirectAppState = await initializeAuth();
+  const authRedirectAppState = await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
   const onboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep);
   if (onboardingStep) {
     requestLoginOnboardingStep(onboardingStep);
@@ -510,11 +532,10 @@ async function init() {
   bindBeforeUnloadPrompt();
   markDailyLogin();
   bindEvents();
-  await initializeFlashcards();
-  initializeFlashcardNoteBinder();
   startHomeGreetingTicker();
   renderAll();
   activateScreen(activeScreen);
+  void initializeFlashcardsAfterFirstPaint();
 }
 
 async function initLoginPage() {
@@ -527,7 +548,7 @@ async function initLoginPage() {
 
   bindSharedDataAndGuestDialogEvents();
   bindLoginPageAuthEvents();
-  const authRedirectAppState = await initializeAuth();
+  const authRedirectAppState = await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
   const nextOnboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep) || requestedOnboardingStep;
   if (nextOnboardingStep) {
     requestLoginOnboardingStep(nextOnboardingStep);
@@ -540,6 +561,13 @@ async function initLoginPage() {
     }
     redirectToIndexPage();
   }
+}
+
+async function initializeFlashcardsAfterFirstPaint() {
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  await withTimeout(initializeFlashcards(), FLASHCARD_INIT_TIMEOUT_MS, undefined, "Flashcard initialization");
+  initializeFlashcardNoteBinder();
+  renderFlashcardPanel();
 }
 
 function redirectToLoginPageIfNeeded() {
@@ -2897,8 +2925,16 @@ function getFlashcardNoteEnglishLabel(note) {
 }
 
 async function loadRemoteFlashcardDecks() {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, FLASHCARD_QUESTIONS_FETCH_TIMEOUT_MS);
+
   try {
-    const response = await fetch(FLASHCARD_QUESTIONS_API_URL, { cache: "no-store" });
+    const response = await fetch(FLASHCARD_QUESTIONS_API_URL, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
     if (!response.ok) {
       throw new Error(`Questions API returned ${response.status}`);
     }
@@ -2907,6 +2943,8 @@ async function loadRemoteFlashcardDecks() {
   } catch (error) {
     console.warn("Failed to load remote questions:", error);
     return [];
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
