@@ -460,6 +460,8 @@ const FLASHCARD_NOTE_SPINE_GAP_PX = 2;
 const FLASHCARD_BINDER_SIDE_PADDING_PX = 5;
 const FLASHCARD_BINDER_EXTRA_THICKNESS_PX = FLASHCARD_BINDER_SIDE_PADDING_PX * 2;
 const FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX = 46;
+const LOGIN_ONBOARDING_STEP_STORAGE_KEY = "the-review-login-onboarding-step";
+const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "educationCode", "avatar", "notification"];
 const IS_LOGIN_PAGE = isCurrentLoginPage();
 
 if (IS_LOGIN_PAGE) {
@@ -490,7 +492,13 @@ function isCurrentLoginPage() {
 
 async function init() {
   ensureInitialCoinGrant();
-  await initializeAuth();
+  const authRedirectAppState = await initializeAuth();
+  const onboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep);
+  if (onboardingStep) {
+    requestLoginOnboardingStep(onboardingStep);
+    redirectToLoginPage({ onboardingStep });
+    return;
+  }
   if (redirectToLoginPageIfNeeded()) {
     return;
   }
@@ -510,17 +518,26 @@ async function init() {
 }
 
 async function initLoginPage() {
-  if (state.auth.isLoggedIn) {
+  const isAuthCallback = hasAuth0CallbackParams();
+  const requestedOnboardingStep = getRequestedLoginOnboardingStep();
+  if (state.auth.isLoggedIn && !isAuthCallback && !requestedOnboardingStep) {
     redirectToIndexPage();
     return;
   }
 
   bindSharedDataAndGuestDialogEvents();
   bindLoginPageAuthEvents();
-  await initializeAuth();
+  const authRedirectAppState = await initializeAuth();
+  const nextOnboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep) || requestedOnboardingStep;
+  if (nextOnboardingStep) {
+    requestLoginOnboardingStep(nextOnboardingStep);
+  }
   renderAuthPanel();
 
   if (state.auth.isLoggedIn) {
+    if (nextOnboardingStep) {
+      return;
+    }
     redirectToIndexPage();
   }
 }
@@ -540,12 +557,65 @@ function redirectToIndexPage() {
   window.location.replace("./index.html");
 }
 
-function getLoginPageUrl() {
-  return new URL("./login.html", window.location.href).toString();
+function getLoginPageUrl(options = {}) {
+  const url = new URL("./login.html", window.location.href);
+  const onboardingStep = normalizeLoginOnboardingStep(options.onboardingStep);
+  if (onboardingStep) {
+    url.searchParams.set("onboarding", onboardingStep);
+  }
+  return url.toString();
 }
 
-function redirectToLoginPage() {
-  window.location.replace(getLoginPageUrl());
+function redirectToLoginPage(options = {}) {
+  window.location.replace(getLoginPageUrl(options));
+}
+
+function normalizeLoginOnboardingStep(value) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  return LOGIN_ONBOARDING_STEP_IDS.includes(normalized) ? normalized : "";
+}
+
+function getRequestedLoginOnboardingStep() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = normalizeLoginOnboardingStep(params.get("onboarding") || params.get("onboardingStep"));
+  if (fromQuery) {
+    return fromQuery;
+  }
+
+  try {
+    return normalizeLoginOnboardingStep(window.sessionStorage.getItem(LOGIN_ONBOARDING_STEP_STORAGE_KEY));
+  } catch {
+    return "";
+  }
+}
+
+function requestLoginOnboardingStep(step) {
+  const normalizedStep = normalizeLoginOnboardingStep(step);
+  if (!normalizedStep) {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(LOGIN_ONBOARDING_STEP_STORAGE_KEY, normalizedStep);
+  } catch {
+    // セッションストレージが使えない環境ではイベントだけで反映する
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("the-review-login-onboarding-step", {
+      detail: {
+        step: normalizedStep,
+      },
+    })
+  );
+}
+
+function clearRequestedLoginOnboardingStep() {
+  try {
+    window.sessionStorage.removeItem(LOGIN_ONBOARDING_STEP_STORAGE_KEY);
+  } catch {
+    // noop
+  }
 }
 
 function bindLoginPageAuthEvents() {
@@ -565,8 +635,8 @@ function bindLoginPageAuthEvents() {
       }
       await loginWithAuth0(
         {
-          targetScreen: "mypage",
-          targetMypagePage: "top",
+          onboardingStep: "educationCode",
+          deferRedirectOnLoginPage: true,
         },
         { provider }
       );
@@ -1326,9 +1396,6 @@ async function initializeAuth() {
     return;
   }
 
-  console.log("AUTH0_CONFIG.domain =", AUTH0_CONFIG.domain);
-  console.log("AUTH0_CONFIG =", AUTH0_CONFIG);
-  
   auth0Client = await window.auth0.createAuth0Client({
     domain: AUTH0_CONFIG.domain,
     clientId: AUTH0_CONFIG.clientId,
@@ -1355,6 +1422,7 @@ async function initializeAuth() {
   if (appStateFromRedirect) {
     applyAuthRedirectState(appStateFromRedirect);
   }
+  return appStateFromRedirect;
 }
 
 function isAuth0SdkAvailable() {
@@ -5977,6 +6045,24 @@ function escapeHtml(text) {
     }
   }
 
+  function setActiveStepByName(stepName) {
+    const normalizedStepName = normalizeLoginOnboardingStep(stepName);
+    if (!normalizedStepName) {
+      return false;
+    }
+    const targetIndex = steps.findIndex((step) => step.dataset.onboardingStep === normalizedStepName);
+    if (targetIndex < 0) {
+      return false;
+    }
+    setActiveStep(targetIndex);
+    if (normalizedStepName === "educationCode") {
+      window.setTimeout(() => {
+        educationCodeInput?.focus();
+      }, 0);
+    }
+    return true;
+  }
+
   function getSelectedValue(inputs) {
     const selected = inputs.find((input) => input.checked);
     return selected ? selected.value : "";
@@ -6363,6 +6449,12 @@ function escapeHtml(text) {
   loginNotifyTodaysMissionToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
   loginNotifyNoticeToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
 
+  window.addEventListener("the-review-login-onboarding-step", (event) => {
+    if (setActiveStepByName(event.detail?.step)) {
+      clearRequestedLoginOnboardingStep();
+    }
+  });
+
   document.addEventListener("click", (event) => {
     const gotoButton = event.target.closest("[data-onboarding-goto]");
     if (gotoButton) {
@@ -6406,7 +6498,11 @@ function escapeHtml(text) {
   syncEducationCodeScannerAvailability();
   syncTermsStep();
   syncEducationCodeStep();
-  setActiveStep(0);
+  if (!setActiveStepByName(getRequestedLoginOnboardingStep())) {
+    setActiveStep(0);
+  } else {
+    clearRequestedLoginOnboardingStep();
+  }
 
   window.addEventListener("beforeunload", stopEducationCodeScanner);
 })();
