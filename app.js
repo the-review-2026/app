@@ -7,44 +7,44 @@ const JP_HOLIDAY_CACHE = new Map();
 const DEFAULT_THEME = "sea";
 const AVAILABLE_THEMES = [
   "sea",
-  "slate",
   "midnight",
-  "blueberry",
   "forest",
   "aojiru",
   "lemonade",
-  "banana-cake",
-  "sunset",
   "strawberry",
   "the-paper",
   "the-black",
-  "kagiko",
-  "city",
-  "sumiyoshi-sta",
-  "kinshicho-sta",
 ];
 const THEME_DISPLAY_NAMES = {
   sea: "Sea",
-  slate: "Slate",
   midnight: "Midnight",
-  blueberry: "Blueberry",
   forest: "Forest",
   aojiru: "Aojiru",
   lemonade: "Lemonade",
-  "banana-cake": "Banana Cake",
-  sunset: "Sunset",
   strawberry: "Strawberry",
   "the-paper": "The Paper",
   "the-black": "The Black",
-  kagiko: "TOKAGI",
-  city: "City",
-  "sumiyoshi-sta": "Sumiyoshi Sta.",
-  "kinshicho-sta": "Kinshichō Sta.",
 };
-const PREMIUM_THEMES = ["kagiko", "city", "sumiyoshi-sta", "kinshicho-sta"];
-const THEME_UNLOCK_COST = 50;
+const PREMIUM_THEME_COSTS = {
+  forest: 100,
+  aojiru: 100,
+  lemonade: 100,
+  strawberry: 100,
+  "the-paper": 300,
+  "the-black": 300,
+};
+const PREMIUM_THEMES = Object.keys(PREMIUM_THEME_COSTS);
+const THEME_UNLOCK_POLICY_VERSION = 2;
 const LEGACY_THEME_ALIASES = {
   deepsea: "sea",
+  slate: "sea",
+  blueberry: "midnight",
+  "banana-cake": "lemonade",
+  sunset: "strawberry",
+  kagiko: "midnight",
+  city: "midnight",
+  "sumiyoshi-sta": "sea",
+  "kinshicho-sta": "lemonade",
 };
 const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
@@ -381,6 +381,8 @@ const elements = {
   homeCardTrack: document.getElementById("homeCardTrack"),
   homeCardSlides: Array.from(document.querySelectorAll("#homeCardTrack .home-card-slide")),
   homeCardNavButtons: Array.from(document.querySelectorAll("[data-home-card-nav]")),
+  homeCardCarousel: document.querySelector(".home-card-carousel"),
+  homeCardProgressDots: Array.from(document.querySelectorAll("#homeCardProgress .home-card-progress-dot")),
   dailyLoginCard: document.getElementById("dailyLoginCard"),
   dailyLoginCount: document.getElementById("dailyLoginCount"),
   dailyLoginScale: document.getElementById("dailyLoginScale"),
@@ -438,6 +440,7 @@ let calendarViewDate = getCurrentMonthStartDate();
 let auth0Client = null;
 let reviewCoinAnimationFrameId = null;
 let homeCardScrollAnimationFrameId = null;
+let infoMenuCloseTimerId = null;
 let flashcardState = createInitialFlashcardState();
 const flashcardBookDropTimerBySeries = new Map();
 const flashcardBookUseTimerBySeries = new Map();
@@ -777,6 +780,26 @@ function updateHomeCardCarouselControls(activeIndex = getActiveHomeCardIndex()) 
   slides.forEach((slide, index) => {
     slide.classList.toggle("is-active", index === activeIndex);
   });
+
+  elements.homeCardProgressDots.forEach((dot, index) => {
+    const isActive = index === activeIndex;
+    dot.classList.toggle("is-active", isActive);
+    dot.setAttribute("aria-current", isActive ? "step" : "false");
+  });
+
+  updateDailyTryNudgeState();
+}
+
+function isDailyTryAnsweredToday() {
+  const record = state.dailyTryRecords[todayKey()];
+  return Boolean(record?.answered);
+}
+
+function updateDailyTryNudgeState() {
+  if (!elements.homeCardCarousel) {
+    return;
+  }
+  elements.homeCardCarousel.classList.toggle("is-daily-try-unanswered", !isDailyTryAnsweredToday());
 }
 
 function injectTabScriptLabels() {
@@ -1668,6 +1691,7 @@ function deleteAccountAndResetProgress() {
     ...state.settings,
     theme: DEFAULT_THEME,
     unlockedThemes: createDefaultThemeUnlockState(),
+    themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
   };
   applyTheme(state.settings.theme);
   dailyTryRun = createDailyTryRun();
@@ -2107,10 +2131,12 @@ function handleFlashcardNoteBinderClick(event) {
       return;
     }
     if (liftedFlashcardBinderElement === binder) {
-      setLiftedFlashcardBinder(null);
+      event.preventDefault();
+      runWithPreservedViewportScroll(() => setLiftedFlashcardBinder(null));
       return;
     }
-    setLiftedFlashcardBinder(binder);
+    event.preventDefault();
+    runWithPreservedViewportScroll(() => setLiftedFlashcardBinder(binder));
     return;
   }
 
@@ -2213,6 +2239,15 @@ function isInFlashcardBinderInteractionSurface(element) {
   );
 }
 
+function runWithPreservedViewportScroll(callback) {
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  callback();
+  window.requestAnimationFrame(() => {
+    window.scrollTo(scrollX, scrollY);
+  });
+}
+
 function handleFlashcardNoteBinderPointerDown(event) {
   const binderList = elements.flashcardBinderList;
   if (!binderList || event.pointerType === "mouse") {
@@ -2281,7 +2316,7 @@ function handleFlashcardNoteBinderPointerUp(event) {
     openFlashcardBinder(binder);
     return;
   }
-  setLiftedFlashcardBinder(binder);
+  runWithPreservedViewportScroll(() => setLiftedFlashcardBinder(binder));
 }
 
 function clearFlashcardNoteBinderPointerState() {
@@ -4602,7 +4637,7 @@ function renderThemeCardSelection() {
     if (lockLabel) {
       const lockCost = lockLabel.querySelector("[data-theme-lock-cost]");
       if (lockCost) {
-        lockCost.textContent = String(THEME_UNLOCK_COST);
+        lockCost.textContent = String(getThemeUnlockCost(themeKey));
       }
       lockLabel.hidden = isUnlocked;
     }
@@ -4636,14 +4671,15 @@ function unlockThemeWithCoin(themeKey) {
   if (!PREMIUM_THEMES.includes(themeKey)) {
     return;
   }
-  if (state.reviewCoin < THEME_UNLOCK_COST) {
+  const unlockCost = getThemeUnlockCost(themeKey);
+  if (state.reviewCoin < unlockCost) {
     return;
   }
 
   pendingThemeUnlockKey = themeKey;
   if (!elements.themeUnlockDialog || typeof elements.themeUnlockDialog.showModal !== "function") {
     const shouldUnlock = window.confirm(
-      `「${getThemeDisplayName(themeKey)}」を${THEME_UNLOCK_COST}コインで解放しますか？\n現在の所持コイン: ${state.reviewCoin}`
+      `「${getThemeDisplayName(themeKey)}」を${unlockCost}コインで解放しますか？\n現在の所持コイン: ${state.reviewCoin}`
     );
     if (!shouldUnlock) {
       pendingThemeUnlockKey = null;
@@ -4657,7 +4693,7 @@ function unlockThemeWithCoin(themeKey) {
     elements.themeUnlockName.textContent = getThemeDisplayName(themeKey);
   }
   if (elements.themeUnlockCost) {
-    elements.themeUnlockCost.textContent = String(THEME_UNLOCK_COST);
+    elements.themeUnlockCost.textContent = String(unlockCost);
   }
   if (elements.themeUnlockCurrentCoin) {
     elements.themeUnlockCurrentCoin.textContent = REVIEW_COIN_FORMATTER.format(state.reviewCoin);
@@ -4689,12 +4725,14 @@ function closeThemeUnlockDialog() {
 
 function proceedThemeUnlock(themeKey) {
   pendingThemeUnlockKey = null;
-  if (!PREMIUM_THEMES.includes(themeKey) || state.reviewCoin < THEME_UNLOCK_COST) {
+  const unlockCost = getThemeUnlockCost(themeKey);
+  if (!PREMIUM_THEMES.includes(themeKey) || state.reviewCoin < unlockCost) {
     return;
   }
 
-  state.reviewCoin -= THEME_UNLOCK_COST;
+  state.reviewCoin -= unlockCost;
   state.settings.unlockedThemes[themeKey] = true;
+  state.settings.themeUnlockPolicyVersion = THEME_UNLOCK_POLICY_VERSION;
   saveState();
   renderCoinBoard();
   renderMypageCoin();
@@ -4704,6 +4742,10 @@ function proceedThemeUnlock(themeKey) {
 
 function getThemeDisplayName(themeKey) {
   return THEME_DISPLAY_NAMES[themeKey] ?? themeKey;
+}
+
+function getThemeUnlockCost(themeKey) {
+  return PREMIUM_THEME_COSTS[themeKey] ?? 0;
 }
 
 function updateAccessibilityMode(modeKey, enabled) {
@@ -5029,14 +5071,21 @@ function toggleInfoMenu() {
 }
 
 function isInfoMenuOpen() {
-  return Boolean(elements.infoMenuPanel && !elements.infoMenuPanel.hidden);
+  return Boolean(elements.infoMenuPanel?.classList.contains("is-open"));
 }
 
 function openInfoMenu() {
   if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
     return;
   }
+  if (infoMenuCloseTimerId !== null) {
+    window.clearTimeout(infoMenuCloseTimerId);
+    infoMenuCloseTimerId = null;
+  }
   elements.infoMenuPanel.hidden = false;
+  window.requestAnimationFrame(() => {
+    elements.infoMenuPanel?.classList.add("is-open");
+  });
   elements.infoMenuTrigger.setAttribute("aria-expanded", "true");
 }
 
@@ -5044,8 +5093,17 @@ function closeInfoMenu() {
   if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
     return;
   }
-  elements.infoMenuPanel.hidden = true;
+  elements.infoMenuPanel.classList.remove("is-open");
   elements.infoMenuTrigger.setAttribute("aria-expanded", "false");
+  if (infoMenuCloseTimerId !== null) {
+    window.clearTimeout(infoMenuCloseTimerId);
+  }
+  infoMenuCloseTimerId = window.setTimeout(() => {
+    if (!elements.infoMenuPanel?.classList.contains("is-open")) {
+      elements.infoMenuPanel.hidden = true;
+    }
+    infoMenuCloseTimerId = null;
+  }, 240);
 }
 
 function toggleMypageSubmenu() {
@@ -5331,8 +5389,8 @@ function renderDailyLoginReward(rewardElement, rewardDay, slots, windowSize) {
 }
 
 function renderDailyLogin() {
-  const count = Object.keys(state.loginDays).length;
-  const displayCount = Math.max(1, count);
+  const streakCount = getConsecutiveLoginDayCount();
+  const displayCount = Math.max(1, streakCount);
   const cycleDay = ((displayCount - 1) % 7) + 1;
   const isCurrentDayOne = cycleDay === 1;
   const windowRadius = getDailyLoginWindowRadius();
@@ -5433,6 +5491,7 @@ function syncDailyTryByDate() {
 
 function renderDailyTryPanel() {
   syncDailyTryByDate();
+  updateDailyTryNudgeState();
   const question = DAILY_TRY_QUESTIONS[dailyTryRun.questionIndex];
   elements.dailyTryPrompt.textContent = question.prompt;
 
@@ -5769,6 +5828,7 @@ function createDefaultState() {
     settings: {
       theme: DEFAULT_THEME,
       unlockedThemes: createDefaultThemeUnlockState(),
+      themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
       highContrast: false,
       monochrome: false,
       text: { ...DEFAULT_TEXT_SETTINGS },
@@ -5806,12 +5866,16 @@ function normalizeSettingsState(value) {
     highContrast: normalizeBoolean(value?.highContrast, false),
     monochrome: normalizeBoolean(value?.monochrome, false),
   });
-  const theme = normalizeTheme(value?.theme);
-  const unlockedThemes = normalizeThemeUnlockState(value?.unlockedThemes);
+  const storedTheme = normalizeTheme(value?.theme);
+  const themeUnlockPolicyVersion = Number(value?.themeUnlockPolicyVersion);
+  const preservePremiumUnlocks = themeUnlockPolicyVersion >= THEME_UNLOCK_POLICY_VERSION;
+  const unlockedThemes = normalizeThemeUnlockState(value?.unlockedThemes, { preservePremiumUnlocks });
+  const theme = unlockedThemes[storedTheme] ? storedTheme : DEFAULT_THEME;
   unlockedThemes[theme] = true;
   return {
     theme,
     unlockedThemes,
+    themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
     highContrast: normalizedMode.highContrast,
     monochrome: normalizedMode.monochrome,
     text: normalizeTextSettings(value?.text),
@@ -5860,13 +5924,17 @@ function createDefaultThemeUnlockState() {
   return unlockedThemes;
 }
 
-function normalizeThemeUnlockState(value) {
+function normalizeThemeUnlockState(value, options = {}) {
   const defaultState = createDefaultThemeUnlockState();
   if (!value || typeof value !== "object") {
     return defaultState;
   }
 
+  const preservePremiumUnlocks = Boolean(options.preservePremiumUnlocks);
   AVAILABLE_THEMES.forEach((theme) => {
+    if (PREMIUM_THEMES.includes(theme) && !preservePremiumUnlocks) {
+      return;
+    }
     if (typeof value[theme] === "boolean") {
       defaultState[theme] = value[theme];
     }
@@ -5957,6 +6025,20 @@ function getCurrentMonthStartDate() {
 
 function todayKey() {
   return keyFromDate(new Date());
+}
+
+function getConsecutiveLoginDayCount(anchorDate = new Date()) {
+  if (!state.loginDays || typeof state.loginDays !== "object") {
+    return 0;
+  }
+
+  let count = 0;
+  const cursor = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate());
+  while (state.loginDays[keyFromDate(cursor)]) {
+    count += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return count;
 }
 
 function getFirstLoginDate() {
