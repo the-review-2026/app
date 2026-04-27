@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260427-1" />
+    <link rel="stylesheet" href="./app.css?v=20260427-2" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -60,6 +60,9 @@
           </span>
         </button>
         <section id="infoMenuPanel" class="info-menu-panel" aria-label="Informationメニュー" hidden>
+          <button id="infoMenuCloseBtn" class="info-menu-close-btn" type="button" aria-label="Informationメニューを閉じる">
+            <span aria-hidden="true">×</span>
+          </button>
           <div class="info-menu-list">
             <button class="info-menu-item" type="button">The Reviewについて</button>
             <button class="info-menu-item" type="button">お知らせ</button>
@@ -542,7 +545,6 @@
       <section id="screen-notice" class="screen notice-layout">
         <section class="panel settings-section">
           <h2 class="review-coin-section-title">
-            <img class="review-coin-title-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
             <span>リビューコイン枚数</span>
           </h2>
           <div class="settings-section-content">
@@ -663,6 +665,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260427-3" charset="UTF-8"></script>
+    <script src="./app.js?v=20260427-4" charset="UTF-8"></script>
   </body>
 </html>

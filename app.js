@@ -335,6 +335,7 @@ const elements = {
   settingsTabButtons: Array.from(document.querySelectorAll("[data-settings-tab]")),
   settingsTabPanels: Array.from(document.querySelectorAll("[data-settings-panel]")),
   infoMenuTrigger: document.getElementById("infoMenuTrigger"),
+  infoMenuCloseBtn: document.getElementById("infoMenuCloseBtn"),
   infoMenuPanel: document.getElementById("infoMenuPanel"),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
@@ -889,6 +890,9 @@ function bindBeforeUnloadPrompt() {
 function bindEvents() {
   if (elements.infoMenuTrigger) {
     elements.infoMenuTrigger.addEventListener("click", toggleInfoMenu);
+  }
+  if (elements.infoMenuCloseBtn) {
+    elements.infoMenuCloseBtn.addEventListener("click", closeInfoMenu);
   }
 
   if (elements.reviewCoinBoard) {
