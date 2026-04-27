@@ -1211,7 +1211,8 @@ body[data-theme="strawberry"] .aurora-right {
 
 .top-nav-item[data-screen="home"],
 .top-nav-item[data-screen="learn"],
-.top-nav-item[data-screen="notice"] {
+.top-nav-item[data-screen="notice"],
+.top-nav-item[data-screen="store"] {
   width: clamp(82px, 29%, 220px);
 }
 
@@ -5706,7 +5707,8 @@ button {
 
   .top-nav-item[data-screen="home"],
   .top-nav-item[data-screen="learn"],
-  .top-nav-item[data-screen="notice"] {
+  .top-nav-item[data-screen="notice"],
+  .top-nav-item[data-screen="store"] {
     width: clamp(72px, 29%, 170px);
   }
 

@@ -1,6 +1,6 @@
 ﻿const STORAGE_KEY = "the-review-quest-v1";
 const HOME_GREETING_REFRESH_MS = 60 * 1000;
-const AUTH_INIT_TIMEOUT_MS = 7000;
+const AUTH_INIT_TIMEOUT_MS = 3000;
 const FLASHCARD_INIT_TIMEOUT_MS = 5000;
 const FLASHCARD_QUESTIONS_FETCH_TIMEOUT_MS = 4500;
 const JP_HOLIDAY_CACHE = new Map();
@@ -72,6 +72,11 @@ const COIN_COUNT_DURATION_PER_STEP_MS = 0.22;
 const REVIEW_COIN_FORMATTER = new Intl.NumberFormat("ja-JP");
 const REVIEW_DATA_EXPORT_FORMAT = "the-review-obfuscated-v1";
 const REVIEW_DATA_EXPORT_KEY = "TheReview::DataExport::v1";
+const STORE_CONFIG_KEY = "the-review-store-config-v1";
+const DEFAULT_STORE_CONFIG = {
+  avatarStatus: "preparing",
+  avatarMessage: "準備中",
+};
 const FLASHCARD_DEFAULT_SERIES = {
   id: "reboot-1st-edition",
   label: "Reboot 1st Edition",
@@ -301,6 +306,7 @@ const elements = {
   infoMenuTrigger: document.getElementById("infoMenuTrigger"),
   infoMenuCloseBtn: document.getElementById("infoMenuCloseBtn"),
   infoMenuPanel: document.getElementById("infoMenuPanel"),
+  managerMenuLink: document.getElementById("managerMenuLink"),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
@@ -313,6 +319,7 @@ const elements = {
   selfcheckTimerFullscreenBtn: document.getElementById("selfcheckTimerFullscreenBtn"),
   reviewCoinValue: document.getElementById("reviewCoinValue"),
   mypageCoinValueNumber: document.getElementById("mypageCoinValueNumber"),
+  storeAvatarHint: document.getElementById("storeAvatarHint"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
   authEmailText: document.getElementById("authEmailText"),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
@@ -432,6 +439,7 @@ const FLASHCARD_BINDER_SIDE_PADDING_PX = 5;
 const FLASHCARD_BINDER_EXTRA_THICKNESS_PX = FLASHCARD_BINDER_SIDE_PADDING_PX * 2;
 const FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX = 46;
 const LOGIN_ONBOARDING_STEP_STORAGE_KEY = "the-review-login-onboarding-step";
+const AUTH_LOGOUT_INTENT_STORAGE_KEY = "the-review-explicit-logout-v1";
 const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "educationCode", "avatar", "notification"];
 const IS_LOGIN_PAGE = isCurrentLoginPage();
 
@@ -482,7 +490,32 @@ async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation
 
 async function init() {
   ensureInitialCoinGrant();
-  const authRedirectAppState = await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
+  const shouldWaitForAuth = hasAuth0CallbackParams() || !state.auth.isLoggedIn;
+  const authInitialization = shouldWaitForAuth
+    ? withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization")
+    : initializeAuth();
+  const authRedirectAppState = shouldWaitForAuth ? await authInitialization : null;
+  if (!shouldWaitForAuth) {
+    authInitialization
+      .then((appState) => {
+        const onboardingStep = normalizeLoginOnboardingStep(appState?.onboardingStep);
+        if (onboardingStep) {
+          requestLoginOnboardingStep(onboardingStep);
+          redirectToLoginPage({ onboardingStep });
+          return;
+        }
+        if (!state.auth.isLoggedIn) {
+          redirectToLoginPage();
+          return;
+        }
+        renderMypageSettings();
+        renderAuthPanel();
+        void updateManagerMenuVisibility();
+      })
+      .catch((error) => {
+        console.warn("Background auth initialization failed:", error);
+      });
+  }
   const onboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep);
   if (onboardingStep) {
     requestLoginOnboardingStep(onboardingStep);
@@ -503,27 +536,31 @@ async function init() {
   startHomeGreetingTicker();
   renderAll();
   activateScreen(activeScreen);
+  void updateManagerMenuVisibility();
   void initializeFlashcardsAfterFirstPaint();
 }
 
 async function initLoginPage() {
   const isAuthCallback = hasAuth0CallbackParams();
   const requestedOnboardingStep = getRequestedLoginOnboardingStep();
-  if (state.auth.isLoggedIn && !isAuthCallback && !requestedOnboardingStep) {
+  const explicitLogout = consumeExplicitLogoutIntent();
+  if (state.auth.isLoggedIn && !isAuthCallback && !requestedOnboardingStep && !explicitLogout) {
     redirectToIndexPage();
     return;
   }
 
   bindSharedDataAndGuestDialogEvents();
   bindLoginPageAuthEvents();
-  const authRedirectAppState = await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
+  const authRedirectAppState = explicitLogout && !isAuthCallback
+    ? (await withTimeout(ensureAuth0Client(), AUTH_INIT_TIMEOUT_MS, null, "Auth0 client initialization"), null)
+    : await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
   const nextOnboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep) || requestedOnboardingStep;
   if (nextOnboardingStep) {
     requestLoginOnboardingStep(nextOnboardingStep);
   }
   renderAuthPanel();
 
-  if (state.auth.isLoggedIn) {
+  if (state.auth.isLoggedIn && !explicitLogout) {
     if (nextOnboardingStep) {
       return;
     }
@@ -611,6 +648,24 @@ function clearRequestedLoginOnboardingStep() {
     window.sessionStorage.removeItem(LOGIN_ONBOARDING_STEP_STORAGE_KEY);
   } catch {
     // noop
+  }
+}
+
+function markExplicitLogoutIntent() {
+  try {
+    window.sessionStorage.setItem(AUTH_LOGOUT_INTENT_STORAGE_KEY, "1");
+  } catch {
+    // noop
+  }
+}
+
+function consumeExplicitLogoutIntent() {
+  try {
+    const hasIntent = window.sessionStorage.getItem(AUTH_LOGOUT_INTENT_STORAGE_KEY) === "1";
+    window.sessionStorage.removeItem(AUTH_LOGOUT_INTENT_STORAGE_KEY);
+    return hasIntent;
+  } catch {
+    return false;
   }
 }
 
@@ -1218,6 +1273,12 @@ function bindEvents() {
     renderDailyLogin();
     updateHomeCardCarouselControls();
   });
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === STORE_CONFIG_KEY) {
+      renderStoreConfig();
+    }
+  });
 }
 
 function activateScreen(screen) {
@@ -1372,27 +1433,31 @@ async function logoutAccount() {
   if (!state.auth.isLoggedIn) {
     return;
   }
-  if (state.auth.provider === "guest") {
-    applyLoggedOutState();
-    redirectToLoginPage();
-    return;
-  }
-  if (auth0Client) {
+  const shouldLogoutAuth0 = state.auth.provider !== "guest";
+  markExplicitLogoutIntent();
+  applyLoggedOutState();
+  clearRequestedLoginOnboardingStep();
+  clearManagerAccessCache();
+
+  if (shouldLogoutAuth0) {
     try {
-      await auth0Client.logout({
+      const logoutClient = await withTimeout(ensureAuth0Client(), 1800, null, "Auth0 logout client");
+      if (!logoutClient) {
+        redirectToLoginPage();
+        return;
+      }
+      await logoutClient.logout({
         logoutParams: {
           returnTo: getLoginPageUrl(),
         },
       });
     } catch (error) {
       console.error("Auth0 logout failed:", error);
-      applyLoggedOutState();
       redirectToLoginPage();
     }
     return;
   }
 
-  applyLoggedOutState();
   redirectToLoginPage();
 }
 
@@ -1415,11 +1480,7 @@ async function initializeAuth() {
     return;
   }
 
-  auth0Client = await window.auth0.createAuth0Client({
-    domain: AUTH0_CONFIG.domain,
-    clientId: AUTH0_CONFIG.clientId,
-    authorizationParams: buildAuth0AuthorizationParams(),
-  });
+  auth0Client = await ensureAuth0Client();
 
   let appStateFromRedirect = null;
   if (hasAuth0CallbackParams()) {
@@ -1442,6 +1503,21 @@ async function initializeAuth() {
     applyAuthRedirectState(appStateFromRedirect);
   }
   return appStateFromRedirect;
+}
+
+async function ensureAuth0Client() {
+  if (auth0Client) {
+    return auth0Client;
+  }
+  if (!isAuth0SdkAvailable() || !isAuth0Configured()) {
+    return null;
+  }
+  auth0Client = await window.auth0.createAuth0Client({
+    domain: AUTH0_CONFIG.domain,
+    clientId: AUTH0_CONFIG.clientId,
+    authorizationParams: buildAuth0AuthorizationParams(),
+  });
+  return auth0Client;
 }
 
 function isAuth0SdkAvailable() {
@@ -1485,6 +1561,57 @@ async function getAuth0AccessTokenForApi() {
   } catch (error) {
     console.warn("Failed to get Auth0 access token for answer sync:", error);
     return null;
+  }
+}
+
+function updateManagerMenuVisibilityFromAccess(access) {
+  if (!elements.managerMenuLink) {
+    return;
+  }
+  const hasManagerRole = Boolean(access?.canAccess && access?.member?.role);
+  elements.managerMenuLink.hidden = !hasManagerRole;
+}
+
+function clearManagerAccessCache() {
+  try {
+    window.sessionStorage.removeItem("the-review-manager-access-v1");
+  } catch {
+    // noop
+  }
+}
+
+async function updateManagerMenuVisibility() {
+  updateManagerMenuVisibilityFromAccess(null);
+  if (!elements.managerMenuLink || !state.auth.isLoggedIn || state.auth.provider === "guest") {
+    return;
+  }
+
+  const accessToken = await withTimeout(
+    getAuth0AccessTokenForApi(),
+    2200,
+    null,
+    "Manager menu access token"
+  );
+  if (!accessToken) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/manager/access`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      updateManagerMenuVisibilityFromAccess(null);
+      return;
+    }
+    const access = await response.json();
+    updateManagerMenuVisibilityFromAccess(access);
+  } catch (error) {
+    console.warn("Failed to check The Review Manager access:", error);
+    updateManagerMenuVisibilityFromAccess(null);
   }
 }
 
@@ -1629,6 +1756,7 @@ function setLoggedOutAuthState() {
 function applyLoggedOutState() {
   setLoggedOutAuthState();
   saveState();
+  updateManagerMenuVisibilityFromAccess(null);
   renderMypageSettings();
   renderAuthPanel();
 
@@ -1638,7 +1766,7 @@ function applyLoggedOutState() {
   closeMypageSubmenu();
 }
 
-function deleteAccountAndResetProgress() {
+async function deleteAccountAndResetProgress() {
   const shouldDelete = window.confirm(
     "アカウントを削除して進捗をリセットします。\nリビューコイン・デイリーログイン・問題履歴は削除されます。よろしいですか？"
   );
@@ -1646,6 +1774,8 @@ function deleteAccountAndResetProgress() {
     return;
   }
 
+  const shouldLogoutAuth0 = state.auth.provider !== "guest";
+  markExplicitLogoutIntent();
   state.reviewCoin = 0;
   state.loginDays = {};
   state.dailyTryRecords = {};
@@ -1666,16 +1796,35 @@ function deleteAccountAndResetProgress() {
   pauseSelfcheckTimer();
   selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
   saveState();
+  clearRequestedLoginOnboardingStep();
+  clearManagerAccessCache();
   renderAll();
   closeMypageSubmenu();
-  if (activeScreen === "mypage") {
-    activateScreen("home");
+  if (shouldLogoutAuth0) {
+    try {
+      const logoutClient = await withTimeout(ensureAuth0Client(), 1800, null, "Auth0 logout client");
+      if (!logoutClient) {
+        redirectToLoginPage();
+        return;
+      }
+      await logoutClient.logout({
+        logoutParams: {
+          returnTo: getLoginPageUrl(),
+        },
+      });
+    } catch (error) {
+      console.error("Auth0 logout after account reset failed:", error);
+      redirectToLoginPage();
+    }
+    return;
   }
+  redirectToLoginPage();
 }
 
 function renderAll() {
   renderCoinBoard({ fromZero: true });
   renderMypageCoin();
+  renderStoreConfig();
   renderMypageSettings();
   renderAuthPanel();
   renderFlashcardPanel();
@@ -4421,6 +4570,39 @@ function renderMypageCoin() {
     return;
   }
   elements.mypageCoinValueNumber.textContent = formatCoinAmount(state.reviewCoin);
+}
+
+function loadStoreConfig() {
+  try {
+    const raw = window.localStorage.getItem(STORE_CONFIG_KEY);
+    return normalizeStoreConfig(raw ? JSON.parse(raw) : null);
+  } catch {
+    return normalizeStoreConfig(null);
+  }
+}
+
+function normalizeStoreConfig(value) {
+  const avatarStatus =
+    typeof value?.avatarStatus === "string" && ["preparing", "published"].includes(value.avatarStatus)
+      ? value.avatarStatus
+      : DEFAULT_STORE_CONFIG.avatarStatus;
+  const avatarMessage = typeof value?.avatarMessage === "string" && value.avatarMessage.trim()
+    ? value.avatarMessage.trim()
+    : avatarStatus === "published"
+      ? "公開中"
+      : DEFAULT_STORE_CONFIG.avatarMessage;
+  return {
+    avatarStatus,
+    avatarMessage,
+  };
+}
+
+function renderStoreConfig() {
+  if (!elements.storeAvatarHint) {
+    return;
+  }
+  const storeConfig = loadStoreConfig();
+  elements.storeAvatarHint.textContent = storeConfig.avatarMessage;
 }
 
 function formatCoinAmount(value) {

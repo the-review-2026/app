@@ -35,6 +35,10 @@ export default {
       return getManagerMe(request, env);
     }
 
+    if (pathname === "/manager/access" && request.method === "GET") {
+      return getManagerAccess(request, env);
+    }
+
     if (pathname === "/manager/members" && request.method === "GET") {
       return listManagerMembers(request, env);
     }
@@ -107,6 +111,37 @@ async function getManagerMe(request, env) {
   return json({
     canAccess: member?.status === "approved" && Boolean(role),
     status: member?.status ?? "pending",
+    member,
+    permissions: getManagerPermissions(role),
+  });
+}
+
+async function getManagerAccess(request, env) {
+  const supabase = getSupabaseConfig(env);
+  if (!supabase) {
+    return json({ canAccess: false, status: "unconfigured", member: null, permissions: {} });
+  }
+
+  const authResult = await authenticateRequest(request, env);
+  if (!authResult.ok) {
+    return json(authResult.body, authResult.status);
+  }
+
+  const auth0Sub = normalizeSupabaseText(authResult.claims?.sub);
+  if (!auth0Sub) {
+    return json({ canAccess: false, status: "unauthorized", member: null, permissions: {} }, 401);
+  }
+
+  const memberResult = await getManagerMemberByAuth0Sub(supabase, auth0Sub);
+  if (!memberResult.ok) {
+    return json(memberResult.body, memberResult.status);
+  }
+
+  const member = memberResult.member;
+  const role = normalizeManagerRole(member?.role);
+  return json({
+    canAccess: member?.status === "approved" && Boolean(role),
+    status: member?.status ?? "none",
     member,
     permissions: getManagerPermissions(role),
   });
@@ -537,6 +572,23 @@ async function getManagerMemberByUserId(supabase, userId) {
   const response = await supabaseRequest(
     supabase,
     `/manager_members?user_id=eq.${encodeURIComponent(userId)}&select=id,user_id,auth0_sub,display_name,email,role,status,approved_at,approved_by,created_at,updated_at&limit=1`
+  );
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to look up the manager member in Supabase");
+  }
+
+  const members = await response.json();
+  return {
+    ok: true,
+    member: Array.isArray(members) ? members[0] ?? null : null,
+  };
+}
+
+async function getManagerMemberByAuth0Sub(supabase, auth0Sub) {
+  const response = await supabaseRequest(
+    supabase,
+    `/manager_members?auth0_sub=eq.${encodeURIComponent(auth0Sub)}&select=id,user_id,auth0_sub,display_name,email,role,status,approved_at,approved_by,created_at,updated_at&limit=1`
   );
 
   if (!response.ok) {

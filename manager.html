@@ -747,16 +747,37 @@
         padding: 0.58rem 0.68rem;
       }
 
-      body.manager-page .notice-preparing {
-        min-height: 42vh;
+      body.manager-page .manager-store-layout {
         display: grid;
-        place-items: center;
-        text-align: center;
+        grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+        gap: 0.95rem;
+        align-items: start;
       }
 
-      body.manager-page .notice-preparing h2 {
+      body.manager-page .manager-store-list {
+        display: grid;
+        gap: 0.72rem;
+      }
+
+      body.manager-page .manager-store-item {
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 0.84rem;
+      }
+
+      body.manager-page .manager-store-item h3 {
+        margin: 0 0 0.24rem;
+      }
+
+      body.manager-page .manager-store-item p {
         margin: 0;
-        font-size: 1.35rem;
+        color: #555555;
+      }
+
+      body.manager-page .manager-store-preview {
+        display: grid;
+        gap: 0.72rem;
       }
 
       body.manager-page .profile-card {
@@ -898,6 +919,10 @@
           grid-template-columns: 1fr;
         }
 
+        body.manager-page .manager-store-layout {
+          grid-template-columns: 1fr;
+        }
+
         body.manager-page .manager-member-actions {
           grid-template-columns: 1fr;
         }
@@ -976,10 +1001,6 @@
       <img class="app-logo manager-logo" src="./assets/logos/manager.png?v=20260326-1" alt="The Review Manager" />
 
       <div class="header-menu-block">
-        <div class="review-coin-board" aria-label="Manager">
-          <strong class="review-coin-value">MANAGER</strong>
-        </div>
-
         <nav class="top-nav manager-nav" aria-label="画面切替">
           <button class="top-nav-item is-active" type="button" data-screen="home">
             <span>ホーム</span>
@@ -987,8 +1008,8 @@
           <button class="top-nav-item" type="button" data-screen="problem">
             <span>問題</span>
           </button>
-          <button class="top-nav-item" type="button" data-screen="notice">
-            <span>お知らせ</span>
+          <button class="top-nav-item" type="button" data-screen="store">
+            <span>ストア</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="profile">
             <span>プロフィール</span>
@@ -1009,9 +1030,9 @@
               <button class="primary" type="button" data-home-link="problem">開く</button>
             </article>
             <article class="panel manager-home-card">
-              <h3>お知らせを管理する</h3>
-              <p>お知らせの作成と提出ができます。</p>
-              <button class="primary" type="button" data-home-link="notice">開く</button>
+              <h3>ストアを管理する</h3>
+              <p>アイテムの管理ができます。</p>
+              <button class="primary" type="button" data-home-link="store">開く</button>
             </article>
             <article class="panel manager-home-card">
               <h3>プロフィール</h3>
@@ -1160,10 +1181,43 @@
         </div>
       </section>
 
-      <section id="screen-notice" class="screen" hidden>
-        <section class="panel notice-preparing">
-          <h2>準備中</h2>
-        </section>
+      <section id="screen-store" class="screen" hidden>
+        <div class="manager-store-layout">
+          <section class="panel">
+            <h2>ストアを管理する</h2>
+            <p class="hint-text">アイテムの管理ができます。保存した内容はThe Review本体のストアに反映されます。</p>
+            <div class="manager-field-grid">
+              <label class="field-block" for="storeAvatarStatus">
+                <span class="field-label-row">アバター</span>
+                <select id="storeAvatarStatus">
+                  <option value="preparing">準備中</option>
+                  <option value="published">公開中</option>
+                </select>
+              </label>
+              <label class="field-block" for="storeAvatarMessage">
+                <span class="field-label-row">本体ストアで表示する文言</span>
+                <input id="storeAvatarMessage" type="text" maxlength="40" value="準備中" />
+              </label>
+              <div class="action-row">
+                <button id="saveStoreConfigBtn" class="primary" type="button">保存</button>
+              </div>
+              <p id="storeConfigFeedback" class="feedback" aria-live="polite"></p>
+            </div>
+          </section>
+          <section class="panel manager-store-preview">
+            <h2>The Review本体のストア</h2>
+            <div class="manager-store-list">
+              <article class="manager-store-item">
+                <h3>アバター</h3>
+                <p id="storeAvatarPreview">準備中</p>
+              </article>
+              <article class="manager-store-item">
+                <h3>カラーテーマ</h3>
+                <p>Sea / Midnight / Forest / Aojiru / Lemonade / Strawberry / The Paper / The Black</p>
+              </article>
+            </div>
+          </section>
+        </div>
       </section>
 
       <section id="screen-profile" class="screen" hidden>
@@ -1245,6 +1299,11 @@
         const MANAGER_DRAFT_KEY = "the-review-manager-drafts-v1";
         const MANAGER_OUTBOX_KEY = "the-review-manager-outbox-v1";
         const MANAGER_API_BASE_KEY = "the-review-manager-api-base";
+        const STORE_CONFIG_KEY = "the-review-store-config-v1";
+        const DEFAULT_STORE_CONFIG = {
+          avatarStatus: "preparing",
+          avatarMessage: "準備中",
+        };
         const DEFAULT_API_BASE = `${window.location.origin}/api/manager`;
         const MANAGER_ROLE_LABELS = {
           owner: "オーナー",
@@ -1358,6 +1417,11 @@
           managerMembersRefreshBtn: document.getElementById("managerMembersRefreshBtn"),
           managerMembersStatus: document.getElementById("managerMembersStatus"),
           managerMembersList: document.getElementById("managerMembersList"),
+          storeAvatarStatus: document.getElementById("storeAvatarStatus"),
+          storeAvatarMessage: document.getElementById("storeAvatarMessage"),
+          storeAvatarPreview: document.getElementById("storeAvatarPreview"),
+          saveStoreConfigBtn: document.getElementById("saveStoreConfigBtn"),
+          storeConfigFeedback: document.getElementById("storeConfigFeedback"),
           problemImageDialog: document.getElementById("problemImageDialog"),
           problemDialogImage: document.getElementById("problemDialogImage"),
           problemDialogImageMeta: document.getElementById("problemDialogImageMeta"),
@@ -1379,7 +1443,10 @@
           initializeMenu();
           initializeNavigation();
           initializeManagerMembers();
-          await initializeManagerAccess();
+          initializeStoreSettings();
+          renderStoreSettings();
+          renderManagerAccess();
+          void initializeManagerAccess();
           pruneSeedDrafts();
           initializePublishedFilters();
           initializeProblemForm();
@@ -1392,7 +1459,7 @@
             if (elements.appLoader) {
               elements.appLoader.style.display = "none";
             }
-          }, 180);
+          }, 80);
         }
 
         function pruneSeedDrafts() {
@@ -1510,6 +1577,18 @@
           });
         }
 
+        function initializeStoreSettings() {
+          elements.saveStoreConfigBtn?.addEventListener("click", saveStoreSettings);
+          elements.storeAvatarStatus?.addEventListener("change", () => {
+            const status = normalizeStoreAvatarStatus(elements.storeAvatarStatus.value);
+            if (elements.storeAvatarMessage && !elements.storeAvatarMessage.value.trim()) {
+              elements.storeAvatarMessage.value = status === "published" ? "公開中" : "準備中";
+            }
+            renderStorePreviewFromForm();
+          });
+          elements.storeAvatarMessage?.addEventListener("input", renderStorePreviewFromForm);
+        }
+
         async function initializeManagerAccess() {
           let token = null;
           try {
@@ -1556,11 +1635,13 @@
           const access = state.managerAccess;
           const role = access?.member?.role || access?.role || null;
           if (elements.profileRoleValue) {
-            elements.profileRoleValue.textContent = role
-              ? MANAGER_ROLE_LABELS[role] || role
-              : access?.status === "pending"
-                ? "承認待ち"
-                : "未承認";
+            elements.profileRoleValue.textContent = !access
+              ? "確認中"
+              : role
+                ? MANAGER_ROLE_LABELS[role] || role
+                : access.status === "pending"
+                  ? "承認待ち"
+                  : "未承認";
           }
 
           if (elements.managerMembersPanel) {
@@ -1570,7 +1651,7 @@
             void loadManagerMembers();
           }
 
-          const shouldRestrict = access?.canAccess === false;
+          const shouldRestrict = !access || access.canAccess === false;
           const allowedScreens = new Set(["home", "profile"]);
           elements.navButtons.forEach((button) => {
             button.disabled = shouldRestrict && !allowedScreens.has(button.dataset.screen || "");
@@ -1579,7 +1660,7 @@
             button.disabled = shouldRestrict && !allowedScreens.has(button.dataset.homeLink || "");
           });
 
-          if (!shouldRestrict) {
+          if (!access || !shouldRestrict) {
             return;
           }
 
@@ -1595,6 +1676,70 @@
 
         function canManageManagerMembers() {
           return state.managerAccess?.canAccess === true && state.managerAccess?.member?.role === "owner";
+        }
+
+        function loadStoreConfig() {
+          try {
+            const raw = window.localStorage.getItem(STORE_CONFIG_KEY);
+            return normalizeStoreConfig(raw ? JSON.parse(raw) : null);
+          } catch {
+            return normalizeStoreConfig(null);
+          }
+        }
+
+        function normalizeStoreConfig(value) {
+          const avatarStatus = normalizeStoreAvatarStatus(value?.avatarStatus);
+          const avatarMessage = typeof value?.avatarMessage === "string" && value.avatarMessage.trim()
+            ? value.avatarMessage.trim()
+            : avatarStatus === "published"
+              ? "公開中"
+              : DEFAULT_STORE_CONFIG.avatarMessage;
+          return {
+            avatarStatus,
+            avatarMessage,
+          };
+        }
+
+        function normalizeStoreAvatarStatus(value) {
+          return value === "published" ? "published" : "preparing";
+        }
+
+        function renderStoreSettings() {
+          const config = loadStoreConfig();
+          if (elements.storeAvatarStatus) {
+            elements.storeAvatarStatus.value = config.avatarStatus;
+          }
+          if (elements.storeAvatarMessage) {
+            elements.storeAvatarMessage.value = config.avatarMessage;
+          }
+          renderStorePreview(config);
+        }
+
+        function renderStorePreviewFromForm() {
+          renderStorePreview(
+            normalizeStoreConfig({
+              avatarStatus: elements.storeAvatarStatus?.value,
+              avatarMessage: elements.storeAvatarMessage?.value,
+            })
+          );
+        }
+
+        function renderStorePreview(config = loadStoreConfig()) {
+          if (elements.storeAvatarPreview) {
+            elements.storeAvatarPreview.textContent = config.avatarMessage;
+          }
+        }
+
+        function saveStoreSettings() {
+          const config = normalizeStoreConfig({
+            avatarStatus: elements.storeAvatarStatus?.value,
+            avatarMessage: elements.storeAvatarMessage?.value,
+          });
+          window.localStorage.setItem(STORE_CONFIG_KEY, JSON.stringify(config));
+          renderStorePreview(config);
+          if (elements.storeConfigFeedback) {
+            elements.storeConfigFeedback.textContent = "保存しました。The Review本体のストアに反映されます。";
+          }
         }
 
         async function loadManagerMembers() {

@@ -65,7 +65,7 @@
           </button>
           <div class="info-menu-list">
             <button class="info-menu-item" type="button" data-screen="settings">設定</button>
-            <a class="info-menu-item" href="./manager.html">The Review Manager</a>
+            <a id="managerMenuLink" class="info-menu-item" href="./manager.html" hidden>The Review Manager</a>
           </div>
         </section>
       </div>
@@ -441,11 +441,11 @@
               </div>
               <div class="setting-row">
                 <span>ログアウト</span>
-                <button id="logoutBtn" class="secondary" type="button">続行する</button>
+                <button id="logoutBtn" class="secondary" type="button">ログアウト</button>
               </div>
               <div class="setting-row">
                 <span>アカウントを削除</span>
-                <button id="deleteAccountBtn" class="danger" type="button">続行する</button>
+                <button id="deleteAccountBtn" class="danger" type="button">削除する</button>
               </div>
             </div>
           </section>
@@ -516,7 +516,7 @@
         <section class="panel settings-section">
           <h2>アバター</h2>
           <div class="settings-section-content">
-            <p class="hint-text">準備中</p>
+            <p id="storeAvatarHint" class="hint-text">準備中</p>
           </div>
         </section>
         <section class="panel settings-section">
@@ -623,6 +623,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260427-5" charset="UTF-8"></script>
+    <script src="./app.js?v=20260427-6" charset="UTF-8"></script>
   </body>
 </html>
