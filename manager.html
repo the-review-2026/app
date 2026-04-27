@@ -1304,7 +1304,7 @@
           avatarStatus: "preparing",
           avatarMessage: "準備中",
         };
-        const DEFAULT_API_BASE = `${window.location.origin}/api/manager`;
+        const DEFAULT_API_BASE = "https://api.the-review.net";
         const MANAGER_ROLE_LABELS = {
           owner: "オーナー",
           developer: "デベロッパー",
@@ -1607,7 +1607,7 @@
           }
 
           try {
-            const response = await fetch(`${resolveApiBase()}/me`, {
+            const response = await fetch(`${resolveApiBase()}/manager/me`, {
               headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: "application/json",
@@ -1760,7 +1760,7 @@
           }
 
           try {
-            const response = await fetch(`${resolveApiBase()}/members`, {
+            const response = await fetch(`${resolveApiBase()}/manager/members`, {
               headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: "application/json",
@@ -1846,7 +1846,7 @@
           }
 
           try {
-            const response = await fetch(`${resolveApiBase()}/members/${encodeURIComponent(memberId)}`, {
+            const response = await fetch(`${resolveApiBase()}/manager/members/${encodeURIComponent(memberId)}`, {
               method: "PATCH",
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -2427,7 +2427,7 @@
 
         async function submitToManagerApi(draft) {
           const token = await getAuth0AccessToken();
-          const endpoint = `${resolveApiBase()}/question-submissions`;
+          const endpoint = `${resolveApiBase()}/manager/question-submissions`;
           const payload = {
             binder: draft.binder,
             note: draft.note,
@@ -2773,9 +2773,7 @@
         }
 
         function resolveApiBase() {
-          const saved = window.localStorage.getItem(MANAGER_API_BASE_KEY);
-          const base = (saved || DEFAULT_API_BASE).replace(/\/+$/, "");
-          return base;
+          return DEFAULT_API_BASE;
         }
 
         function getChapterConfig(note) {
