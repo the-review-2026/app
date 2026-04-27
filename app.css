@@ -980,7 +980,15 @@ body[data-theme="strawberry"] .aurora-right {
   font-size: 1.24rem;
   font-weight: 800;
   line-height: 1;
+  padding: 0;
+  text-align: center;
   cursor: pointer;
+}
+
+.info-menu-close-btn span {
+  display: block;
+  width: 100%;
+  transform: translateY(-0.02em);
 }
 
 .info-menu-close-btn:focus-visible {
@@ -1533,12 +1541,53 @@ body.selfcheck-timer-focus-mode .mypage-selfcheck-page.is-timer-focus > .mypage-
 
 .mypage-flashcard-panel {
   overflow: visible;
+  position: relative;
   transition:
     min-height var(--focus-mode-transition),
     margin var(--focus-mode-transition),
     border-radius var(--focus-mode-transition),
     border-color var(--focus-mode-transition),
     box-shadow var(--focus-mode-transition);
+}
+
+.mypage-flashcard-panel.is-preparing {
+  min-height: 220px;
+}
+
+.mypage-flashcard-panel.is-preparing .flashcard-panel {
+  pointer-events: none;
+  user-select: none;
+}
+
+.mypage-flashcard-panel.is-preparing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  border-radius: inherit;
+  background: rgba(5, 10, 18, 0.58);
+  backdrop-filter: blur(1px);
+}
+
+.mypage-flashcard-panel.is-preparing::after {
+  content: "準備中";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 81;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  min-width: 7.5rem;
+  min-height: 3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(29, 29, 29, 0.86);
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  pointer-events: auto;
 }
 
 body.flashcard-focus-mode .mypage-top-page.is-flashcard-focus > .mypage-flashcard-panel > .flashcard-panel-head,
@@ -2299,6 +2348,10 @@ body[data-theme="sea"] .daily-login-card-head::before {
 
 .daily-try-panel {
   position: relative;
+}
+
+.daily-try-placeholder {
+  line-height: 1.75;
 }
 
 .tab-script-panel {
@@ -4756,7 +4809,7 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 .settings-tab-list {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.32rem;
   border: 1px solid var(--panel-line);
@@ -4797,7 +4850,7 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 .settings-tab-panel[hidden] {
-  display: none;
+  display: block;
 }
 
 .notice-list {

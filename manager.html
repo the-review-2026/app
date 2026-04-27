@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260423-1" />
+    <link rel="stylesheet" href="./app.css?v=20260427-3" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
     <style>
       body.manager-page {
@@ -822,6 +822,65 @@
         color: #1d1d1d;
       }
 
+      body.manager-page .manager-members-panel[hidden] {
+        display: none;
+      }
+
+      body.manager-page .manager-members-head {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      body.manager-page .manager-members-head h2 {
+        margin: 0;
+      }
+
+      body.manager-page .manager-members-list {
+        display: grid;
+        gap: 0.72rem;
+        margin-top: 0.9rem;
+      }
+
+      body.manager-page .manager-member-card {
+        display: grid;
+        gap: 0.64rem;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 0.84rem;
+      }
+
+      body.manager-page .manager-member-meta {
+        display: grid;
+        gap: 0.16rem;
+      }
+
+      body.manager-page .manager-member-name {
+        margin: 0;
+        color: #1d1d1d;
+        font-weight: 800;
+      }
+
+      body.manager-page .manager-member-sub {
+        margin: 0;
+        color: #555555;
+        font-size: 0.78rem;
+        overflow-wrap: anywhere;
+      }
+
+      body.manager-page .manager-member-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+        gap: 0.52rem;
+        align-items: center;
+      }
+
+      body.manager-page .manager-member-actions select {
+        min-width: 0;
+      }
+
       @media (max-width: 760px) {
         body.manager-page .app-logo.manager-logo {
           width: min(246px, 64vw);
@@ -836,6 +895,10 @@
         }
 
         body.manager-page .problem-compose-grid {
+          grid-template-columns: 1fr;
+        }
+
+        body.manager-page .manager-member-actions {
           grid-template-columns: 1fr;
         }
 
@@ -894,11 +957,17 @@
           aria-controls="infoMenuPanel"
           aria-label="Informationメニューを開く"
         >
-          <img class="review-coin-icon info-menu-icon" src="./private/icon/Information.png" alt="" aria-hidden="true" />
+          <span class="info-hamburger-icon" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
         </button>
         <section id="infoMenuPanel" class="info-menu-panel" aria-label="Informationメニュー" hidden>
+          <button id="infoMenuCloseBtn" class="info-menu-close-btn" type="button" aria-label="Informationメニューを閉じる">
+            <span aria-hidden="true">×</span>
+          </button>
           <div class="info-menu-list">
-            <button class="info-menu-item" type="button" data-menu-link="home">ホームへ</button>
             <button class="info-menu-item" type="button" data-menu-url="./index.html">The Reviewへ戻る</button>
           </div>
         </section>
@@ -1109,9 +1178,17 @@
             </div>
             <div class="profile-info-block">
               <p class="profile-info-label">役割</p>
-              <p class="profile-info-value">Manager</p>
+              <p id="profileRoleValue" class="profile-info-value">確認中</p>
             </div>
           </div>
+        </section>
+        <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
+          <div class="manager-members-head">
+            <h2>チーム承認</h2>
+            <button id="managerMembersRefreshBtn" class="secondary" type="button">更新</button>
+          </div>
+          <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
+          <div id="managerMembersList" class="manager-members-list"></div>
         </section>
       </section>
     </main>
@@ -1169,6 +1246,18 @@
         const MANAGER_OUTBOX_KEY = "the-review-manager-outbox-v1";
         const MANAGER_API_BASE_KEY = "the-review-manager-api-base";
         const DEFAULT_API_BASE = `${window.location.origin}/api/manager`;
+        const MANAGER_ROLE_LABELS = {
+          owner: "オーナー",
+          developer: "デベロッパー",
+          checker: "チェッカー",
+          system_designer: "システムデザイナー",
+          character_designer: "キャラクターデザイナー",
+        };
+        const MANAGER_STATUS_LABELS = {
+          pending: "承認待ち",
+          approved: "承認済み",
+          suspended: "停止",
+        };
 
         const NOTE_BY_BINDER = {
           "Reboot 1st Edition (JESH)": ["現代の国語", "言語文化", "論理・表現Ⅰ", "ＥＣⅠ", "公共", "保健"],
@@ -1216,6 +1305,9 @@
           auth0Client: null,
           drafts: loadJson(MANAGER_DRAFT_KEY, []),
           auth: loadAuthSummary(),
+          managerAccess: null,
+          managerMembers: [],
+          infoMenuCloseTimerId: null,
           draggingId: null,
           lastDragOverKey: null,
           problemImageData: null,
@@ -1229,6 +1321,7 @@
         const elements = {
           appLoader: document.getElementById("appLoader"),
           infoMenuTrigger: document.getElementById("infoMenuTrigger"),
+          infoMenuCloseBtn: document.getElementById("infoMenuCloseBtn"),
           infoMenuPanel: document.getElementById("infoMenuPanel"),
           menuItems: Array.from(document.querySelectorAll(".info-menu-item")),
           screens: Array.from(document.querySelectorAll(".screen")),
@@ -1260,6 +1353,11 @@
           editorCharCount: document.getElementById("editorCharCount"),
           proofreadingFeedback: document.getElementById("proofreadingFeedback"),
           profileDisplayName: document.getElementById("profileDisplayName"),
+          profileRoleValue: document.getElementById("profileRoleValue"),
+          managerMembersPanel: document.getElementById("managerMembersPanel"),
+          managerMembersRefreshBtn: document.getElementById("managerMembersRefreshBtn"),
+          managerMembersStatus: document.getElementById("managerMembersStatus"),
+          managerMembersList: document.getElementById("managerMembersList"),
           problemImageDialog: document.getElementById("problemImageDialog"),
           problemDialogImage: document.getElementById("problemDialogImage"),
           problemDialogImageMeta: document.getElementById("problemDialogImageMeta"),
@@ -1277,9 +1375,11 @@
 
         initialize();
 
-        function initialize() {
+        async function initialize() {
           initializeMenu();
           initializeNavigation();
+          initializeManagerMembers();
+          await initializeManagerAccess();
           pruneSeedDrafts();
           initializePublishedFilters();
           initializeProblemForm();
@@ -1314,10 +1414,14 @@
           }
 
           elements.infoMenuTrigger.addEventListener("click", () => {
-            const nextHidden = !elements.infoMenuPanel.hidden;
-            elements.infoMenuPanel.hidden = nextHidden;
-            elements.infoMenuTrigger.setAttribute("aria-expanded", String(!nextHidden));
+            if (elements.infoMenuPanel.classList.contains("is-open")) {
+              closeInfoMenu();
+              return;
+            }
+            openInfoMenu();
           });
+
+          elements.infoMenuCloseBtn?.addEventListener("click", closeInfoMenu);
 
           elements.menuItems.forEach((item) => {
             item.addEventListener("click", () => {
@@ -1330,8 +1434,7 @@
               if (linkUrl) {
                 window.location.href = linkUrl;
               }
-              elements.infoMenuPanel.hidden = true;
-              elements.infoMenuTrigger.setAttribute("aria-expanded", "false");
+              closeInfoMenu();
             });
           });
 
@@ -1344,10 +1447,41 @@
               !elements.infoMenuPanel.contains(event.target) &&
               !elements.infoMenuTrigger.contains(event.target)
             ) {
-              elements.infoMenuPanel.hidden = true;
-              elements.infoMenuTrigger.setAttribute("aria-expanded", "false");
+              closeInfoMenu();
             }
           });
+        }
+
+        function openInfoMenu() {
+          if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
+            return;
+          }
+          if (state.infoMenuCloseTimerId !== null) {
+            window.clearTimeout(state.infoMenuCloseTimerId);
+            state.infoMenuCloseTimerId = null;
+          }
+          elements.infoMenuPanel.hidden = false;
+          window.requestAnimationFrame(() => {
+            elements.infoMenuPanel?.classList.add("is-open");
+          });
+          elements.infoMenuTrigger.setAttribute("aria-expanded", "true");
+        }
+
+        function closeInfoMenu() {
+          if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
+            return;
+          }
+          elements.infoMenuPanel.classList.remove("is-open");
+          elements.infoMenuTrigger.setAttribute("aria-expanded", "false");
+          if (state.infoMenuCloseTimerId !== null) {
+            window.clearTimeout(state.infoMenuCloseTimerId);
+          }
+          state.infoMenuCloseTimerId = window.setTimeout(() => {
+            if (!elements.infoMenuPanel?.classList.contains("is-open")) {
+              elements.infoMenuPanel.hidden = true;
+            }
+            state.infoMenuCloseTimerId = null;
+          }, 240);
         }
 
         function initializeNavigation() {
@@ -1357,6 +1491,238 @@
           elements.homeLinks.forEach((button) => {
             button.addEventListener("click", () => switchScreen(button.dataset.homeLink || "home"));
           });
+        }
+
+        function initializeManagerMembers() {
+          elements.managerMembersRefreshBtn?.addEventListener("click", () => {
+            void loadManagerMembers();
+          });
+          elements.managerMembersList?.addEventListener("click", (event) => {
+            const target = event.target instanceof Element ? event.target.closest("[data-manager-member-save]") : null;
+            if (!target) {
+              return;
+            }
+            const card = target.closest("[data-manager-member-id]");
+            if (!card) {
+              return;
+            }
+            void saveManagerMemberAccess(card.dataset.managerMemberId || "");
+          });
+        }
+
+        async function initializeManagerAccess() {
+          let token = null;
+          try {
+            token = await getAuth0AccessToken();
+          } catch {
+            token = null;
+          }
+          if (!token) {
+            state.managerAccess = {
+              canAccess: false,
+              status: "local",
+              role: null,
+            };
+            renderManagerAccess();
+            return;
+          }
+
+          try {
+            const response = await fetch(`${resolveApiBase()}/me`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
+            const json = await response.json().catch(() => null);
+            state.managerAccess = response.ok
+              ? json
+              : {
+                  canAccess: false,
+                  status: "error",
+                  role: null,
+                };
+          } catch {
+            state.managerAccess = {
+              canAccess: false,
+              status: "offline",
+              role: null,
+            };
+          }
+          renderManagerAccess();
+        }
+
+        function renderManagerAccess() {
+          const access = state.managerAccess;
+          const role = access?.member?.role || access?.role || null;
+          if (elements.profileRoleValue) {
+            elements.profileRoleValue.textContent = role
+              ? MANAGER_ROLE_LABELS[role] || role
+              : access?.status === "pending"
+                ? "承認待ち"
+                : "未承認";
+          }
+
+          if (elements.managerMembersPanel) {
+            elements.managerMembersPanel.hidden = role !== "owner" || access?.canAccess !== true;
+          }
+          if (role === "owner" && access?.canAccess === true) {
+            void loadManagerMembers();
+          }
+
+          const shouldRestrict = access?.canAccess === false;
+          const allowedScreens = new Set(["home", "profile"]);
+          elements.navButtons.forEach((button) => {
+            button.disabled = shouldRestrict && !allowedScreens.has(button.dataset.screen || "");
+          });
+          elements.homeLinks.forEach((button) => {
+            button.disabled = shouldRestrict && !allowedScreens.has(button.dataset.homeLink || "");
+          });
+
+          if (!shouldRestrict) {
+            return;
+          }
+
+          const panel = document.querySelector("#screen-home .panel");
+          if (panel && !panel.querySelector(".manager-access-note")) {
+            const note = document.createElement("p");
+            note.className = "hint-text manager-access-note";
+            note.textContent =
+              "The Review Managerはチーム承認後に利用できます。承認されるまで、プロフィールでログイン情報を確認してください。";
+            panel.append(note);
+          }
+        }
+
+        function canManageManagerMembers() {
+          return state.managerAccess?.canAccess === true && state.managerAccess?.member?.role === "owner";
+        }
+
+        async function loadManagerMembers() {
+          if (!canManageManagerMembers()) {
+            if (elements.managerMembersPanel) {
+              elements.managerMembersPanel.hidden = true;
+            }
+            return;
+          }
+
+          elements.managerMembersPanel.hidden = false;
+          elements.managerMembersStatus.textContent = "読み込み中です。";
+
+          const token = await getAuth0AccessToken();
+          if (!token) {
+            elements.managerMembersStatus.textContent = "ログイン情報を確認できませんでした。";
+            return;
+          }
+
+          try {
+            const response = await fetch(`${resolveApiBase()}/members`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
+            if (!response.ok) {
+              throw new Error(`API ${response.status}`);
+            }
+            const members = await response.json();
+            state.managerMembers = Array.isArray(members) ? members : [];
+            renderManagerMembers();
+          } catch {
+            elements.managerMembersStatus.textContent = "チーム承認データを取得できませんでした。";
+          }
+        }
+
+        function renderManagerMembers() {
+          if (!elements.managerMembersList || !elements.managerMembersStatus) {
+            return;
+          }
+
+          if (state.managerMembers.length === 0) {
+            elements.managerMembersStatus.textContent = "承認待ちのメンバーはいません。";
+            elements.managerMembersList.innerHTML = "";
+            return;
+          }
+
+          elements.managerMembersStatus.textContent = "役割と状態を選び、保存するとアクセス設定が反映されます。";
+          elements.managerMembersList.innerHTML = state.managerMembers
+            .map((member) => {
+              const id = member?.id || "";
+              const roleValue = member?.role || "developer";
+              const statusValue = member?.status || "pending";
+              const name = member?.display_name || member?.email || member?.auth0_sub || "未設定";
+              const sub = member?.email || member?.auth0_sub || "";
+              const roleOptions = Object.entries(MANAGER_ROLE_LABELS)
+                .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === roleValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
+                .join("");
+              const statusOptions = Object.entries(MANAGER_STATUS_LABELS)
+                .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === statusValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
+                .join("");
+
+              return `
+                <article class="manager-member-card" data-manager-member-id="${escapeHtml(id)}">
+                  <div class="manager-member-meta">
+                    <p class="manager-member-name">${escapeHtml(name)}</p>
+                    <p class="manager-member-sub">${escapeHtml(sub)}</p>
+                  </div>
+                  <div class="manager-member-actions">
+                    <select data-manager-member-role aria-label="役割">${roleOptions}</select>
+                    <select data-manager-member-status aria-label="承認状態">${statusOptions}</select>
+                    <button class="primary" type="button" data-manager-member-save>保存</button>
+                  </div>
+                </article>
+              `;
+            })
+            .join("");
+        }
+
+        async function saveManagerMemberAccess(memberId) {
+          if (!memberId || !canManageManagerMembers()) {
+            return;
+          }
+
+          const card = Array.from(elements.managerMembersList?.querySelectorAll("[data-manager-member-id]") || []).find(
+            (item) => item.dataset.managerMemberId === memberId
+          );
+          const role = card?.querySelector("[data-manager-member-role]")?.value || "developer";
+          const status = card?.querySelector("[data-manager-member-status]")?.value || "pending";
+          const saveButton = card?.querySelector("[data-manager-member-save]");
+          if (saveButton) {
+            saveButton.disabled = true;
+          }
+          elements.managerMembersStatus.textContent = "保存中です。";
+
+          const token = await getAuth0AccessToken();
+          if (!token) {
+            elements.managerMembersStatus.textContent = "ログイン情報を確認できませんでした。";
+            if (saveButton) {
+              saveButton.disabled = false;
+            }
+            return;
+          }
+
+          try {
+            const response = await fetch(`${resolveApiBase()}/members/${encodeURIComponent(memberId)}`, {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify({ role, status }),
+            });
+            if (!response.ok) {
+              throw new Error(`API ${response.status}`);
+            }
+            const updated = await response.json();
+            state.managerMembers = state.managerMembers.map((member) => (member.id === memberId ? updated : member));
+            elements.managerMembersStatus.textContent = "保存しました。";
+            renderManagerMembers();
+          } catch {
+            elements.managerMembersStatus.textContent = "保存できませんでした。";
+            if (saveButton) {
+              saveButton.disabled = false;
+            }
+          }
         }
 
         function switchScreen(screenName) {

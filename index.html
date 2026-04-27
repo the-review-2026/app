@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260427-2" />
+    <link rel="stylesheet" href="./app.css?v=20260427-3" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -64,10 +64,8 @@
             <span aria-hidden="true">×</span>
           </button>
           <div class="info-menu-list">
-            <button class="info-menu-item" type="button">The Reviewについて</button>
-            <button class="info-menu-item" type="button">お知らせ</button>
             <button class="info-menu-item" type="button" data-screen="settings">設定</button>
-            <a class="info-menu-item" href="./manager.html">The Review Manager（制作チーム用）</a>
+            <a class="info-menu-item" href="./manager.html">The Review Manager</a>
           </div>
         </section>
       </div>
@@ -153,7 +151,10 @@
               </section>
               <section class="panel home-card-wide daily-try-panel home-card-slide">
                 <h2>この問題にTRY!</h2>
-                <p id="dailyTryPrompt" class="hint-text"></p>
+                <p id="dailyTryPrompt" class="hint-text daily-try-placeholder">
+                  まずは問題を解いてみましょう。<br />
+                  この問題にTRY!は今まで解いた問題から出題されます。
+                </p>
                 <div id="dailyTryChoiceList" class="choice-list"></div>
                 <div class="action-row daily-try-action-row">
                   <button id="dailyTrySubmitBtn" class="primary" type="button">回答する</button>
@@ -244,11 +245,11 @@
 
       <section id="screen-mypage" class="screen">
         <section id="mypage-top" class="mypage-subpage mypage-top-page is-active" data-mypage-page="top">
-          <section id="mypageFlashcardPanel" class="panel mypage-flashcard-panel">
+          <section id="mypageFlashcardPanel" class="panel mypage-flashcard-panel is-preparing" aria-disabled="true">
             <h2 class="flashcard-panel-head">
               <span class="panel-title-text">フラッシュカード</span>
             </h2>
-            <div id="flashcardPanel" class="flashcard-panel">
+            <div id="flashcardPanel" class="flashcard-panel" inert>
               <p class="flashcard-static-message">復習する科目のバインダーをとってください</p>
               <div id="flashcardBinderList" class="flashcard-binder-list" aria-label="教材ファイル一覧">
 
@@ -421,49 +422,12 @@
       <section id="screen-settings" class="screen settings-page">
         <div class="settings-page-head">
           <h1>設定</h1>
-          <div class="settings-tab-list" role="tablist" aria-label="設定カテゴリ">
-            <button
-              id="settingsTabAccount"
-              class="settings-tab-btn is-active"
-              type="button"
-              role="tab"
-              aria-selected="true"
-              aria-controls="settingsPanelAccount"
-              data-settings-tab="account"
-            >
-              アカウント
-            </button>
-            <button
-              id="settingsTabNotification"
-              class="settings-tab-btn"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="settingsPanelNotification"
-              data-settings-tab="notification"
-            >
-              通知
-            </button>
-            <button
-              id="settingsTabReviewData"
-              class="settings-tab-btn"
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-controls="settingsPanelReviewData"
-              data-settings-tab="review-data"
-            >
-              リビューデータ
-            </button>
-          </div>
         </div>
 
         <section
           id="settingsPanelAccount"
           class="panel settings-section settings-tab-panel is-active"
           data-settings-panel="account"
-          role="tabpanel"
-          aria-labelledby="settingsTabAccount"
         >
             <h2>アカウント</h2>
             <div class="settings-section-content">
@@ -490,9 +454,6 @@
           id="settingsPanelNotification"
           class="panel settings-section settings-tab-panel"
           data-settings-panel="notification"
-          role="tabpanel"
-          aria-labelledby="settingsTabNotification"
-          hidden
         >
             <h2>通知</h2>
             <div class="settings-section-content">
@@ -524,9 +485,6 @@
           id="settingsPanelReviewData"
           class="panel settings-section settings-tab-panel"
           data-settings-panel="review-data"
-          role="tabpanel"
-          aria-labelledby="settingsTabReviewData"
-          hidden
         >
             <h2>リビューデータ</h2>
             <div class="settings-section-content">
@@ -558,7 +516,7 @@
         <section class="panel settings-section">
           <h2>アバター</h2>
           <div class="settings-section-content">
-            <p class="hint-text">未実装</p>
+            <p class="hint-text">準備中</p>
           </div>
         </section>
         <section class="panel settings-section">
@@ -665,6 +623,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260427-4" charset="UTF-8"></script>
+    <script src="./app.js?v=20260427-5" charset="UTF-8"></script>
   </body>
 </html>

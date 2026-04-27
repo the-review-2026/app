@@ -284,43 +284,7 @@ const FLASHCARD_DATASET_SOURCES = [
   },
 ];
 
-const DAILY_TRY_QUESTIONS = [
-  {
-    id: "d1",
-    prompt: "CPUの正式名称はどれ？",
-    choices: ["Central Process Unit", "Central Processing Unit", "Control Processing Unit"],
-    answer: 1,
-    note: "正しくは Central Processing Unit です。",
-  },
-  {
-    id: "d2",
-    prompt: "DNSの役割として正しいのは？",
-    choices: ["ドメイン名をIPに変換する", "画像を圧縮する", "動画を編集する"],
-    answer: 0,
-    note: "DNSは名前解決を担当します。",
-  },
-  {
-    id: "d3",
-    prompt: "アルゴリズムとは何？",
-    choices: ["問題を解く手順", "OSの種類", "ネット回線の速度"],
-    answer: 0,
-    note: "アルゴリズムは手順や規則のことです。",
-  },
-  {
-    id: "d4",
-    prompt: "優先順位づけの軸として適切なのは？",
-    choices: ["重要度と緊急度", "気分", "文字数"],
-    answer: 0,
-    note: "重要度と緊急度の観点で整理します。",
-  },
-  {
-    id: "d5",
-    prompt: "報告で最初に伝えるべき内容は？",
-    choices: ["結論", "雑談", "感想"],
-    answer: 0,
-    note: "まず結論を伝えると相手が判断しやすくなります。",
-  },
-];
+const DAILY_TRY_QUESTIONS = [];
 
 const AUTH0_CONFIG = normalizeAuth0Config(window.AUTH0_CONFIG);
 
@@ -800,7 +764,7 @@ function updateDailyTryNudgeState() {
   if (!elements.homeCardCarousel) {
     return;
   }
-  elements.homeCardCarousel.classList.toggle("is-daily-try-unanswered", !isDailyTryAnsweredToday());
+  elements.homeCardCarousel.classList.remove("is-daily-try-unanswered");
 }
 
 function injectTabScriptLabels() {
@@ -5143,16 +5107,15 @@ function setSettingsTab(tab) {
   activeSettingsTab = normalizedTab;
 
   elements.settingsTabButtons.forEach((button) => {
-    const isActive = button.dataset.settingsTab === normalizedTab;
-    button.classList.toggle("is-active", isActive);
-    button.setAttribute("aria-selected", String(isActive));
-    button.tabIndex = isActive ? 0 : -1;
+    button.hidden = true;
+    button.classList.remove("is-active");
+    button.setAttribute("aria-selected", "false");
+    button.tabIndex = -1;
   });
 
   elements.settingsTabPanels.forEach((panel) => {
-    const isActive = panel.dataset.settingsPanel === normalizedTab;
-    panel.classList.toggle("is-active", isActive);
-    panel.hidden = !isActive;
+    panel.classList.add("is-active");
+    panel.hidden = false;
   });
 }
 
@@ -5472,16 +5435,14 @@ function renderDailyLogin() {
 
 function createDailyTryRun() {
   const key = todayKey();
-  const index = getDailyTryQuestionIndex(key);
+  const index = DAILY_TRY_QUESTIONS.length > 0 ? getDailyTryQuestionIndex(key) : -1;
   const record = state.dailyTryRecords[key];
+  const question = index >= 0 ? DAILY_TRY_QUESTIONS[index] : null;
   const selected = Number.isInteger(record?.selected) ? record.selected : null;
   return {
     dateKey: key,
     questionIndex: index,
-    selected:
-      selected !== null && selected >= 0 && selected < DAILY_TRY_QUESTIONS[index].choices.length
-        ? selected
-        : null,
+    selected: question && selected !== null && selected >= 0 && selected < question.choices.length ? selected : null,
     submitted: Boolean(record?.answered),
   };
 }
@@ -5496,52 +5457,29 @@ function syncDailyTryByDate() {
 function renderDailyTryPanel() {
   syncDailyTryByDate();
   updateDailyTryNudgeState();
-  const question = DAILY_TRY_QUESTIONS[dailyTryRun.questionIndex];
-  elements.dailyTryPrompt.textContent = question.prompt;
-
-  elements.dailyTryChoiceList.innerHTML = question.choices
-    .map((choice, index) => {
-      const classNames = ["choice-btn"];
-      if (dailyTryRun.selected === index) {
-        classNames.push("selected");
-      }
-      if (dailyTryRun.submitted) {
-        if (index === question.answer) {
-          classNames.push("correct");
-        } else if (index === dailyTryRun.selected) {
-          classNames.push("wrong");
-        }
-      }
-      return `<button class="${classNames.join(" ")}" type="button" data-daily-try-choice="${index}">${escapeHtml(
-        choice
-      )}</button>`;
-    })
-    .join("");
-
-  elements.dailyTryChoiceList.querySelectorAll("[data-daily-try-choice]").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (dailyTryRun.submitted) {
-        return;
-      }
-      dailyTryRun.selected = Number(button.dataset.dailyTryChoice);
-      renderDailyTryPanel();
-    });
-  });
-
-  if (!dailyTryRun.submitted) {
-    elements.dailyTryFeedback.textContent = "";
-  } else {
-    const isCorrect = dailyTryRun.selected === question.answer;
-    elements.dailyTryFeedback.textContent = isCorrect ? "正解！" : `不正解。${question.note ?? ""}`;
+  if (elements.dailyTryPrompt) {
+    elements.dailyTryPrompt.innerHTML =
+      "まずは問題を解いてみましょう。<br />この問題にTRY!は今まで解いた問題から出題されます。";
   }
-
-  elements.dailyTrySubmitBtn.disabled = dailyTryRun.submitted || dailyTryRun.selected === null;
+  if (elements.dailyTryChoiceList) {
+    elements.dailyTryChoiceList.innerHTML = "";
+  }
+  if (elements.dailyTryFeedback) {
+    elements.dailyTryFeedback.textContent = "";
+  }
+  if (elements.dailyTrySubmitBtn) {
+    elements.dailyTrySubmitBtn.hidden = true;
+    elements.dailyTrySubmitBtn.disabled = true;
+  }
 }
 
 function submitDailyTryAnswer() {
   syncDailyTryByDate();
+  if (dailyTryRun.questionIndex < 0) {
+    return;
+  }
   const question = DAILY_TRY_QUESTIONS[dailyTryRun.questionIndex];
-  if (dailyTryRun.submitted || dailyTryRun.selected === null) {
+  if (!question || dailyTryRun.submitted || dailyTryRun.selected === null) {
     return;
   }
 
@@ -5800,6 +5738,9 @@ function calculateAutumnEquinoxDay(year) {
 }
 
 function getDailyTryQuestionIndex(dateKey) {
+  if (DAILY_TRY_QUESTIONS.length === 0) {
+    return -1;
+  }
   const digits = String(dateKey).replaceAll("-", "");
   let sum = 0;
   for (const ch of digits) {

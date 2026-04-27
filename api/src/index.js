@@ -1,6 +1,7 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const pathname = normalizeApiPathname(url.pathname);
 
     if (request.method === "OPTIONS") {
       return new Response(null, {
@@ -9,7 +10,7 @@ export default {
       });
     }
 
-    if (url.pathname === "/questions" && request.method === "GET") {
+    if (pathname === "/questions" && request.method === "GET") {
       const questions = [
         {
           id: "q_001",
@@ -26,8 +27,21 @@ export default {
       return json(questions);
     }
 
-    if (url.pathname === "/me/answers" && request.method === "POST") {
+    if (pathname === "/me/answers" && request.method === "POST") {
       return createAnswer(request, env);
+    }
+
+    if (pathname === "/manager/me" && request.method === "GET") {
+      return getManagerMe(request, env);
+    }
+
+    if (pathname === "/manager/members" && request.method === "GET") {
+      return listManagerMembers(request, env);
+    }
+
+    const managerMemberMatch = pathname.match(/^\/manager\/members\/([^/]+)$/);
+    if (managerMemberMatch && request.method === "PATCH") {
+      return updateManagerMember(request, env, managerMemberMatch[1]);
     }
 
     return json({ error: "Not Found", path: url.pathname }, 404);
@@ -36,6 +50,194 @@ export default {
 
 const AUTH0_JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const auth0JwksCache = new Map();
+const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
+const MANAGER_STATUSES = ["pending", "approved", "suspended"];
+const MANAGER_ROLE_PERMISSIONS = {
+  owner: {
+    manageSettings: true,
+    manageMembers: true,
+    manageInformation: true,
+    createQuestions: true,
+    checkQuestions: true,
+    publishQuestions: true,
+    changeDesign: true,
+    commitDesign: true,
+    manageCharacters: true,
+    manageStoreItems: true,
+  },
+  developer: {
+    createQuestions: true,
+    submitQuestions: true,
+  },
+  checker: {
+    checkQuestions: true,
+    publishQuestions: true,
+  },
+  system_designer: {
+    changeDesign: true,
+    commitDesign: true,
+  },
+  character_designer: {
+    manageCharacters: true,
+    manageStoreItems: true,
+  },
+};
+
+function normalizeApiPathname(pathname) {
+  const normalized = String(pathname || "").replace(/\/+$/, "") || "/";
+  if (normalized.startsWith("/api/")) {
+    return normalized.slice(4) || "/";
+  }
+  return normalized;
+}
+
+async function getManagerMe(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const memberResult = await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
+  if (!memberResult.ok) {
+    return json(memberResult.body, memberResult.status);
+  }
+
+  const member = memberResult.member;
+  const role = normalizeManagerRole(member?.role);
+  return json({
+    canAccess: member?.status === "approved" && Boolean(role),
+    status: member?.status ?? "pending",
+    member,
+    permissions: getManagerPermissions(role),
+  });
+}
+
+async function listManagerMembers(request, env) {
+  const access = await requireManagerOwner(request, env);
+  if (!access.ok) {
+    return json(access.body, access.status);
+  }
+
+  const response = await supabaseRequest(
+    access.supabase,
+    "/manager_members?select=id,user_id,auth0_sub,display_name,email,role,status,approved_at,approved_by,created_at,updated_at&order=created_at.desc"
+  );
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to list manager members");
+    return json(error.body, error.status);
+  }
+
+  return json(await response.json());
+}
+
+async function updateManagerMember(request, env, memberId) {
+  const access = await requireManagerOwner(request, env);
+  if (!access.ok) {
+    return json(access.body, access.status);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const role = normalizeManagerRole(body?.role);
+  const status = normalizeManagerStatus(body?.status);
+  const patch = {
+    updated_at: new Date().toISOString(),
+  };
+  if (role) {
+    patch.role = role;
+  }
+  if (status) {
+    patch.status = status;
+    if (status === "approved") {
+      patch.approved_at = new Date().toISOString();
+      patch.approved_by = access.member?.id ?? null;
+    } else {
+      patch.approved_at = null;
+      patch.approved_by = null;
+    }
+  }
+  if (!role && !status) {
+    return json({ error: "role or status is required" }, 400);
+  }
+
+  const response = await supabaseRequest(access.supabase, `/manager_members?id=eq.${encodeURIComponent(memberId)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to update manager member");
+    return json(error.body, error.status);
+  }
+
+  const members = await response.json();
+  return json(Array.isArray(members) ? members[0] ?? null : members);
+}
+
+async function requireManagerOwner(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return context;
+  }
+
+  const memberResult = await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
+  if (!memberResult.ok) {
+    return memberResult;
+  }
+
+  if (memberResult.member?.status !== "approved" || memberResult.member?.role !== "owner") {
+    return {
+      ok: false,
+      status: 403,
+      body: {
+        error: "Only approved owners can manage The Review Manager members.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    ...context,
+    member: memberResult.member,
+  };
+}
+
+async function getAuthenticatedSupabaseContext(request, env) {
+  const supabase = getSupabaseConfig(env);
+  if (!supabase) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Supabase is not configured. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.",
+      },
+    };
+  }
+
+  const authResult = await authenticateRequest(request, env);
+  if (!authResult.ok) {
+    return authResult;
+  }
+
+  const userResult = await getOrCreateUserByAuth0Sub(supabase, authResult.claims);
+  if (!userResult.ok) {
+    return userResult;
+  }
+
+  return {
+    ok: true,
+    supabase,
+    claims: authResult.claims,
+    user: userResult.user,
+  };
+}
 
 async function createAnswer(request, env) {
   const supabase = getSupabaseConfig(env);
@@ -286,6 +488,130 @@ async function insertAnswer(supabase, answer) {
     ok: true,
     answer: Array.isArray(savedAnswers) ? savedAnswers[0] ?? null : savedAnswers,
   };
+}
+
+async function getOrCreateManagerMember(supabase, user, claims, env) {
+  if (!user?.id) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Manager member could not be resolved because the user record has no id.",
+      },
+    };
+  }
+
+  const existing = await getManagerMemberByUserId(supabase, user.id);
+  if (!existing.ok) {
+    return existing;
+  }
+
+  const shouldBootstrapOwner = isBootstrapManagerOwner(claims, env);
+  if (existing.member) {
+    if (
+      shouldBootstrapOwner &&
+      (existing.member.role !== "owner" || existing.member.status !== "approved")
+    ) {
+      return updateManagerMemberById(supabase, existing.member.id, {
+        role: "owner",
+        status: "approved",
+        approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+    return existing;
+  }
+
+  return createManagerMember(supabase, {
+    user_id: user.id,
+    auth0_sub: normalizeSupabaseText(claims?.sub),
+    display_name: getDisplayNameFromClaims(claims),
+    email: normalizeSupabaseText(claims?.email) || null,
+    role: shouldBootstrapOwner ? "owner" : null,
+    status: shouldBootstrapOwner ? "approved" : "pending",
+    approved_at: shouldBootstrapOwner ? new Date().toISOString() : null,
+  });
+}
+
+async function getManagerMemberByUserId(supabase, userId) {
+  const response = await supabaseRequest(
+    supabase,
+    `/manager_members?user_id=eq.${encodeURIComponent(userId)}&select=id,user_id,auth0_sub,display_name,email,role,status,approved_at,approved_by,created_at,updated_at&limit=1`
+  );
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to look up the manager member in Supabase");
+  }
+
+  const members = await response.json();
+  return {
+    ok: true,
+    member: Array.isArray(members) ? members[0] ?? null : null,
+  };
+}
+
+async function createManagerMember(supabase, member) {
+  const response = await supabaseRequest(supabase, "/manager_members", {
+    method: "POST",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(member),
+  });
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to create the manager member in Supabase");
+  }
+
+  const members = await response.json();
+  return {
+    ok: true,
+    member: Array.isArray(members) ? members[0] ?? null : members,
+  };
+}
+
+async function updateManagerMemberById(supabase, memberId, patch) {
+  const response = await supabaseRequest(supabase, `/manager_members?id=eq.${encodeURIComponent(memberId)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(patch),
+  });
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to update the manager member in Supabase");
+  }
+
+  const members = await response.json();
+  return {
+    ok: true,
+    member: Array.isArray(members) ? members[0] ?? null : members,
+  };
+}
+
+function isBootstrapManagerOwner(claims, env) {
+  const auth0Sub = normalizeSupabaseText(claims?.sub);
+  const ownerSubs = typeof env?.MANAGER_OWNER_AUTH0_SUBS === "string" ? env.MANAGER_OWNER_AUTH0_SUBS : "";
+  return ownerSubs
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .includes(auth0Sub);
+}
+
+function normalizeManagerRole(value) {
+  const role = normalizeSupabaseText(value);
+  return MANAGER_ROLES.includes(role) ? role : null;
+}
+
+function normalizeManagerStatus(value) {
+  const status = normalizeSupabaseText(value);
+  return MANAGER_STATUSES.includes(status) ? status : null;
+}
+
+function getManagerPermissions(role) {
+  return MANAGER_ROLE_PERMISSIONS[role] ?? {};
 }
 
 function getDisplayNameFromClaims(claims) {
