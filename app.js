@@ -344,6 +344,11 @@ const elements = {
   reviewDataImportInput: document.getElementById("reviewDataImportInput"),
   guestModeDialog: document.getElementById("guestModeDialog"),
   guestModeActionButtons: Array.from(document.querySelectorAll("[data-guest-mode-action]")),
+  accountActionDialog: document.getElementById("accountActionDialog"),
+  accountActionDialogTitle: document.getElementById("accountActionDialogTitle"),
+  accountActionDialogMessage: document.getElementById("accountActionDialogMessage"),
+  accountActionConfirmBtn: document.getElementById("accountActionConfirmBtn"),
+  accountActionButtons: Array.from(document.querySelectorAll("[data-account-action]")),
   themeUnlockDialog: document.getElementById("themeUnlockDialog"),
   themeUnlockName: document.getElementById("themeUnlockName"),
   themeUnlockCost: document.getElementById("themeUnlockCost"),
@@ -422,6 +427,7 @@ const flashcardBookActionQueueBySeries = new Map();
 let isFlashcardFocusMode = false;
 let isSelfcheckTimerFocusMode = false;
 let pendingGuestModeAppState = null;
+let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
 let liftedFlashcardNoteElement = null;
 let liftedFlashcardBinderElement = null;
@@ -440,8 +446,23 @@ const FLASHCARD_BINDER_EXTRA_THICKNESS_PX = FLASHCARD_BINDER_SIDE_PADDING_PX * 2
 const FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX = 46;
 const LOGIN_ONBOARDING_STEP_STORAGE_KEY = "the-review-login-onboarding-step";
 const AUTH_LOGOUT_INTENT_STORAGE_KEY = "the-review-explicit-logout-v1";
+const AUTH_LOCAL_LOGOUT_REQUEST_STORAGE_KEY = "the-review-auth-local-logout-request-v1";
 const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "educationCode", "avatar", "notification"];
+const ACCOUNT_ACTION_DIALOG_COPY = {
+  logout: {
+    title: "ログアウト",
+    message: "ログアウトしてlogin.htmlに移動します。よろしいですか？",
+    confirmClass: "primary",
+  },
+  delete: {
+    title: "アカウントを削除",
+    message:
+      "アカウントを削除してReview Dataをリセットします。リビューコイン・デイリーログイン・問題履歴も削除されます。よろしいですか？",
+    confirmClass: "danger",
+  },
+};
 const IS_LOGIN_PAGE = isCurrentLoginPage();
+let isNavigationRedirectPending = false;
 
 if (IS_LOGIN_PAGE) {
   initLoginPage()
@@ -544,6 +565,7 @@ async function initLoginPage() {
   const isAuthCallback = hasAuth0CallbackParams();
   const requestedOnboardingStep = getRequestedLoginOnboardingStep();
   const explicitLogout = consumeExplicitLogoutIntent();
+  const shouldClearAuth0LocalSession = consumeAuth0LocalLogoutRequest();
   if (state.auth.isLoggedIn && !isAuthCallback && !requestedOnboardingStep && !explicitLogout) {
     redirectToIndexPage();
     return;
@@ -551,9 +573,12 @@ async function initLoginPage() {
 
   bindSharedDataAndGuestDialogEvents();
   bindLoginPageAuthEvents();
-  const authRedirectAppState = explicitLogout && !isAuthCallback
-    ? (await withTimeout(ensureAuth0Client(), AUTH_INIT_TIMEOUT_MS, null, "Auth0 client initialization"), null)
-    : await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
+  let authRedirectAppState = null;
+  if (explicitLogout && !isAuthCallback) {
+    initializeAuth0AfterExplicitLogout({ clearLocalSession: shouldClearAuth0LocalSession });
+  } else {
+    authRedirectAppState = await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
+  }
   const nextOnboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep) || requestedOnboardingStep;
   if (nextOnboardingStep) {
     requestLoginOnboardingStep(nextOnboardingStep);
@@ -587,6 +612,7 @@ function redirectToLoginPageIfNeeded() {
 }
 
 function redirectToIndexPage() {
+  isNavigationRedirectPending = true;
   window.location.replace("./index.html");
 }
 
@@ -600,6 +626,7 @@ function getLoginPageUrl(options = {}) {
 }
 
 function redirectToLoginPage(options = {}) {
+  isNavigationRedirectPending = true;
   window.location.replace(getLoginPageUrl(options));
 }
 
@@ -669,6 +696,24 @@ function consumeExplicitLogoutIntent() {
   }
 }
 
+function requestAuth0LocalLogout() {
+  try {
+    window.sessionStorage.setItem(AUTH_LOCAL_LOGOUT_REQUEST_STORAGE_KEY, "1");
+  } catch {
+    // noop
+  }
+}
+
+function consumeAuth0LocalLogoutRequest() {
+  try {
+    const hasRequest = window.sessionStorage.getItem(AUTH_LOCAL_LOGOUT_REQUEST_STORAGE_KEY) === "1";
+    window.sessionStorage.removeItem(AUTH_LOCAL_LOGOUT_REQUEST_STORAGE_KEY);
+    return hasRequest;
+  } catch {
+    return false;
+  }
+}
+
 function bindLoginPageAuthEvents() {
   elements.authLoginButtons.forEach((button) => {
     button.addEventListener("click", async () => {
@@ -710,6 +755,11 @@ function bindSharedDataAndGuestDialogEvents() {
   elements.guestModeActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
       handleGuestModeDialogAction(button.dataset.guestModeAction);
+    });
+  });
+  elements.accountActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      handleAccountActionDialogAction(button.dataset.accountAction);
     });
   });
 }
@@ -878,6 +928,9 @@ function appendTabScriptLabel(panel, label) {
 }
 
 function hideAppLoader() {
+  if (isNavigationRedirectPending) {
+    return;
+  }
   if (!elements.appLoader) {
     return;
   }
@@ -1396,12 +1449,85 @@ function loginAsGuest(appState = {}) {
   renderDailyLogin();
 }
 
+function requestAccountAction(action) {
+  const normalizedAction = normalizeAccountAction(action);
+  if (!normalizedAction || !state.auth.isLoggedIn) {
+    return;
+  }
+  const copy = ACCOUNT_ACTION_DIALOG_COPY[normalizedAction];
+  pendingAccountAction = normalizedAction;
+
+  if (!elements.accountActionDialog || typeof elements.accountActionDialog.showModal !== "function") {
+    const shouldContinue = window.confirm(copy.message);
+    if (shouldContinue) {
+      performConfirmedAccountAction(normalizedAction);
+    } else {
+      pendingAccountAction = null;
+    }
+    return;
+  }
+
+  if (elements.accountActionDialogTitle) {
+    elements.accountActionDialogTitle.textContent = copy.title;
+  }
+  if (elements.accountActionDialogMessage) {
+    elements.accountActionDialogMessage.textContent = copy.message;
+  }
+  if (elements.accountActionConfirmBtn) {
+    elements.accountActionConfirmBtn.classList.remove("primary", "danger");
+    elements.accountActionConfirmBtn.classList.add(copy.confirmClass);
+  }
+  if (!elements.accountActionDialog.open) {
+    elements.accountActionDialog.showModal();
+  }
+}
+
+function handleAccountActionDialogAction(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "cancel") {
+    closeAccountActionDialog();
+    pendingAccountAction = null;
+    return;
+  }
+  if (normalizedAction !== "confirm") {
+    return;
+  }
+
+  const actionToRun = pendingAccountAction;
+  pendingAccountAction = null;
+  closeAccountActionDialog();
+  performConfirmedAccountAction(actionToRun);
+}
+
+function closeAccountActionDialog() {
+  if (elements.accountActionDialog?.open) {
+    elements.accountActionDialog.close();
+  }
+}
+
+function normalizeAccountAction(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  return Object.prototype.hasOwnProperty.call(ACCOUNT_ACTION_DIALOG_COPY, normalizedAction) ? normalizedAction : "";
+}
+
+function performConfirmedAccountAction(action) {
+  if (action === "logout") {
+    performLogoutAccount();
+    return;
+  }
+  if (action === "delete") {
+    performDeleteAccountAndResetProgress();
+  }
+}
+
 async function loginWithAuth0(appState, options = {}) {
   if (normalizeAuthLoginProvider(options.provider) === "guest") {
     loginAsGuest(appState);
     return;
   }
-  if (!auth0Client) {
+  const loginClient =
+    auth0Client || (await withTimeout(ensureAuth0Client(), AUTH_INIT_TIMEOUT_MS, null, "Auth0 login client"));
+  if (!loginClient) {
     renderAuthPanel();
     return;
   }
@@ -1423,41 +1549,28 @@ async function loginWithAuth0(appState, options = {}) {
     if (connection) {
       loginOptions.authorizationParams = { connection };
     }
-    await auth0Client.loginWithRedirect(loginOptions);
+    await loginClient.loginWithRedirect(loginOptions);
   } catch (error) {
     console.error("Auth0 login failed:", error);
   }
 }
 
 async function logoutAccount() {
+  requestAccountAction("logout");
+}
+
+function performLogoutAccount() {
   if (!state.auth.isLoggedIn) {
     return;
   }
-  const shouldLogoutAuth0 = state.auth.provider !== "guest";
+  const shouldClearAuth0Session = state.auth.provider !== "guest";
   markExplicitLogoutIntent();
-  applyLoggedOutState();
+  if (shouldClearAuth0Session) {
+    requestAuth0LocalLogout();
+  }
+  applyLoggedOutState({ render: false });
   clearRequestedLoginOnboardingStep();
   clearManagerAccessCache();
-
-  if (shouldLogoutAuth0) {
-    try {
-      const logoutClient = await withTimeout(ensureAuth0Client(), 1800, null, "Auth0 logout client");
-      if (!logoutClient) {
-        redirectToLoginPage();
-        return;
-      }
-      await logoutClient.logout({
-        logoutParams: {
-          returnTo: getLoginPageUrl(),
-        },
-      });
-    } catch (error) {
-      console.error("Auth0 logout failed:", error);
-      redirectToLoginPage();
-    }
-    return;
-  }
-
   redirectToLoginPage();
 }
 
@@ -1518,6 +1631,32 @@ async function ensureAuth0Client() {
     authorizationParams: buildAuth0AuthorizationParams(),
   });
   return auth0Client;
+}
+
+function initializeAuth0AfterExplicitLogout(options = {}) {
+  void (async () => {
+    try {
+      const logoutClient = await ensureAuth0Client();
+      if (options.clearLocalSession) {
+        await clearAuth0LocalSession(logoutClient);
+      }
+      renderAuthPanel();
+    } catch (error) {
+      console.warn("Auth0 client initialization after logout failed:", error);
+      renderAuthPanel();
+    }
+  })();
+}
+
+async function clearAuth0LocalSession(logoutClient = auth0Client) {
+  if (!logoutClient || typeof logoutClient.logout !== "function") {
+    return;
+  }
+  try {
+    await logoutClient.logout({ openUrl: false });
+  } catch (error) {
+    console.warn("Auth0 local logout failed:", error);
+  }
 }
 
 function isAuth0SdkAvailable() {
@@ -1753,71 +1892,44 @@ function setLoggedOutAuthState() {
   });
 }
 
-function applyLoggedOutState() {
+function applyLoggedOutState(options = {}) {
   setLoggedOutAuthState();
   saveState();
   updateManagerMenuVisibilityFromAccess(null);
-  renderMypageSettings();
-  renderAuthPanel();
+  const shouldRender = options.render !== false;
+  if (shouldRender) {
+    renderMypageSettings();
+    renderAuthPanel();
+  }
 
-  if (activeScreen === "mypage") {
+  if (shouldRender && activeScreen === "mypage") {
     activateScreen("home");
   }
   closeMypageSubmenu();
 }
 
 async function deleteAccountAndResetProgress() {
-  const shouldDelete = window.confirm(
-    "アカウントを削除して進捗をリセットします。\nリビューコイン・デイリーログイン・問題履歴は削除されます。よろしいですか？"
-  );
-  if (!shouldDelete) {
+  requestAccountAction("delete");
+}
+
+function performDeleteAccountAndResetProgress() {
+  if (!state.auth.isLoggedIn) {
     return;
   }
 
-  const shouldLogoutAuth0 = state.auth.provider !== "guest";
+  const shouldClearAuth0Session = state.auth.provider !== "guest";
   markExplicitLogoutIntent();
-  state.reviewCoin = 0;
-  state.loginDays = {};
-  state.dailyTryRecords = {};
-  state.auth = normalizeAuthState({
-    isLoggedIn: false,
-    provider: null,
-    displayName: "Guest Mode",
-    email: null,
-  });
-  state.settings = {
-    ...state.settings,
-    theme: DEFAULT_THEME,
-    unlockedThemes: createDefaultThemeUnlockState(),
-    themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
-  };
-  applyTheme(state.settings.theme);
+  if (shouldClearAuth0Session) {
+    requestAuth0LocalLogout();
+  }
+  Object.assign(state, createDefaultState());
   dailyTryRun = createDailyTryRun();
   pauseSelfcheckTimer();
   selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
   saveState();
   clearRequestedLoginOnboardingStep();
   clearManagerAccessCache();
-  renderAll();
   closeMypageSubmenu();
-  if (shouldLogoutAuth0) {
-    try {
-      const logoutClient = await withTimeout(ensureAuth0Client(), 1800, null, "Auth0 logout client");
-      if (!logoutClient) {
-        redirectToLoginPage();
-        return;
-      }
-      await logoutClient.logout({
-        logoutParams: {
-          returnTo: getLoginPageUrl(),
-        },
-      });
-    } catch (error) {
-      console.error("Auth0 logout after account reset failed:", error);
-      redirectToLoginPage();
-    }
-    return;
-  }
   redirectToLoginPage();
 }
 
@@ -4698,6 +4810,9 @@ function renderMypageSettings() {
   if (elements.logoutBtn) {
     elements.logoutBtn.disabled = !state.auth.isLoggedIn;
   }
+  if (elements.deleteAccountBtn) {
+    elements.deleteAccountBtn.disabled = !state.auth.isLoggedIn;
+  }
   renderThemeCardSelection();
   updateThemeSelectionLockState();
 
@@ -4721,7 +4836,8 @@ function renderMypageSettings() {
 }
 
 function renderAuthPanel() {
-  const canLogin = Boolean(auth0Client);
+  const canCreateAuth0Client = isAuth0SdkAvailable() && isAuth0Configured();
+  const canLogin = Boolean(auth0Client) || canCreateAuth0Client;
   const isLoggedIn = state.auth.isLoggedIn;
   const currentProvider = state.auth.provider;
   elements.authLoginButtons.forEach((button) => {
@@ -4744,7 +4860,7 @@ function renderAuthPanel() {
     button.textContent = isCurrentProvider ? `${formatAuthProviderLabel(provider)}ログイン済み` : `${formatAuthProviderLabel(provider)}でログイン`;
   });
   if (elements.authConfigHint) {
-    elements.authConfigHint.hidden = Boolean(auth0Client);
+    elements.authConfigHint.hidden = canCreateAuth0Client;
   }
 }
 

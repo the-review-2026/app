@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260427-3" />
+    <link rel="stylesheet" href="./app.css?v=20260428-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
     <style>
       body.manager-page {
@@ -58,7 +58,13 @@
 
       body.manager-page .app-logo.manager-logo {
         width: clamp(270px, 27vw, 375px);
-        top: 1.5rem;
+      }
+
+      body.manager-page .header-menu-block::before {
+        content: "";
+        display: block;
+        width: 1px;
+        height: 2.52rem;
       }
 
       body.manager-page .top-nav.manager-nav {
@@ -906,7 +912,6 @@
         body.manager-page .app-logo.manager-logo {
           width: min(246px, 64vw);
           max-width: none;
-          top: 0.875rem;
         }
       }
 

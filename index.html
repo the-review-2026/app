@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260427-3" />
+    <link rel="stylesheet" href="./app.css?v=20260428-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -603,6 +603,17 @@
       </form>
     </dialog>
 
+    <dialog id="accountActionDialog" class="text-reset-dialog" aria-labelledby="accountActionDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="accountActionDialogTitle">ログアウト</h3>
+        <p id="accountActionDialogMessage">ログアウトしてlogin.htmlに移動します。よろしいですか？</p>
+        <div class="guest-mode-actions account-action-actions">
+          <button class="secondary" type="button" data-account-action="cancel">いいえ</button>
+          <button id="accountActionConfirmBtn" class="primary" type="button" data-account-action="confirm">はい</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="themeUnlockDialog" class="text-reset-dialog" aria-labelledby="themeUnlockDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="themeUnlockDialogTitle">カラーテーマの購入</h3>
@@ -623,6 +634,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260427-6" charset="UTF-8"></script>
+    <script src="./app.js?v=20260428-1" charset="UTF-8"></script>
   </body>
 </html>
