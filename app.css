@@ -1005,6 +1005,28 @@ body[data-theme="strawberry"] .aurora-right {
   line-height: 1.45;
 }
 
+.info-menu-user {
+  display: grid;
+  gap: 0.12rem;
+  margin: 0 0 0.48rem;
+  padding: 0 0 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.info-menu-user-label {
+  color: rgba(244, 248, 255, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.info-menu-user-value {
+  color: #ffffff;
+  font-size: 0.96rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .info-menu-item {
   display: block;
   box-sizing: border-box;
@@ -4892,6 +4914,59 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 .setting-row strong {
   text-align: right;
   word-break: break-all;
+}
+
+.settings-line-list {
+  border-top: 1px solid rgba(123, 153, 178, 0.28);
+}
+
+.settings-line-list .setting-row {
+  border: 0;
+  border-bottom: 1px solid rgba(123, 153, 178, 0.28);
+  border-radius: 0;
+  background: transparent;
+  padding: 0.64rem 0;
+}
+
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .settings-line-list {
+  border-top-color: rgba(255, 255, 255, 0.24);
+}
+
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .settings-line-list
+  .setting-row {
+  border-bottom-color: rgba(255, 255, 255, 0.24);
+  background: transparent;
+}
+
+.review-data-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.52rem;
+}
+
+.review-data-action {
+  min-width: 0;
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  font-weight: 800;
+}
+
+.review-data-action-icon {
+  width: 1.38rem;
+  height: 1.38rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  color: currentColor;
+  font-size: 0.92rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .theme-card-list {

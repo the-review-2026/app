@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260428-1" />
+    <link rel="stylesheet" href="./app.css?v=20260428-2" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -63,6 +63,10 @@
           <button id="infoMenuCloseBtn" class="info-menu-close-btn" type="button" aria-label="Informationメニューを閉じる">
             <span aria-hidden="true">×</span>
           </button>
+          <div class="info-menu-user">
+            <span class="info-menu-user-label">ニックネーム</span>
+            <strong id="infoMenuNickname" class="info-menu-user-value">未設定</strong>
+          </div>
           <div class="info-menu-list">
             <button class="info-menu-item" type="button" data-screen="settings">設定</button>
             <a id="managerMenuLink" class="info-menu-item" href="./manager.html" hidden>The Review Manager</a>
@@ -429,8 +433,12 @@
           class="panel settings-section settings-tab-panel is-active"
           data-settings-panel="account"
         >
-            <h2>アカウント</h2>
-            <div class="settings-section-content">
+            <h2>リビューアカウント</h2>
+            <div class="settings-section-content settings-line-list">
+              <div class="setting-row">
+                <span>ニックネーム</span>
+                <strong id="authNicknameText">未設定</strong>
+              </div>
               <div class="setting-row">
                 <span>ログイン状況</span>
                 <strong id="authLoginStatusText">Guest Mode</strong>
@@ -488,13 +496,15 @@
         >
             <h2>リビューデータ</h2>
             <div class="settings-section-content">
-              <div class="setting-row">
-                <span>データをエクスポート</span>
-                <button id="reviewDataExportBtn" class="secondary" type="button">保存</button>
-              </div>
-              <div class="setting-row">
-                <span>データをインポート</span>
-                <button id="reviewDataImportBtn" class="secondary" type="button">ファイルを読み込む</button>
+              <div class="review-data-actions" aria-label="リビューデータ操作">
+                <button id="reviewDataExportBtn" class="secondary review-data-action" type="button">
+                  <span class="review-data-action-icon" aria-hidden="true">↑</span>
+                  <span>エクスポート</span>
+                </button>
+                <button id="reviewDataImportBtn" class="secondary review-data-action" type="button">
+                  <span class="review-data-action-icon" aria-hidden="true">↓</span>
+                  <span>インポート</span>
+                </button>
               </div>
             </div>
           </section>
@@ -634,6 +644,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260428-1" charset="UTF-8"></script>
+    <script src="./app.js?v=20260428-2" charset="UTF-8"></script>
   </body>
 </html>

@@ -306,6 +306,7 @@ const elements = {
   infoMenuTrigger: document.getElementById("infoMenuTrigger"),
   infoMenuCloseBtn: document.getElementById("infoMenuCloseBtn"),
   infoMenuPanel: document.getElementById("infoMenuPanel"),
+  infoMenuNickname: document.getElementById("infoMenuNickname"),
   managerMenuLink: document.getElementById("managerMenuLink"),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
@@ -320,6 +321,7 @@ const elements = {
   reviewCoinValue: document.getElementById("reviewCoinValue"),
   mypageCoinValueNumber: document.getElementById("mypageCoinValueNumber"),
   storeAvatarHint: document.getElementById("storeAvatarHint"),
+  authNicknameText: document.getElementById("authNicknameText"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
   authEmailText: document.getElementById("authEmailText"),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
@@ -447,7 +449,7 @@ const FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX = 46;
 const LOGIN_ONBOARDING_STEP_STORAGE_KEY = "the-review-login-onboarding-step";
 const AUTH_LOGOUT_INTENT_STORAGE_KEY = "the-review-explicit-logout-v1";
 const AUTH_LOCAL_LOGOUT_REQUEST_STORAGE_KEY = "the-review-auth-local-logout-request-v1";
-const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "educationCode", "avatar", "notification"];
+const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "nickname", "educationCode", "avatar", "notification"];
 const ACCOUNT_ACTION_DIALOG_COPY = {
   logout: {
     title: "ログアウト",
@@ -731,7 +733,7 @@ function bindLoginPageAuthEvents() {
       }
       await loginWithAuth0(
         {
-          onboardingStep: "educationCode",
+          onboardingStep: "nickname",
           deferRedirectOnLoginPage: true,
         },
         { provider }
@@ -905,7 +907,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
-  const settingsLabels = ["Account", "Notice", "Review Data"];
+  const settingsLabels = ["Review Account", "Notice", "Review Data"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -1434,6 +1436,7 @@ function loginAsGuest(appState = {}) {
     isLoggedIn: true,
     provider: "guest",
     displayName: "Guest Mode",
+    nickname: state.auth?.nickname,
     email: null,
   });
   saveState();
@@ -1870,6 +1873,7 @@ async function syncAuthStateFromAuth0(options = {}) {
       (typeof user?.name === "string" && user.name.trim()) ||
       (typeof user?.nickname === "string" && user.nickname.trim()) ||
       "Auth0 User",
+    nickname: state.auth?.nickname,
     email: typeof user?.email === "string" && user.email.trim() ? user.email : null,
   });
   saveState();
@@ -1888,6 +1892,7 @@ function setLoggedOutAuthState() {
     isLoggedIn: false,
     provider: null,
     displayName: "Guest Mode",
+    nickname: "",
     email: null,
   });
 }
@@ -4792,7 +4797,25 @@ function openStoreFromCoinBoard() {
   activateScreen("notice");
 }
 
+function getAuthNicknameText(fallbackText = "未設定") {
+  if (!state.auth.isLoggedIn) {
+    return fallbackText;
+  }
+  const nickname = normalizeNicknameText(state.auth.nickname);
+  if (nickname) {
+    return nickname;
+  }
+  return state.auth.provider === "guest" ? "Guest Mode" : fallbackText;
+}
+
 function renderMypageSettings() {
+  const nicknameText = getAuthNicknameText();
+  if (elements.infoMenuNickname) {
+    elements.infoMenuNickname.textContent = nicknameText;
+  }
+  if (elements.authNicknameText) {
+    elements.authNicknameText.textContent = nicknameText;
+  }
   if (elements.authLoginStatusText) {
     if (!state.auth.isLoggedIn) {
       elements.authLoginStatusText.textContent = "未ログイン";
@@ -6082,6 +6105,7 @@ function createDefaultState() {
       isLoggedIn: false,
       provider: null,
       displayName: "Guest Mode",
+      nickname: "",
       email: null,
     },
   };
@@ -6208,13 +6232,24 @@ function normalizeAuthState(value) {
     isLoggedIn && typeof value?.displayName === "string" && value.displayName.trim()
       ? value.displayName.trim()
       : "Guest Mode";
+  const nickname =
+    isLoggedIn && normalizeNicknameText(value?.nickname)
+      ? normalizeNicknameText(value.nickname)
+      : isLoggedIn && displayName !== "Guest Mode"
+        ? normalizeNicknameText(displayName)
+        : "";
   const email = isLoggedIn && typeof value?.email === "string" && value.email.trim() ? value.email.trim() : null;
   return {
     isLoggedIn,
     provider,
     displayName,
+    nickname,
     email,
   };
+}
+
+function normalizeNicknameText(value) {
+  return typeof value === "string" ? value.trim().slice(0, 24) : "";
 }
 
 function normalizeAuth0Config(value) {
@@ -6325,6 +6360,8 @@ function escapeHtml(text) {
 
   const termsAgreeCheckbox = document.getElementById("termsAgreeCheckbox");
   const termsNextBtn = document.getElementById("termsNextBtn");
+  const nicknameInput = document.getElementById("nicknameInput");
+  const nicknameNextBtn = document.getElementById("nicknameNextBtn");
   const educationCodeInput = document.getElementById("educationCodeInput");
   const educationCodeNextBtn = document.getElementById("educationCodeNextBtn");
   const educationCodeStartScanBtn = document.getElementById("educationCodeStartScanBtn");
@@ -6344,17 +6381,19 @@ function escapeHtml(text) {
   const onboardingFixedStepLabel = document.getElementById("onboardingFixedStepLabel");
   const onboardingFixedStepNumber = document.getElementById("onboardingFixedStepNumber");
   const onboardingFixedStepCurrent = document.getElementById("onboardingFixedStepCurrent");
-  const ONBOARDING_PROGRESS_TOTAL = 5;
+  const ONBOARDING_PROGRESS_TOTAL = 6;
   const ONBOARDING_PROGRESS_BY_STEP = {
     terms: 1,
     auth: 2,
-    educationCode: 3,
-    avatar: 4,
-    notification: 5,
+    nickname: 3,
+    educationCode: 4,
+    avatar: 5,
+    notification: 6,
   };
   const ONBOARDING_PROGRESS_LABEL_BY_STEP = {
     terms: "利用規約とプライバシーポリシーへの同意",
     auth: "Review Account",
+    nickname: "ニックネーム",
     educationCode: "Education Code",
     avatar: "Avater",
     notification: "通知",
@@ -6418,6 +6457,11 @@ function escapeHtml(text) {
       return false;
     }
     setActiveStep(targetIndex);
+    if (normalizedStepName === "nickname") {
+      window.setTimeout(() => {
+        nicknameInput?.focus();
+      }, 0);
+    }
     if (normalizedStepName === "educationCode") {
       window.setTimeout(() => {
         educationCodeInput?.focus();
@@ -6429,6 +6473,10 @@ function escapeHtml(text) {
   function getSelectedValue(inputs) {
     const selected = inputs.find((input) => input.checked);
     return selected ? selected.value : "";
+  }
+
+  function getOnboardingNickname() {
+    return normalizeNicknameText(nicknameInput?.value);
   }
 
   function formatNotificationTime(minutes) {
@@ -6543,6 +6591,7 @@ function escapeHtml(text) {
   function saveDraft() {
     const payload = {
       termsAccepted: Boolean(termsAgreeCheckbox?.checked),
+      nickname: getOnboardingNickname(),
       educationCode: String(educationCodeInput?.value ?? "").trim(),
       avatarPreset: getSelectedValue(avatarInputs),
       notifications: getOnboardingNotificationSettingsFromToggles(),
@@ -6555,6 +6604,24 @@ function escapeHtml(text) {
     if (termsNextBtn) {
       termsNextBtn.disabled = !Boolean(termsAgreeCheckbox?.checked);
     }
+  }
+
+  function syncNicknameStep() {
+    if (nicknameNextBtn) {
+      nicknameNextBtn.disabled = getOnboardingNickname().length === 0;
+    }
+  }
+
+  function commitOnboardingNickname() {
+    const nickname = getOnboardingNickname();
+    if (!nickname || !state.auth.isLoggedIn) {
+      return;
+    }
+    state.auth = normalizeAuthState({
+      ...state.auth,
+      nickname,
+    });
+    saveState();
   }
 
   function syncEducationCodeStep() {
@@ -6737,6 +6804,13 @@ function escapeHtml(text) {
     if (termsAgreeCheckbox && typeof initialDraft.termsAccepted === "boolean") {
       termsAgreeCheckbox.checked = initialDraft.termsAccepted;
     }
+    const initialNickname =
+      typeof initialDraft.nickname === "string" && initialDraft.nickname.trim()
+        ? initialDraft.nickname
+        : state.auth?.nickname || "";
+    if (nicknameInput && initialNickname) {
+      nicknameInput.value = normalizeNicknameText(initialNickname);
+    }
     const initialEducationCode =
       typeof initialDraft.educationCode === "string"
         ? initialDraft.educationCode
@@ -6780,12 +6854,20 @@ function escapeHtml(text) {
       applyOnboardingNotificationTimeMinutes(state.settings.notificationTimeMinutes);
     }
   } else {
+    if (nicknameInput && state.auth?.nickname) {
+      nicknameInput.value = normalizeNicknameText(state.auth.nickname);
+    }
     applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
     applyOnboardingNotificationTimeMinutes(state.settings.notificationTimeMinutes);
   }
 
   termsAgreeCheckbox?.addEventListener("change", () => {
     syncTermsStep();
+    saveDraft();
+  });
+
+  nicknameInput?.addEventListener("input", () => {
+    syncNicknameStep();
     saveDraft();
   });
 
@@ -6836,6 +6918,14 @@ function escapeHtml(text) {
 
     const direction = navButton.dataset.onboardingNav;
     if (direction === "next") {
+      const activeStepName = String(steps[activeStepIndex]?.dataset.onboardingStep || "");
+      if (activeStepName === "nickname") {
+        syncNicknameStep();
+        if (getOnboardingNickname().length === 0) {
+          return;
+        }
+        commitOnboardingNickname();
+      }
       setActiveStep(activeStepIndex + 1);
       return;
     }
@@ -6846,6 +6936,7 @@ function escapeHtml(text) {
 
   onboardingSaveBtn?.addEventListener("click", () => {
     const nextNotificationSettings = getOnboardingNotificationSettingsFromToggles();
+    commitOnboardingNickname();
     commitOnboardingNotificationSettings(nextNotificationSettings);
     saveDraft();
     if (state.auth.isLoggedIn) {
@@ -6860,6 +6951,7 @@ function escapeHtml(text) {
   populateLegalContent();
   syncEducationCodeScannerAvailability();
   syncTermsStep();
+  syncNicknameStep();
   syncEducationCodeStep();
   if (!setActiveStepByName(getRequestedLoginOnboardingStep())) {
     setActiveStep(0);
