@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260428-3" />
+    <link rel="stylesheet" href="./app.css?v=20260429-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -58,19 +58,24 @@
             <span></span>
             <span></span>
           </span>
+          <span id="infoMenuNoticeBadge" class="info-menu-notice-badge" hidden>0</span>
         </button>
         <section id="infoMenuPanel" class="info-menu-panel" aria-label="Informationメニュー" hidden>
           <button id="infoMenuCloseBtn" class="info-menu-close-btn" type="button" aria-label="Informationメニューを閉じる">
             <span aria-hidden="true">×</span>
           </button>
           <div class="info-menu-user">
-            <span class="info-menu-user-label">ニックネーム</span>
+            <span class="info-menu-user-label">Nickname</span>
             <strong id="infoMenuNickname" class="info-menu-user-value">未設定</strong>
           </div>
           <div class="info-menu-list">
             <button class="info-menu-item" type="button" data-screen="settings">設定</button>
             <a id="managerMenuLink" class="info-menu-item" href="./manager.html" hidden>The Review Manager</a>
           </div>
+          <section class="info-menu-notices" aria-label="お知らせ">
+            <h3>お知らせ</h3>
+            <div id="infoMenuNoticeList" class="info-menu-notice-list"></div>
+          </section>
         </section>
       </div>
       <img class="app-logo" src="./assets/logos/original.png?v=20260326-1" alt="The Review" />
@@ -86,11 +91,10 @@
             <span>ホーム</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="learn" aria-label="らあんと勉強する / with LEARN">
-            <span class="top-nav-item-main">らあんと勉強する</span>
-            <span class="top-nav-item-sub">with LEARN</span>
+              <span class="top-nav-avatar-label" aria-hidden="true"></span>
           </button>
-          <div class="top-nav-character" aria-hidden="true">
-            <img src="./private/avatar/らーん/らーん1-1.png" alt="" />
+          <div class="top-nav-character avater-preview avater-preview-nav" data-avater-preview aria-hidden="true">
+            <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
           </div>
           <button class="top-nav-item" type="button" data-screen="notice">
             <span class="top-nav-icon top-nav-icon-store" aria-hidden="true"></span>
@@ -104,7 +108,13 @@
       <section id="screen-home" class="screen is-active">
         <div class="home-top-row">
           <div class="home-greeting-hero">
-            <p id="homeGreeting" class="home-greeting" aria-live="polite">こんにちは。</p>
+            <h1 class="page-script-title">Home</h1>
+            <div class="home-greeting-wrap">
+              <div class="home-greeting-avatar" aria-hidden="true">
+                <img src="./assets/avater/らーん1-1.png" alt="" />
+              </div>
+              <p id="homeGreeting" class="home-greeting" aria-live="polite">こんにちは。</p>
+            </div>
           </div>
           <div class="home-card-carousel" aria-label="ホームカード">
             <div id="homeCardTrack" class="home-card-track" tabindex="0">
@@ -185,6 +195,9 @@
       </section>
 
       <section id="screen-learn" class="screen learn-layout">
+        <div class="page-title-row">
+          <h1 class="page-script-title">With LEARN</h1>
+        </div>
         <section id="mypage-selfcheck" class="mypage-selfcheck-page learn-page">
           <section class="panel selfcheck-section">
             <h2>カレンダー</h2>
@@ -249,11 +262,9 @@
 
       <section id="screen-mypage" class="screen">
         <section id="mypage-top" class="mypage-subpage mypage-top-page is-active" data-mypage-page="top">
-          <section id="mypageFlashcardPanel" class="panel mypage-flashcard-panel is-preparing" aria-disabled="true">
-            <h2 class="flashcard-panel-head">
-              <span class="panel-title-text">フラッシュカード</span>
-            </h2>
-            <div id="flashcardPanel" class="flashcard-panel" inert>
+          <section id="mypageFlashcardPanel" class="panel mypage-flashcard-panel">
+            <h2 class="flashcard-panel-head flashcard-script-title">Let's Review!</h2>
+            <div id="flashcardPanel" class="flashcard-panel">
               <p class="flashcard-static-message">復習する科目のバインダーをとってください</p>
               <div id="flashcardBinderList" class="flashcard-binder-list" aria-label="教材ファイル一覧">
 
@@ -434,7 +445,7 @@
           data-settings-panel="account"
         >
             <h2 class="account-panel-title">
-              <span>リビューアカウント</span>
+              <span>Review Account</span>
               <strong id="authLoginStatusText" class="account-status-badge is-guest">Guest Mode</strong>
             </h2>
             <div class="settings-section-content settings-line-list">
@@ -447,7 +458,7 @@
               </div>
               <div class="setting-row account-action-row">
                 <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">ログアウト</button>
-                <button id="deleteAccountBtn" class="danger account-icon-button account-delete-button" type="button">削除する</button>
+                <button id="deleteAccountBtn" class="danger account-icon-button account-delete-button" type="button">アカウントを削除する</button>
               </div>
             </div>
           </section>
@@ -488,7 +499,7 @@
           class="panel settings-section settings-tab-panel"
           data-settings-panel="review-data"
         >
-            <h2>リビューデータ</h2>
+            <h2>Review Data</h2>
             <div class="settings-section-content">
               <div class="review-data-actions" aria-label="リビューデータ操作">
                 <button id="reviewDataExportBtn" class="secondary review-data-action" type="button">
@@ -505,6 +516,9 @@
       </section>
 
       <section id="screen-notice" class="screen notice-layout">
+        <div class="page-title-row">
+          <h1 class="page-script-title">Store</h1>
+        </div>
         <section class="panel settings-section">
           <h2 class="review-coin-section-title">
             <span>リビューコイン枚数</span>
@@ -518,9 +532,16 @@
           </div>
         </section>
         <section class="panel settings-section">
-          <h2>アバター</h2>
+          <h2>Avater</h2>
           <div class="settings-section-content">
-            <p id="storeAvatarHint" class="hint-text">準備中</p>
+            <div class="avater-store">
+              <div class="avater-editor-preview-wrap">
+                <div class="avater-preview avater-preview-large" data-avater-preview>
+                  <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
+                </div>
+              </div>
+              <div id="storeAvatarHint" class="avater-store-list"></div>
+            </div>
           </div>
         </section>
         <section class="panel settings-section">
@@ -607,12 +628,48 @@
       </form>
     </dialog>
 
+    <dialog id="accountEditDialog" class="text-reset-dialog account-edit-dialog" aria-labelledby="accountEditDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="accountEditDialogTitle">アカウント情報を編集</h3>
+        <div class="account-edit-options">
+          <article class="account-edit-option">
+            <span class="account-edit-option-icon" aria-hidden="true">＠</span>
+            <div>
+              <h4>メールアドレス</h4>
+              <p id="accountEditEmailText">未設定</p>
+              <button class="secondary" type="button" disabled>Auth0で変更</button>
+            </div>
+          </article>
+          <article class="account-edit-option">
+            <span class="account-edit-option-icon" aria-hidden="true">鍵</span>
+            <div>
+              <h4>パスワード</h4>
+              <p>パスワードの変更・再設定はAuth0のアカウント管理で行います。</p>
+              <button class="secondary" type="button" disabled>変更リンクを送信</button>
+            </div>
+          </article>
+          <article class="account-edit-option">
+            <span class="account-edit-option-icon" aria-hidden="true">G</span>
+            <div>
+              <h4>Googleアカウントとの紐づけ</h4>
+              <p id="accountEditGoogleText">Googleアカウントとの連携状態を確認できます。</p>
+              <button class="secondary" type="button" disabled>連携を管理</button>
+            </div>
+          </article>
+        </div>
+        <div class="guest-mode-actions account-edit-actions">
+          <button class="primary" type="button" data-account-edit-action="close">閉じる</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="accountActionDialog" class="text-reset-dialog" aria-labelledby="accountActionDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="accountActionDialogTitle">ログアウト</h3>
         <p id="accountActionDialogMessage">ログイン画面に戻ります。続行しますか？</p>
         <div class="guest-mode-actions account-action-actions">
           <button class="secondary" type="button" data-account-action="cancel">いいえ</button>
+          <button id="accountActionExportBtn" class="secondary" type="button" data-account-action="export">Review Dataをエクスポートする</button>
           <button id="accountActionConfirmBtn" class="primary" type="button" data-account-action="confirm">はい</button>
         </div>
       </form>
@@ -623,9 +680,23 @@
         <h3 id="themeUnlockDialogTitle">カラーテーマの購入</h3>
         <p>
           「<span id="themeUnlockName"></span>」を
-          <span id="themeUnlockCost">100</span>コインで解放しますか？
+          <span class="coin-inline">
+            <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+            <span id="themeUnlockCost">100</span>
+          </span>
+          で解放しますか？
         </p>
-        <p>現在の所持コイン: <span id="themeUnlockCurrentCoin">0</span></p>
+        <p class="theme-unlock-balance">
+          <span class="coin-inline">
+            <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+            <span id="themeUnlockCurrentCoin">0</span>
+          </span>
+          <span aria-hidden="true">→</span>
+          <span class="coin-inline">
+            <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+            <span id="themeUnlockAfterCoin">0</span>
+          </span>
+        </p>
         <div class="guest-mode-actions theme-unlock-actions">
           <button class="secondary" type="button" data-theme-unlock-action="cancel">キャンセル</button>
           <button class="primary" type="button" data-theme-unlock-action="purchase">購入する</button>
@@ -638,6 +709,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260428-3" charset="UTF-8"></script>
+    <script src="./app.js?v=20260429-1" charset="UTF-8"></script>
   </body>
 </html>

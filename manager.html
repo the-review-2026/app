@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260428-3" />
+    <link rel="stylesheet" href="./app.css?v=20260429-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
     <style>
       body.manager-page {
@@ -1070,6 +1070,9 @@
 
     <main class="screens">
       <section id="screen-home" class="screen is-active">
+        <div class="page-title-row">
+          <h1 class="page-script-title">Manager</h1>
+        </div>
         <div class="panel">
           <h2>ホーム</h2>
           <p class="hint-text">ご希望の項目を選択してください。</p>
@@ -1105,6 +1108,9 @@
       </section>
 
       <section id="screen-problem" class="screen" hidden>
+        <div class="page-title-row">
+          <h1 class="page-script-title">Question</h1>
+        </div>
         <div class="problem-workspace">
           <section class="panel problem-list-panel">
             <div class="problem-list-header">
@@ -1257,45 +1263,40 @@
                 <span class="manager-role-tag">キャラクターデザイナー</span>
               </span>
             </div>
-            <p class="hint-text">アイテムの管理ができます。保存した内容はThe Review本体のストアに反映されます。</p>
             <div class="manager-field-grid">
-              <label class="field-block" for="storeAvatarStatus">
-                <span class="field-label-row">アバター</span>
-                <select id="storeAvatarStatus">
-                  <option value="preparing">準備中</option>
-                  <option value="published">公開中</option>
+              <label class="field-block" for="avaterItemNameInput">
+                <span class="field-label-row">アイテム名</span>
+                <input id="avaterItemNameInput" type="text" maxlength="32" placeholder="例: ブルーリボン" />
+              </label>
+              <label class="field-block" for="avaterItemCategorySelect">
+                <span class="field-label-row">カテゴリ</span>
+                <select id="avaterItemCategorySelect">
+                  <option value="clothes">服</option>
+                  <option value="accessory">アクセサリー</option>
+                  <option value="glasses">めがね</option>
                 </select>
               </label>
-              <label class="field-block" for="storeAvatarMessage">
-                <span class="field-label-row">本体ストアで表示する文言</span>
-                <input id="storeAvatarMessage" type="text" maxlength="40" value="準備中" />
+              <label class="field-block" for="avaterItemCostInput">
+                <span class="field-label-row">必要なリビューコイン</span>
+                <input id="avaterItemCostInput" type="number" min="0" step="10" value="100" />
               </label>
               <div class="action-row">
-                <button id="saveStoreConfigBtn" class="primary" type="button">保存</button>
+                <button id="addAvaterItemBtn" class="primary" type="button">アイテムを追加</button>
               </div>
               <p id="storeConfigFeedback" class="feedback" aria-live="polite"></p>
             </div>
-          </section>
-          <section class="panel manager-store-preview">
-            <h2>The Review本体のストア</h2>
-            <div class="manager-store-list">
-              <article class="manager-store-item">
-                <h3>アバター</h3>
-                <p id="storeAvatarPreview">準備中</p>
-              </article>
-              <article class="manager-store-item">
-                <h3>カラーテーマ</h3>
-                <p>Sea / Midnight / Forest / Aojiru / Lemonade / Strawberry / The Paper / The Black</p>
-              </article>
-            </div>
+            <div id="managerAvaterItemList" class="manager-store-list"></div>
           </section>
         </div>
       </section>
 
       <section id="screen-profile" class="screen" hidden>
+        <div class="page-title-row">
+          <h1 class="page-script-title">Profile</h1>
+        </div>
         <section class="panel profile-card">
-          <div class="profile-character" aria-hidden="true">
-            <img src="./private/avatar/らーん/らーん1-1.png?v=20260326-1" alt="" />
+          <div class="profile-character avater-preview avater-preview-profile" data-manager-avater-preview aria-hidden="true">
+            <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
           </div>
           <div class="profile-details">
             <div class="profile-info-block">
@@ -1311,13 +1312,17 @@
         <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
           <div class="manager-members-head">
             <div class="manager-title-row">
-              <h2>The Review Production Teamメンバー管理</h2>
+              <h2>メンバー管理</h2>
               <span class="manager-role-tags" aria-label="対象ロール">
                 <span class="manager-role-tag">オーナー</span>
               </span>
             </div>
-            <button id="managerMembersRefreshBtn" class="secondary" type="button">更新</button>
+            <button id="managerMembersRefreshBtn" class="secondary manager-icon-btn" type="button" aria-label="メンバーを更新">↻</button>
           </div>
+          <label class="field-block manager-member-search" for="managerMemberSearchInput">
+            <span class="field-label-row">ユーザーを検索</span>
+            <input id="managerMemberSearchInput" type="search" placeholder="Nickname / メール / Auth0 ID" />
+          </label>
           <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
           <div id="managerMembersList" class="manager-members-list"></div>
         </section>
@@ -1377,6 +1382,7 @@
         const MANAGER_OUTBOX_KEY = "the-review-manager-outbox-v1";
         const MANAGER_API_BASE_KEY = "the-review-manager-api-base";
         const STORE_CONFIG_KEY = "the-review-store-config-v1";
+        const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
         const DEFAULT_STORE_CONFIG = {
           avatarStatus: "preparing",
           avatarMessage: "準備中",
@@ -1393,6 +1399,14 @@
           pending: "承認待ち",
           approved: "承認済み",
           suspended: "停止",
+        };
+        const MANAGER_AVATER_ITEM_CLASSES = {
+          "school-blue": "avater-item-school-blue",
+          "mint-ribbon": "avater-item-mint-ribbon",
+          "round-glasses": "avater-item-round-glasses",
+          "star-pin": "avater-item-star-pin",
+          "lab-coat": "avater-item-lab-coat",
+          "aqua-glasses": "avater-item-aqua-glasses",
         };
 
         const NOTE_BY_BINDER = {
@@ -1491,14 +1505,17 @@
           proofreadingFeedback: document.getElementById("proofreadingFeedback"),
           profileNicknameValue: document.getElementById("profileNicknameValue"),
           profileRoleValue: document.getElementById("profileRoleValue"),
+          managerAvaterPreviews: Array.from(document.querySelectorAll("[data-manager-avater-preview]")),
           managerMembersPanel: document.getElementById("managerMembersPanel"),
           managerMembersRefreshBtn: document.getElementById("managerMembersRefreshBtn"),
+          managerMemberSearchInput: document.getElementById("managerMemberSearchInput"),
           managerMembersStatus: document.getElementById("managerMembersStatus"),
           managerMembersList: document.getElementById("managerMembersList"),
-          storeAvatarStatus: document.getElementById("storeAvatarStatus"),
-          storeAvatarMessage: document.getElementById("storeAvatarMessage"),
-          storeAvatarPreview: document.getElementById("storeAvatarPreview"),
-          saveStoreConfigBtn: document.getElementById("saveStoreConfigBtn"),
+          avaterItemNameInput: document.getElementById("avaterItemNameInput"),
+          avaterItemCategorySelect: document.getElementById("avaterItemCategorySelect"),
+          avaterItemCostInput: document.getElementById("avaterItemCostInput"),
+          addAvaterItemBtn: document.getElementById("addAvaterItemBtn"),
+          managerAvaterItemList: document.getElementById("managerAvaterItemList"),
           storeConfigFeedback: document.getElementById("storeConfigFeedback"),
           problemImageDialog: document.getElementById("problemImageDialog"),
           problemDialogImage: document.getElementById("problemDialogImage"),
@@ -1642,6 +1659,7 @@
           elements.managerMembersRefreshBtn?.addEventListener("click", () => {
             void loadManagerMembers();
           });
+          elements.managerMemberSearchInput?.addEventListener("input", renderManagerMembers);
           elements.managerMembersList?.addEventListener("click", (event) => {
             const target = event.target instanceof Element ? event.target.closest("[data-manager-member-save]") : null;
             if (!target) {
@@ -1656,15 +1674,7 @@
         }
 
         function initializeStoreSettings() {
-          elements.saveStoreConfigBtn?.addEventListener("click", saveStoreSettings);
-          elements.storeAvatarStatus?.addEventListener("change", () => {
-            const status = normalizeStoreAvatarStatus(elements.storeAvatarStatus.value);
-            if (elements.storeAvatarMessage && !elements.storeAvatarMessage.value.trim()) {
-              elements.storeAvatarMessage.value = status === "published" ? "公開中" : "準備中";
-            }
-            renderStorePreviewFromForm();
-          });
-          elements.storeAvatarMessage?.addEventListener("input", renderStorePreviewFromForm);
+          elements.addAvaterItemBtn?.addEventListener("click", addManagerAvaterItem);
         }
 
         async function initializeManagerAccess() {
@@ -1783,41 +1793,75 @@
         }
 
         function renderStoreSettings() {
-          const config = loadStoreConfig();
-          if (elements.storeAvatarStatus) {
-            elements.storeAvatarStatus.value = config.avatarStatus;
-          }
-          if (elements.storeAvatarMessage) {
-            elements.storeAvatarMessage.value = config.avatarMessage;
-          }
-          renderStorePreview(config);
+          renderManagerAvaterItems();
         }
 
         function renderStorePreviewFromForm() {
-          renderStorePreview(
-            normalizeStoreConfig({
-              avatarStatus: elements.storeAvatarStatus?.value,
-              avatarMessage: elements.storeAvatarMessage?.value,
-            })
-          );
+          renderManagerAvaterItems();
         }
 
         function renderStorePreview(config = loadStoreConfig()) {
-          if (elements.storeAvatarPreview) {
-            elements.storeAvatarPreview.textContent = config.avatarMessage;
-          }
+          renderManagerAvaterItems();
         }
 
         function saveStoreSettings() {
-          const config = normalizeStoreConfig({
-            avatarStatus: elements.storeAvatarStatus?.value,
-            avatarMessage: elements.storeAvatarMessage?.value,
-          });
-          window.localStorage.setItem(STORE_CONFIG_KEY, JSON.stringify(config));
-          renderStorePreview(config);
-          if (elements.storeConfigFeedback) {
-            elements.storeConfigFeedback.textContent = "保存しました。The Review本体のストアに反映されます。";
+          renderManagerAvaterItems();
+        }
+
+        function loadManagerAvaterItems() {
+          return loadJson(AVATER_CUSTOM_ITEMS_KEY, []);
+        }
+
+        function saveManagerAvaterItems(items) {
+          saveJson(AVATER_CUSTOM_ITEMS_KEY, items);
+        }
+
+        function addManagerAvaterItem() {
+          const name = String(elements.avaterItemNameInput?.value || "").trim();
+          const category = String(elements.avaterItemCategorySelect?.value || "accessory").trim();
+          const cost = Math.max(0, Math.floor(Number(elements.avaterItemCostInput?.value) || 0));
+          if (!name) {
+            if (elements.storeConfigFeedback) {
+              elements.storeConfigFeedback.textContent = "アイテム名を入力してください。";
+            }
+            return;
           }
+          const items = loadManagerAvaterItems();
+          items.push({
+            id: `custom-${Date.now().toString(36)}`,
+            name,
+            category,
+            cost,
+          });
+          saveManagerAvaterItems(items);
+          if (elements.avaterItemNameInput) {
+            elements.avaterItemNameInput.value = "";
+          }
+          if (elements.storeConfigFeedback) {
+            elements.storeConfigFeedback.textContent = "Avaterアイテムを追加しました。";
+          }
+          renderManagerAvaterItems();
+        }
+
+        function renderManagerAvaterItems() {
+          if (!elements.managerAvaterItemList) {
+            return;
+          }
+          const items = loadManagerAvaterItems();
+          if (items.length === 0) {
+            elements.managerAvaterItemList.innerHTML = '<p class="hint-text">追加されたAvaterアイテムはありません。</p>';
+            return;
+          }
+          elements.managerAvaterItemList.innerHTML = items
+            .map(
+              (item) => `
+                <article class="manager-store-item">
+                  <h3>${escapeHtml(item.name || "未設定")}</h3>
+                  <p>${escapeHtml(item.category || "accessory")} / ${escapeHtml(String(item.cost || 0))} coin</p>
+                </article>
+              `,
+            )
+            .join("");
         }
 
         async function loadManagerMembers() {
@@ -1860,19 +1904,30 @@
             return;
           }
 
+          const query = String(elements.managerMemberSearchInput?.value || "").trim().toLowerCase();
+          const visibleMembers = query
+            ? state.managerMembers.filter((member) =>
+                [member?.nickname, member?.display_name, member?.email, member?.auth0_sub]
+                  .map((value) => String(value || "").toLowerCase())
+                  .some((value) => value.includes(query)),
+              )
+            : state.managerMembers;
+
           if (state.managerMembers.length === 0) {
             elements.managerMembersStatus.textContent = "承認待ちのメンバーはいません。";
             elements.managerMembersList.innerHTML = "";
             return;
           }
 
-          elements.managerMembersStatus.textContent = "役割と状態を選び、保存するとアクセス設定が反映されます。";
-          elements.managerMembersList.innerHTML = state.managerMembers
+          elements.managerMembersStatus.textContent = visibleMembers.length
+            ? "役割と状態を選び、保存するとアクセス設定が反映されます。"
+            : "一致するユーザーはいません。";
+          elements.managerMembersList.innerHTML = visibleMembers
             .map((member) => {
               const id = member?.id || "";
               const roleValue = member?.role || "developer";
               const statusValue = member?.status || "pending";
-              const name = member?.display_name || member?.email || member?.auth0_sub || "未設定";
+              const name = member?.nickname || member?.display_name || member?.email || member?.auth0_sub || "未設定";
               const sub = member?.email || member?.auth0_sub || "";
               const roleOptions = Object.entries(MANAGER_ROLE_LABELS)
                 .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === roleValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
@@ -2814,6 +2869,28 @@
           if (elements.managerInfoMenuNickname) {
             elements.managerInfoMenuNickname.textContent = nickname;
           }
+          renderManagerAvaterPreview();
+        }
+
+        function renderManagerAvaterPreview() {
+          const appState = loadJson(APP_STATE_KEY, {});
+          const avater = appState?.avater || {};
+          const equipped = avater?.equipped && typeof avater.equipped === "object" ? avater.equipped : {};
+          elements.managerAvaterPreviews.forEach((preview) => {
+            preview.style.setProperty("--avater-offset-x", `${Number(avater.offsetX) || 0}px`);
+            preview.style.setProperty("--avater-offset-y", `${Number(avater.offsetY) || 0}px`);
+            preview.querySelectorAll(".avater-layer").forEach((layer) => layer.remove());
+            Object.values(equipped).forEach((itemId) => {
+              const className = MANAGER_AVATER_ITEM_CLASSES[itemId] || (String(itemId).startsWith("custom-") ? "avater-item-custom" : "");
+              if (!className) {
+                return;
+              }
+              const layer = document.createElement("span");
+              layer.className = `avater-layer ${className}`;
+              layer.setAttribute("aria-hidden", "true");
+              preview.append(layer);
+            });
+          });
         }
 
         function normalizeEditorHtml(html) {

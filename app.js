@@ -73,9 +73,32 @@ const REVIEW_COIN_FORMATTER = new Intl.NumberFormat("ja-JP");
 const REVIEW_DATA_EXPORT_FORMAT = "the-review-obfuscated-v1";
 const REVIEW_DATA_EXPORT_KEY = "TheReview::DataExport::v1";
 const STORE_CONFIG_KEY = "the-review-store-config-v1";
+const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
+const INFO_NOTICE_READ_KEY = "the-review-info-notice-read-v1";
+const INFO_MENU_NOTICES = [
+  {
+    id: "20260429-review-account-update",
+    title: "Review Accountの設定を更新しました",
+    body: "アカウント情報、Review Data、Avaterの設定をInformationメニューから確認できます。",
+  },
+];
 const DEFAULT_STORE_CONFIG = {
-  avatarStatus: "preparing",
-  avatarMessage: "準備中",
+  avatarStatus: "published",
+  avatarMessage: "Avaterアイテムを選べます。",
+};
+const AVATER_BASE_IMAGE = "./assets/avater/らーん1-1.png";
+const AVATER_ITEMS = [
+  { id: "school-blue", category: "clothes", name: "ブルージャケット", cost: 0, className: "avater-item-school-blue" },
+  { id: "mint-ribbon", category: "accessory", name: "ミントリボン", cost: 0, className: "avater-item-mint-ribbon" },
+  { id: "round-glasses", category: "glasses", name: "ラウンドめがね", cost: 0, className: "avater-item-round-glasses" },
+  { id: "star-pin", category: "accessory", name: "スターのヘアピン", cost: 80, className: "avater-item-star-pin" },
+  { id: "lab-coat", category: "clothes", name: "サイエンスコート", cost: 120, className: "avater-item-lab-coat" },
+  { id: "aqua-glasses", category: "glasses", name: "アクアめがね", cost: 100, className: "avater-item-aqua-glasses" },
+];
+const AVATER_CATEGORY_LABELS = {
+  clothes: "服",
+  accessory: "アクセサリー",
+  glasses: "めがね",
 };
 const FLASHCARD_DEFAULT_SERIES = {
   id: "reboot-1st-edition",
@@ -307,6 +330,8 @@ const elements = {
   infoMenuCloseBtn: document.getElementById("infoMenuCloseBtn"),
   infoMenuPanel: document.getElementById("infoMenuPanel"),
   infoMenuNickname: document.getElementById("infoMenuNickname"),
+  infoMenuNoticeBadge: document.getElementById("infoMenuNoticeBadge"),
+  infoMenuNoticeList: document.getElementById("infoMenuNoticeList"),
   managerMenuLink: document.getElementById("managerMenuLink"),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
@@ -326,6 +351,10 @@ const elements = {
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
   accountEditBtn: document.getElementById("accountEditBtn"),
+  accountEditDialog: document.getElementById("accountEditDialog"),
+  accountEditEmailText: document.getElementById("accountEditEmailText"),
+  accountEditGoogleText: document.getElementById("accountEditGoogleText"),
+  accountEditActionButtons: Array.from(document.querySelectorAll("[data-account-edit-action]")),
   logoutBtn: document.getElementById("logoutBtn"),
   deleteAccountBtn: document.getElementById("deleteAccountBtn"),
   themeCardList: document.getElementById("themeCardList"),
@@ -344,17 +373,22 @@ const elements = {
   reviewDataExportBtn: document.getElementById("reviewDataExportBtn"),
   reviewDataImportBtn: document.getElementById("reviewDataImportBtn"),
   reviewDataImportInput: document.getElementById("reviewDataImportInput"),
+  avaterPreviews: Array.from(document.querySelectorAll("[data-avater-preview]")),
+  avaterNudgeButtons: Array.from(document.querySelectorAll("[data-avater-nudge]")),
+  loginAvaterItemList: document.getElementById("loginAvaterItemList"),
   guestModeDialog: document.getElementById("guestModeDialog"),
   guestModeActionButtons: Array.from(document.querySelectorAll("[data-guest-mode-action]")),
   accountActionDialog: document.getElementById("accountActionDialog"),
   accountActionDialogTitle: document.getElementById("accountActionDialogTitle"),
   accountActionDialogMessage: document.getElementById("accountActionDialogMessage"),
   accountActionConfirmBtn: document.getElementById("accountActionConfirmBtn"),
+  accountActionExportBtn: document.getElementById("accountActionExportBtn"),
   accountActionButtons: Array.from(document.querySelectorAll("[data-account-action]")),
   themeUnlockDialog: document.getElementById("themeUnlockDialog"),
   themeUnlockName: document.getElementById("themeUnlockName"),
   themeUnlockCost: document.getElementById("themeUnlockCost"),
   themeUnlockCurrentCoin: document.getElementById("themeUnlockCurrentCoin"),
+  themeUnlockAfterCoin: document.getElementById("themeUnlockAfterCoin"),
   themeUnlockActionButtons: Array.from(document.querySelectorAll("[data-theme-unlock-action]")),
   homeGreeting: document.getElementById("homeGreeting"),
   homeCardTrack: document.getElementById("homeCardTrack"),
@@ -431,6 +465,7 @@ let isSelfcheckTimerFocusMode = false;
 let pendingGuestModeAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
+let managerAccessState = null;
 let liftedFlashcardNoteElement = null;
 let liftedFlashcardBinderElement = null;
 let activeFlashcardBinderElement = null;
@@ -457,9 +492,8 @@ const ACCOUNT_ACTION_DIALOG_COPY = {
     confirmClass: "primary",
   },
   delete: {
-    title: "アカウントを削除",
-    message:
-      "アカウントを削除してReview Dataをリセットします。リビューコイン・デイリーログイン・問題履歴も削除されます。よろしいですか？",
+    title: "アカウントを削除する",
+    message: "Review Dataはクラウド上から削除されます。続行しますか？",
     confirmClass: "danger",
   },
 };
@@ -516,7 +550,7 @@ async function init() {
   const shouldWaitForAuth = hasAuth0CallbackParams() || !state.auth.isLoggedIn;
   const authInitialization = shouldWaitForAuth
     ? withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization")
-    : initializeAuth();
+    : initializeAuth({ preserveExistingSession: true });
   const authRedirectAppState = shouldWaitForAuth ? await authInitialization : null;
   if (!shouldWaitForAuth) {
     authInitialization
@@ -525,10 +559,6 @@ async function init() {
         if (onboardingStep) {
           requestLoginOnboardingStep(onboardingStep);
           redirectToLoginPage({ onboardingStep });
-          return;
-        }
-        if (!state.auth.isLoggedIn) {
-          redirectToLoginPage();
           return;
         }
         renderMypageSettings();
@@ -557,6 +587,7 @@ async function init() {
   markDailyLogin();
   bindEvents();
   startHomeGreetingTicker();
+  renderInfoMenuNotices();
   renderAll();
   activateScreen(activeScreen);
   void updateManagerMenuVisibility();
@@ -586,6 +617,7 @@ async function initLoginPage() {
     requestLoginOnboardingStep(nextOnboardingStep);
   }
   renderAuthPanel();
+  renderAvater();
 
   if (state.auth.isLoggedIn && !explicitLogout) {
     if (nextOnboardingStep) {
@@ -754,6 +786,20 @@ function bindSharedDataAndGuestDialogEvents() {
   if (elements.reviewDataImportInput) {
     elements.reviewDataImportInput.addEventListener("change", handleReviewDataImportSelection);
   }
+  elements.avaterNudgeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      nudgeAvater(button.dataset.avaterNudge || "");
+    });
+  });
+  [elements.loginAvaterItemList, elements.storeAvatarHint].forEach((list) => {
+    list?.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-avater-item]");
+      if (!target) {
+        return;
+      }
+      handleAvaterItemAction(target.dataset.avaterItem || "");
+    });
+  });
   elements.guestModeActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
       handleGuestModeDialogAction(button.dataset.guestModeAction);
@@ -901,7 +947,7 @@ function injectTabScriptLabels() {
   appendTabScriptLabel(learnSections[2] ?? null, "Collection");
 
   const storeSections = Array.from(document.querySelectorAll("#screen-notice .settings-section"));
-  const storeLabels = ["Number of Review Coins", "Avatar", "Color Schemes"];
+  const storeLabels = ["Number of Review Coins", "Avater", "Color Schemes"];
   storeLabels.forEach((label, index) => {
     appendTabScriptLabel(storeSections[index] ?? null, label);
   });
@@ -1190,6 +1236,14 @@ function bindEvents() {
     elements.accountEditBtn.addEventListener("click", openAccountEdit);
   }
 
+  elements.accountEditActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.accountEditAction === "close") {
+        closeAccountEditDialog();
+      }
+    });
+  });
+
   if (elements.deleteAccountBtn) {
     elements.deleteAccountBtn.addEventListener("click", deleteAccountAndResetProgress);
   }
@@ -1459,6 +1513,7 @@ function requestAccountAction(action) {
   }
   const copy = ACCOUNT_ACTION_DIALOG_COPY[normalizedAction];
   pendingAccountAction = normalizedAction;
+  elements.accountActionDialog?.classList.toggle("is-delete-action", normalizedAction === "delete");
 
   if (!elements.accountActionDialog || typeof elements.accountActionDialog.showModal !== "function") {
     const shouldContinue = window.confirm(copy.message);
@@ -1480,6 +1535,9 @@ function requestAccountAction(action) {
     elements.accountActionConfirmBtn.classList.remove("primary", "danger");
     elements.accountActionConfirmBtn.classList.add(copy.confirmClass);
   }
+  if (elements.accountActionExportBtn) {
+    elements.accountActionExportBtn.hidden = normalizedAction !== "delete";
+  }
   if (!elements.accountActionDialog.open) {
     elements.accountActionDialog.showModal();
   }
@@ -1490,6 +1548,10 @@ function handleAccountActionDialogAction(action) {
   if (normalizedAction === "cancel") {
     closeAccountActionDialog();
     pendingAccountAction = null;
+    return;
+  }
+  if (normalizedAction === "export") {
+    exportReviewData();
     return;
   }
   if (normalizedAction !== "confirm") {
@@ -1563,8 +1625,27 @@ async function logoutAccount() {
 }
 
 function openAccountEdit() {
-  requestLoginOnboardingStep("nickname");
-  redirectToLoginPage({ onboardingStep: "nickname" });
+  if (elements.accountEditEmailText) {
+    elements.accountEditEmailText.textContent =
+      state.auth.isLoggedIn && state.auth.provider !== "guest" ? state.auth.email ?? "未設定" : "Guest Modeでは未設定";
+  }
+  if (elements.accountEditGoogleText) {
+    elements.accountEditGoogleText.textContent =
+      state.auth.provider === "google"
+        ? "Googleアカウントと連携されています。"
+        : "Googleアカウントとの連携はAuth0のアカウント管理で行います。";
+  }
+  if (elements.accountEditDialog && typeof elements.accountEditDialog.showModal === "function") {
+    if (!elements.accountEditDialog.open) {
+      elements.accountEditDialog.showModal();
+    }
+  }
+}
+
+function closeAccountEditDialog() {
+  if (elements.accountEditDialog?.open) {
+    elements.accountEditDialog.close();
+  }
 }
 
 function performLogoutAccount() {
@@ -1582,11 +1663,12 @@ function performLogoutAccount() {
   redirectToLoginPage();
 }
 
-async function initializeAuth() {
+async function initializeAuth(options = {}) {
   const shouldPreserveGuest = state.auth.isLoggedIn && state.auth.provider === "guest";
+  const shouldPreserveExistingSession = Boolean(options.preserveExistingSession && state.auth.isLoggedIn);
   if (!isAuth0SdkAvailable()) {
     auth0Client = null;
-    if (!shouldPreserveGuest) {
+    if (!shouldPreserveGuest && !shouldPreserveExistingSession) {
       setLoggedOutAuthState();
       saveState();
     }
@@ -1594,7 +1676,7 @@ async function initializeAuth() {
   }
   if (!isAuth0Configured()) {
     auth0Client = null;
-    if (!shouldPreserveGuest) {
+    if (!shouldPreserveGuest && !shouldPreserveExistingSession) {
       setLoggedOutAuthState();
       saveState();
     }
@@ -1610,7 +1692,7 @@ async function initializeAuth() {
       appStateFromRedirect = redirectResult?.appState ?? null;
     } catch (error) {
       console.error("Auth0 redirect callback failed:", error);
-      if (!shouldPreserveGuest) {
+      if (!shouldPreserveGuest && !shouldPreserveExistingSession) {
         setLoggedOutAuthState();
         saveState();
       }
@@ -1619,7 +1701,10 @@ async function initializeAuth() {
     }
   }
 
-  await syncAuthStateFromAuth0({ preserveGuest: shouldPreserveGuest });
+  await syncAuthStateFromAuth0({
+    preserveGuest: shouldPreserveGuest,
+    preserveExistingSession: shouldPreserveExistingSession,
+  });
   if (appStateFromRedirect) {
     applyAuthRedirectState(appStateFromRedirect);
   }
@@ -1712,11 +1797,15 @@ async function getAuth0AccessTokenForApi() {
 }
 
 function updateManagerMenuVisibilityFromAccess(access) {
+  managerAccessState = access || null;
   if (!elements.managerMenuLink) {
     return;
   }
-  const hasManagerRole = Boolean(access?.canAccess && access?.member?.role);
+  const hasManagerRole = Boolean(access?.canAccess);
   elements.managerMenuLink.hidden = !hasManagerRole;
+  renderCoinBoard();
+  renderMypageCoin();
+  renderThemeCardSelection();
 }
 
 function clearManagerAccessCache() {
@@ -1851,8 +1940,9 @@ function clearAuth0CallbackParamsFromUrl() {
 
 async function syncAuthStateFromAuth0(options = {}) {
   const preserveGuest = Boolean(options.preserveGuest);
+  const preserveExistingSession = Boolean(options.preserveExistingSession && state.auth.isLoggedIn);
   if (!auth0Client) {
-    if (preserveGuest && state.auth.isLoggedIn && state.auth.provider === "guest") {
+    if (preserveExistingSession || (preserveGuest && state.auth.isLoggedIn && state.auth.provider === "guest")) {
       return;
     }
     setLoggedOutAuthState();
@@ -1862,7 +1952,7 @@ async function syncAuthStateFromAuth0(options = {}) {
 
   const isAuthenticated = await auth0Client.isAuthenticated();
   if (!isAuthenticated) {
-    if (preserveGuest && state.auth.isLoggedIn && state.auth.provider === "guest") {
+    if (preserveExistingSession || (preserveGuest && state.auth.isLoggedIn && state.auth.provider === "guest")) {
       return;
     }
     setLoggedOutAuthState();
@@ -1944,9 +2034,11 @@ function performDeleteAccountAndResetProgress() {
 }
 
 function renderAll() {
+  renderInfoMenuNotices();
   renderCoinBoard({ fromZero: true });
   renderMypageCoin();
   renderStoreConfig();
+  renderAvater();
   renderMypageSettings();
   renderAuthPanel();
   renderFlashcardPanel();
@@ -4682,6 +4774,14 @@ function renderCoinBoard(options = {}) {
   if (!elements.reviewCoinValue) {
     return;
   }
+  if (hasUnlimitedReviewCoins()) {
+    if (reviewCoinAnimationFrameId !== null) {
+      window.cancelAnimationFrame(reviewCoinAnimationFrameId);
+      reviewCoinAnimationFrameId = null;
+    }
+    elements.reviewCoinValue.textContent = "∞";
+    return;
+  }
   const targetValue = normalizeCoinAmount(state.reviewCoin);
   const fromValue = options.fromZero ? 0 : readCoinAmountFromElement(elements.reviewCoinValue);
   animateReviewCoinValue(fromValue, targetValue);
@@ -4691,7 +4791,11 @@ function renderMypageCoin() {
   if (!elements.mypageCoinValueNumber) {
     return;
   }
-  elements.mypageCoinValueNumber.textContent = formatCoinAmount(state.reviewCoin);
+  elements.mypageCoinValueNumber.textContent = hasUnlimitedReviewCoins() ? "∞" : formatCoinAmount(state.reviewCoin);
+}
+
+function hasUnlimitedReviewCoins() {
+  return Boolean(state.auth.isLoggedIn && managerAccessState?.canAccess === true);
 }
 
 function loadStoreConfig() {
@@ -4720,11 +4824,142 @@ function normalizeStoreConfig(value) {
 }
 
 function renderStoreConfig() {
-  if (!elements.storeAvatarHint) {
+  renderAvaterItemList(elements.storeAvatarHint, { storeMode: true });
+}
+
+function renderAvater() {
+  state.avater = normalizeAvaterState(state.avater);
+  elements.avaterPreviews.forEach(renderAvaterPreview);
+  renderAvaterItemList(elements.loginAvaterItemList, { storeMode: false });
+  renderAvaterItemList(elements.storeAvatarHint, { storeMode: true });
+}
+
+function renderAvaterPreview(preview) {
+  if (!preview) {
     return;
   }
-  const storeConfig = loadStoreConfig();
-  elements.storeAvatarHint.textContent = storeConfig.avatarMessage;
+  const baseImage = preview.querySelector(".avater-base-image");
+  if (baseImage) {
+    baseImage.src = AVATER_BASE_IMAGE;
+  }
+  preview.style.setProperty("--avater-offset-x", `${state.avater.offsetX}px`);
+  preview.style.setProperty("--avater-offset-y", `${state.avater.offsetY}px`);
+  preview.querySelectorAll(".avater-layer").forEach((layer) => layer.remove());
+  Object.values(state.avater.equipped || {}).forEach((itemId) => {
+    const item = getAvaterItem(itemId);
+    if (!item) {
+      return;
+    }
+    const layer = document.createElement("span");
+    layer.className = `avater-layer ${item.className}`;
+    layer.setAttribute("aria-hidden", "true");
+    preview.append(layer);
+  });
+}
+
+function renderAvaterItemList(container, options = {}) {
+  if (!container) {
+    return;
+  }
+  const storeMode = Boolean(options.storeMode);
+  container.innerHTML = getAvailableAvaterItems().map((item) => {
+    const isUnlocked = isAvaterItemUnlocked(item.id);
+    const isEquipped = state.avater.equipped?.[item.category] === item.id;
+    const canAfford = hasUnlimitedReviewCoins() || state.reviewCoin >= item.cost;
+    const buttonText = isEquipped ? "使用中" : isUnlocked ? "使う" : `${item.cost}`;
+    return `
+      <article class="avater-item-card ${isEquipped ? "is-equipped" : ""}">
+        <div class="avater-item-sample ${item.className}" aria-hidden="true"></div>
+        <div class="avater-item-body">
+          <p class="avater-item-category">${escapeHtml(AVATER_CATEGORY_LABELS[item.category] || item.category)}</p>
+          <h3>${escapeHtml(item.name)}</h3>
+          ${
+            storeMode && !isUnlocked
+              ? `<p class="avater-item-cost"><img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />${escapeHtml(String(item.cost))}</p>`
+              : ""
+          }
+        </div>
+        <button class="${isUnlocked ? "secondary" : "primary"}" type="button" data-avater-item="${escapeHtml(item.id)}" ${!isUnlocked && !canAfford ? "disabled" : ""}>
+          ${escapeHtml(buttonText)}
+        </button>
+      </article>
+    `;
+  }).join("");
+}
+
+function getAvaterItem(itemId) {
+  return getAvailableAvaterItems().find((item) => item.id === itemId) || null;
+}
+
+function getAvailableAvaterItems() {
+  return [...AVATER_ITEMS, ...loadCustomAvaterItems()];
+}
+
+function loadCustomAvaterItems() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(AVATER_CUSTOM_ITEMS_KEY) || "[]");
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .map((item) => ({
+        id: String(item?.id || "").trim(),
+        category: String(item?.category || "").trim(),
+        name: String(item?.name || "").trim(),
+        cost: normalizeCoinAmount(item?.cost),
+        className: "avater-item-custom",
+      }))
+      .filter((item) => item.id && item.name && Object.prototype.hasOwnProperty.call(AVATER_CATEGORY_LABELS, item.category));
+  } catch {
+    return [];
+  }
+}
+
+function isAvaterItemUnlocked(itemId) {
+  const item = getAvaterItem(itemId);
+  if (!item) {
+    return false;
+  }
+  return item.cost === 0 || Boolean(state.avater.unlockedItems?.[itemId]);
+}
+
+function handleAvaterItemAction(itemId) {
+  const item = getAvaterItem(itemId);
+  if (!item) {
+    return;
+  }
+  if (!isAvaterItemUnlocked(item.id)) {
+    if (!hasUnlimitedReviewCoins() && state.reviewCoin < item.cost) {
+      return;
+    }
+    if (!hasUnlimitedReviewCoins()) {
+      state.reviewCoin -= item.cost;
+    }
+    state.avater.unlockedItems[item.id] = true;
+  }
+  state.avater.equipped[item.category] = state.avater.equipped[item.category] === item.id ? "" : item.id;
+  saveState();
+  renderCoinBoard();
+  renderMypageCoin();
+  renderAvater();
+}
+
+function nudgeAvater(direction) {
+  const step = 4;
+  if (direction === "reset") {
+    state.avater.offsetX = 0;
+    state.avater.offsetY = 0;
+  } else if (direction === "left") {
+    state.avater.offsetX = Math.max(-24, state.avater.offsetX - step);
+  } else if (direction === "right") {
+    state.avater.offsetX = Math.min(24, state.avater.offsetX + step);
+  } else if (direction === "up") {
+    state.avater.offsetY = Math.max(-24, state.avater.offsetY - step);
+  } else if (direction === "down") {
+    state.avater.offsetY = Math.min(24, state.avater.offsetY + step);
+  }
+  saveState();
+  renderAvater();
 }
 
 function formatCoinAmount(value) {
@@ -4965,7 +5200,7 @@ function unlockThemeWithCoin(themeKey) {
     return;
   }
   const unlockCost = getThemeUnlockCost(themeKey);
-  if (state.reviewCoin < unlockCost) {
+  if (!hasUnlimitedReviewCoins() && state.reviewCoin < unlockCost) {
     return;
   }
 
@@ -4989,7 +5224,12 @@ function unlockThemeWithCoin(themeKey) {
     elements.themeUnlockCost.textContent = String(unlockCost);
   }
   if (elements.themeUnlockCurrentCoin) {
-    elements.themeUnlockCurrentCoin.textContent = REVIEW_COIN_FORMATTER.format(state.reviewCoin);
+    elements.themeUnlockCurrentCoin.textContent = hasUnlimitedReviewCoins() ? "∞" : REVIEW_COIN_FORMATTER.format(state.reviewCoin);
+  }
+  if (elements.themeUnlockAfterCoin) {
+    elements.themeUnlockAfterCoin.textContent = hasUnlimitedReviewCoins()
+      ? "∞"
+      : REVIEW_COIN_FORMATTER.format(Math.max(0, state.reviewCoin - unlockCost));
   }
   if (!elements.themeUnlockDialog.open) {
     elements.themeUnlockDialog.showModal();
@@ -5019,11 +5259,13 @@ function closeThemeUnlockDialog() {
 function proceedThemeUnlock(themeKey) {
   pendingThemeUnlockKey = null;
   const unlockCost = getThemeUnlockCost(themeKey);
-  if (!PREMIUM_THEMES.includes(themeKey) || state.reviewCoin < unlockCost) {
+  if (!PREMIUM_THEMES.includes(themeKey) || (!hasUnlimitedReviewCoins() && state.reviewCoin < unlockCost)) {
     return;
   }
 
-  state.reviewCoin -= unlockCost;
+  if (!hasUnlimitedReviewCoins()) {
+    state.reviewCoin -= unlockCost;
+  }
   state.settings.unlockedThemes[themeKey] = true;
   state.settings.themeUnlockPolicyVersion = THEME_UNLOCK_POLICY_VERSION;
   saveState();
@@ -5367,6 +5609,52 @@ function isInfoMenuOpen() {
   return Boolean(elements.infoMenuPanel?.classList.contains("is-open"));
 }
 
+function getReadInfoNoticeIds() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(INFO_NOTICE_READ_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function setReadInfoNoticeIds(ids) {
+  try {
+    window.localStorage.setItem(INFO_NOTICE_READ_KEY, JSON.stringify(Array.from(new Set(ids))));
+  } catch {
+    // noop
+  }
+}
+
+function getUnreadInfoNoticeCount() {
+  const readIds = new Set(getReadInfoNoticeIds());
+  return INFO_MENU_NOTICES.filter((notice) => !readIds.has(notice.id)).length;
+}
+
+function renderInfoMenuNotices() {
+  if (elements.infoMenuNoticeBadge) {
+    const unreadCount = getUnreadInfoNoticeCount();
+    elements.infoMenuNoticeBadge.textContent = String(unreadCount);
+    elements.infoMenuNoticeBadge.hidden = unreadCount === 0;
+  }
+  if (!elements.infoMenuNoticeList) {
+    return;
+  }
+  elements.infoMenuNoticeList.innerHTML = INFO_MENU_NOTICES.map(
+    (notice) => `
+      <article class="info-menu-notice-item">
+        <h4>${escapeHtml(notice.title)}</h4>
+        <p>${escapeHtml(notice.body)}</p>
+      </article>
+    `,
+  ).join("");
+}
+
+function markInfoMenuNoticesRead() {
+  setReadInfoNoticeIds(INFO_MENU_NOTICES.map((notice) => notice.id));
+  renderInfoMenuNotices();
+}
+
 function openInfoMenu() {
   if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
     return;
@@ -5380,6 +5668,7 @@ function openInfoMenu() {
     elements.infoMenuPanel?.classList.add("is-open");
   });
   elements.infoMenuTrigger.setAttribute("aria-expanded", "true");
+  markInfoMenuNoticesRead();
 }
 
 function closeInfoMenu() {
@@ -6112,6 +6401,7 @@ function createDefaultState() {
       nickname: "",
       email: null,
     },
+    avater: createDefaultAvaterState(),
   };
 }
 
@@ -6129,6 +6419,55 @@ function normalizePersistedState(parsed) {
     dailyTryRecords: parsed?.dailyTryRecords && typeof parsed.dailyTryRecords === "object" ? parsed.dailyTryRecords : {},
     settings: normalizeSettingsState(parsed?.settings),
     auth: normalizeAuthState(parsed?.auth),
+    avater: normalizeAvaterState(parsed?.avater || parsed?.avatar),
+  };
+}
+
+function createDefaultAvaterState() {
+  return {
+    baseImage: AVATER_BASE_IMAGE,
+    equipped: {
+      clothes: "school-blue",
+      accessory: "mint-ribbon",
+      glasses: "",
+    },
+    unlockedItems: {
+      "school-blue": true,
+      "mint-ribbon": true,
+      "round-glasses": true,
+    },
+    offsetX: 0,
+    offsetY: 0,
+  };
+}
+
+function normalizeAvaterState(value) {
+  const fallback = createDefaultAvaterState();
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return fallback;
+  }
+  const equipped = {
+    ...fallback.equipped,
+    ...(value.equipped && typeof value.equipped === "object" && !Array.isArray(value.equipped) ? value.equipped : {}),
+  };
+  Object.keys(equipped).forEach((category) => {
+    const itemId = String(equipped[category] || "");
+    if (itemId && !getAvailableAvaterItems().some((item) => item.id === itemId && item.category === category)) {
+      equipped[category] = "";
+    }
+  });
+  return {
+    baseImage: typeof value.baseImage === "string" && value.baseImage.trim() ? value.baseImage.trim() : fallback.baseImage,
+    equipped,
+    unlockedItems:
+      value.unlockedItems && typeof value.unlockedItems === "object" && !Array.isArray(value.unlockedItems)
+        ? {
+            ...fallback.unlockedItems,
+            ...value.unlockedItems,
+          }
+        : fallback.unlockedItems,
+    offsetX: Math.max(-24, Math.min(24, Number(value.offsetX) || 0)),
+    offsetY: Math.max(-24, Math.min(24, Number(value.offsetY) || 0)),
   };
 }
 
@@ -6386,8 +6725,6 @@ function escapeHtml(text) {
   const onboardingFixedStepLabel = document.getElementById("onboardingFixedStepLabel");
   const onboardingFixedStepNumber = document.getElementById("onboardingFixedStepNumber");
   const onboardingFixedStepCurrent = document.getElementById("onboardingFixedStepCurrent");
-  const VALID_EDUCATION_CODE = "VQKPJK9H3SDENZXPPASN";
-  const EDUCATION_CODE_VALID_MESSAGE = "これは東京都立科学技術高等学校のEducation Codeです。";
   const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
   const ONBOARDING_PROGRESS_TOTAL = 6;
   const ONBOARDING_PROGRESS_BY_STEP = {
@@ -6403,7 +6740,7 @@ function escapeHtml(text) {
     auth: "Review Account",
     nickname: "Nickname",
     educationCode: "Education Code",
-    avatar: "Avatar",
+    avatar: "Avater",
     notification: "通知",
   };
 
@@ -6412,6 +6749,14 @@ function escapeHtml(text) {
   let educationCodeScanFrameId = 0;
   let educationCodeScanActive = false;
   let educationCodeDetector = null;
+  let educationCodeValidationTimerId = 0;
+  let educationCodeValidationRequestId = 0;
+  let educationCodeValidationState = {
+    value: "",
+    isValid: true,
+    message: "",
+    status: "",
+  };
 
   function setActiveStep(nextIndex) {
     const clampedIndex = Math.max(0, Math.min(nextIndex, steps.length - 1));
@@ -6648,19 +6993,80 @@ function escapeHtml(text) {
   function syncEducationCodeStep() {
     const value = getEducationCodeValue();
     const hasValue = value.length > 0;
-    const isValid = !hasValue || value === VALID_EDUCATION_CODE;
     if (educationCodeNextBtn) {
       educationCodeNextBtn.disabled = false;
     }
     if (!hasValue) {
+      educationCodeValidationState = {
+        value: "",
+        isValid: true,
+        message: "",
+        status: "",
+      };
       renderEducationCodeFeedback("", "");
       return true;
     }
-    renderEducationCodeFeedback(
-      isValid ? EDUCATION_CODE_VALID_MESSAGE : EDUCATION_CODE_INVALID_MESSAGE,
-      isValid ? "valid" : "invalid",
-    );
-    return isValid;
+    if (educationCodeValidationState.value === value) {
+      renderEducationCodeFeedback(educationCodeValidationState.message, educationCodeValidationState.status);
+      return educationCodeValidationState.isValid;
+    }
+    renderEducationCodeFeedback("", "");
+    return false;
+  }
+
+  async function validateEducationCodeInput() {
+    const value = getEducationCodeValue();
+    const hasValue = value.length > 0;
+    if (!hasValue) {
+      syncEducationCodeStep();
+      return true;
+    }
+    if (educationCodeValidationState.value === value) {
+      renderEducationCodeFeedback(educationCodeValidationState.message, educationCodeValidationState.status);
+      return educationCodeValidationState.isValid;
+    }
+
+    const requestId = ++educationCodeValidationRequestId;
+    try {
+      const response = await fetch(`${REVIEW_API_BASE_URL}/education-codes/validate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ code: value }),
+      });
+      const json = await response.json().catch(() => null);
+      const isValid = response.ok && Boolean(json?.valid);
+      const schoolName = typeof json?.schoolName === "string" ? json.schoolName.trim() : "";
+      const serverMessage = typeof json?.message === "string" ? json.message.trim() : "";
+      const message = isValid
+        ? serverMessage || (schoolName ? `これは${schoolName}のEducation Codeです。` : "Education Codeを確認しました。")
+        : EDUCATION_CODE_INVALID_MESSAGE;
+      if (requestId !== educationCodeValidationRequestId) {
+        return false;
+      }
+      educationCodeValidationState = {
+        value,
+        isValid,
+        message,
+        status: isValid ? "valid" : "invalid",
+      };
+      renderEducationCodeFeedback(message, isValid ? "valid" : "invalid");
+      return isValid;
+    } catch {
+      if (requestId !== educationCodeValidationRequestId) {
+        return false;
+      }
+      educationCodeValidationState = {
+        value,
+        isValid: false,
+        message: EDUCATION_CODE_INVALID_MESSAGE,
+        status: "invalid",
+      };
+      renderEducationCodeFeedback(EDUCATION_CODE_INVALID_MESSAGE, "invalid");
+      return false;
+    }
   }
 
   function setEducationCodeScannerVisible(isVisible) {
@@ -6906,7 +7312,24 @@ function escapeHtml(text) {
 
   educationCodeInput?.addEventListener("input", () => {
     educationCodeInput.value = educationCodeInput.value.toUpperCase().slice(0, 20);
+    if (educationCodeValidationTimerId) {
+      window.clearTimeout(educationCodeValidationTimerId);
+      educationCodeValidationTimerId = 0;
+    }
+    educationCodeValidationRequestId += 1;
+    educationCodeValidationState = {
+      value: "",
+      isValid: false,
+      message: "",
+      status: "",
+    };
     syncEducationCodeStep();
+    if (getEducationCodeValue()) {
+      educationCodeValidationTimerId = window.setTimeout(() => {
+        educationCodeValidationTimerId = 0;
+        void validateEducationCodeInput();
+      }, 360);
+    }
     saveDraft();
   });
 
@@ -6934,7 +7357,7 @@ function escapeHtml(text) {
     }
   });
 
-  document.addEventListener("click", (event) => {
+  document.addEventListener("click", async (event) => {
     const gotoButton = event.target.closest("[data-onboarding-goto]");
     if (gotoButton) {
       const stepName = String(gotoButton.dataset.onboardingGoto || "");
@@ -6960,7 +7383,7 @@ function escapeHtml(text) {
         }
         commitOnboardingNickname();
       }
-      if (activeStepName === "educationCode" && !syncEducationCodeStep()) {
+      if (activeStepName === "educationCode" && !(await validateEducationCodeInput())) {
         return;
       }
       setActiveStep(activeStepIndex + 1);
