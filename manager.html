@@ -107,6 +107,40 @@
         font-size: 1rem;
       }
 
+      body.manager-page .manager-title-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.34rem 0.46rem;
+      }
+
+      body.manager-page .manager-title-row h2,
+      body.manager-page .manager-title-row h3 {
+        margin: 0;
+      }
+
+      body.manager-page .manager-role-tags {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.28rem;
+        align-items: center;
+      }
+
+      body.manager-page .manager-role-tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 1.34rem;
+        padding: 0.16rem 0.48rem;
+        border-radius: 999px;
+        background: #1d1d1d;
+        color: #ffffff;
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
       body.manager-page .manager-home-card p {
         margin: 0.5rem 0 0.86rem;
         color: var(--text-soft);
@@ -1030,12 +1064,23 @@
           <p class="hint-text">ご希望の項目を選択してください。</p>
           <div class="manager-home-grid">
             <article class="panel manager-home-card">
-              <h3>問題を作成する</h3>
+              <div class="manager-title-row">
+                <h3>問題を作成する</h3>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">デベロッパー</span>
+                  <span class="manager-role-tag">チェッカー</span>
+                </span>
+              </div>
               <p>問題の作成と提出ができます。</p>
               <button class="primary" type="button" data-home-link="problem">開く</button>
             </article>
             <article class="panel manager-home-card">
-              <h3>ストアを管理する</h3>
+              <div class="manager-title-row">
+                <h3>ストアを管理する</h3>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">キャラクターデザイナー</span>
+                </span>
+              </div>
               <p>アイテムの管理ができます。</p>
               <button class="primary" type="button" data-home-link="store">開く</button>
             </article>
@@ -1076,7 +1121,13 @@
           <section class="panel problem-composer-panel">
             <div class="problem-section-head">
               <div>
-                <h2>問題を作成する</h2>
+                <div class="manager-title-row">
+                  <h2>問題を作成する</h2>
+                  <span class="manager-role-tags" aria-label="対象ロール">
+                    <span class="manager-role-tag">デベロッパー</span>
+                    <span class="manager-role-tag">チェッカー</span>
+                  </span>
+                </div>
                 <p class="hint-text">問題の種別わけを選び、問題を入力してから確認へ進みます。</p>
               </div>
               <ol class="problem-stepper" aria-label="作成手順">
@@ -1189,7 +1240,12 @@
       <section id="screen-store" class="screen" hidden>
         <div class="manager-store-layout">
           <section class="panel">
-            <h2>ストアを管理する</h2>
+            <div class="manager-title-row">
+              <h2>ストアを管理する</h2>
+              <span class="manager-role-tags" aria-label="対象ロール">
+                <span class="manager-role-tag">キャラクターデザイナー</span>
+              </span>
+            </div>
             <p class="hint-text">アイテムの管理ができます。保存した内容はThe Review本体のストアに反映されます。</p>
             <div class="manager-field-grid">
               <label class="field-block" for="storeAvatarStatus">
@@ -1243,7 +1299,12 @@
         </section>
         <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
           <div class="manager-members-head">
-            <h2>チーム承認</h2>
+            <div class="manager-title-row">
+              <h2>The Review Production Teamメンバー管理</h2>
+              <span class="manager-role-tags" aria-label="対象ロール">
+                <span class="manager-role-tag">オーナー</span>
+              </span>
+            </div>
             <button id="managerMembersRefreshBtn" class="secondary" type="button">更新</button>
           </div>
           <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
