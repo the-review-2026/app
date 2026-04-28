@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260428-2" />
+    <link rel="stylesheet" href="./app.css?v=20260428-3" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body class="login-page" data-theme="sea">
@@ -68,9 +68,9 @@
           <h2>Review Account</h2>
           <p class="hint-text">アプリをご利用になったデータ（Review Data）をクラウド上に保存することができます。他のデバイスでは、ログインするだけでかんたんにReview Dataを引きつげます。</p>
           <p class="hint-text">Googleアカウントで作成することもできます。</p>
-          <div class="action-row">
-            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">ログインする</button>
-            <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">Guest Modeで続行する</button>
+          <div class="action-row auth-provider-actions">
+            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">Review Accountを作成する</button>
+            <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">Guest Modeで続ける</button>
           </div>
           <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
             auth0-config.js の domain / clientId / defaultConnection を確認してください。</p>
@@ -81,10 +81,10 @@
         </section>
 
         <section class="onboarding-step" data-onboarding-step="nickname">
-          <h2>ニックネーム</h2>
+          <h2>Nickname</h2>
           <p class="hint-text">The Review内で表示する名前を入力してください。</p>
           <div class="onboarding-field">
-            <label for="nicknameInput">ニックネーム</label>
+            <label for="nicknameInput">Nickname</label>
             <input id="nicknameInput" type="text" inputmode="text" autocomplete="nickname" maxlength="24" placeholder="例: レビュー太郎" />
           </div>
           <div class="action-row onboarding-step-actions">
@@ -108,15 +108,16 @@
           <div class="onboarding-field">
             <label for="educationCodeInput">手入力で入力する</label>
             <input id="educationCodeInput" type="text" inputmode="text" maxlength="20"/>
+            <p id="educationCodeFeedback" class="education-code-feedback" aria-live="polite"></p>
           </div>
           <div class="action-row onboarding-step-actions">
             <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="educationCodeNextBtn" class="primary" type="button" data-onboarding-nav="next" disabled>次へ</button>
+            <button id="educationCodeNextBtn" class="primary" type="button" data-onboarding-nav="next">次へ</button>
           </div>
         </section>
 
         <section class="onboarding-step" data-onboarding-step="avatar">
-          <h2>アバター</h2>
+          <h2>Avatar</h2>
           <p class="hint-text">準備中</p>
           <div class="action-row onboarding-step-actions">
             <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
@@ -208,6 +209,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260428-2"></script>
+    <script src="./app.js?v=20260428-3"></script>
   </body>
 </html>

@@ -323,9 +323,9 @@ const elements = {
   storeAvatarHint: document.getElementById("storeAvatarHint"),
   authNicknameText: document.getElementById("authNicknameText"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
-  authEmailText: document.getElementById("authEmailText"),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
+  accountEditBtn: document.getElementById("accountEditBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
   deleteAccountBtn: document.getElementById("deleteAccountBtn"),
   themeCardList: document.getElementById("themeCardList"),
@@ -453,7 +453,7 @@ const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "nickname", "educ
 const ACCOUNT_ACTION_DIALOG_COPY = {
   logout: {
     title: "ログアウト",
-    message: "ログアウトしてlogin.htmlに移動します。よろしいですか？",
+    message: "ログイン画面に戻ります。続行しますか？",
     confirmClass: "primary",
   },
   delete: {
@@ -954,11 +954,7 @@ function ensureInitialCoinGrant() {
 }
 
 function bindBeforeUnloadPrompt() {
-  window.onbeforeunload = (event) => {
-    event.preventDefault();
-    event.returnValue = "";
-    return "";
-  };
+  window.onbeforeunload = null;
 }
 
 function bindEvents() {
@@ -1188,6 +1184,10 @@ function bindEvents() {
 
   if (elements.logoutBtn) {
     elements.logoutBtn.addEventListener("click", logoutAccount);
+  }
+
+  if (elements.accountEditBtn) {
+    elements.accountEditBtn.addEventListener("click", openAccountEdit);
   }
 
   if (elements.deleteAccountBtn) {
@@ -1560,6 +1560,11 @@ async function loginWithAuth0(appState, options = {}) {
 
 async function logoutAccount() {
   requestAccountAction("logout");
+}
+
+function openAccountEdit() {
+  requestLoginOnboardingStep("nickname");
+  redirectToLoginPage({ onboardingStep: "nickname" });
 }
 
 function performLogoutAccount() {
@@ -4817,6 +4822,9 @@ function renderMypageSettings() {
     elements.authNicknameText.textContent = nicknameText;
   }
   if (elements.authLoginStatusText) {
+    elements.authLoginStatusText.classList.toggle("is-logged-in", state.auth.isLoggedIn && state.auth.provider !== "guest");
+    elements.authLoginStatusText.classList.toggle("is-guest", state.auth.isLoggedIn && state.auth.provider === "guest");
+    elements.authLoginStatusText.classList.toggle("is-logged-out", !state.auth.isLoggedIn);
     if (!state.auth.isLoggedIn) {
       elements.authLoginStatusText.textContent = "未ログイン";
     } else if (state.auth.provider === "guest") {
@@ -4826,10 +4834,6 @@ function renderMypageSettings() {
     }
   }
 
-  if (elements.authEmailText) {
-    elements.authEmailText.textContent =
-      state.auth.isLoggedIn && state.auth.provider !== "guest" ? state.auth.email ?? "未設定" : "未設定";
-  }
   if (elements.logoutBtn) {
     elements.logoutBtn.disabled = !state.auth.isLoggedIn;
   }
@@ -4880,7 +4884,7 @@ function renderAuthPanel() {
     const requiresConnection = requiresAuthConnection(provider);
     const isCurrentProvider = isLoggedIn && currentProvider === provider;
     button.disabled = !canLogin || (requiresConnection && !connection) || isCurrentProvider;
-    button.textContent = isCurrentProvider ? `${formatAuthProviderLabel(provider)}ログイン済み` : `${formatAuthProviderLabel(provider)}でログイン`;
+    button.textContent = isCurrentProvider ? "Review Account利用中" : "Review Accountを作成する";
   });
   if (elements.authConfigHint) {
     elements.authConfigHint.hidden = canCreateAuth0Client;
@@ -6363,6 +6367,7 @@ function escapeHtml(text) {
   const nicknameInput = document.getElementById("nicknameInput");
   const nicknameNextBtn = document.getElementById("nicknameNextBtn");
   const educationCodeInput = document.getElementById("educationCodeInput");
+  const educationCodeFeedback = document.getElementById("educationCodeFeedback");
   const educationCodeNextBtn = document.getElementById("educationCodeNextBtn");
   const educationCodeStartScanBtn = document.getElementById("educationCodeStartScanBtn");
   const educationCodeStopScanBtn = document.getElementById("educationCodeStopScanBtn");
@@ -6381,6 +6386,9 @@ function escapeHtml(text) {
   const onboardingFixedStepLabel = document.getElementById("onboardingFixedStepLabel");
   const onboardingFixedStepNumber = document.getElementById("onboardingFixedStepNumber");
   const onboardingFixedStepCurrent = document.getElementById("onboardingFixedStepCurrent");
+  const VALID_EDUCATION_CODE = "VQKPJK9H3SDENZXPPASN";
+  const EDUCATION_CODE_VALID_MESSAGE = "これは東京都立科学技術高等学校のEducation Codeです。";
+  const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
   const ONBOARDING_PROGRESS_TOTAL = 6;
   const ONBOARDING_PROGRESS_BY_STEP = {
     terms: 1,
@@ -6393,9 +6401,9 @@ function escapeHtml(text) {
   const ONBOARDING_PROGRESS_LABEL_BY_STEP = {
     terms: "利用規約とプライバシーポリシーへの同意",
     auth: "Review Account",
-    nickname: "ニックネーム",
+    nickname: "Nickname",
     educationCode: "Education Code",
-    avatar: "Avater",
+    avatar: "Avatar",
     notification: "通知",
   };
 
@@ -6592,7 +6600,7 @@ function escapeHtml(text) {
     const payload = {
       termsAccepted: Boolean(termsAgreeCheckbox?.checked),
       nickname: getOnboardingNickname(),
-      educationCode: String(educationCodeInput?.value ?? "").trim(),
+      educationCode: getEducationCodeValue(),
       avatarPreset: getSelectedValue(avatarInputs),
       notifications: getOnboardingNotificationSettingsFromToggles(),
       notificationTimeMinutes: getOnboardingNotificationTimeMinutes(),
@@ -6624,10 +6632,35 @@ function escapeHtml(text) {
     saveState();
   }
 
-  function syncEducationCodeStep() {
-    if (educationCodeNextBtn) {
-      educationCodeNextBtn.disabled = String(educationCodeInput?.value ?? "").trim().length === 0;
+  function getEducationCodeValue() {
+    return String(educationCodeInput?.value ?? "").trim().toUpperCase();
+  }
+
+  function renderEducationCodeFeedback(message, status) {
+    if (!educationCodeFeedback) {
+      return;
     }
+    educationCodeFeedback.textContent = message;
+    educationCodeFeedback.classList.toggle("is-valid", status === "valid");
+    educationCodeFeedback.classList.toggle("is-invalid", status === "invalid");
+  }
+
+  function syncEducationCodeStep() {
+    const value = getEducationCodeValue();
+    const hasValue = value.length > 0;
+    const isValid = !hasValue || value === VALID_EDUCATION_CODE;
+    if (educationCodeNextBtn) {
+      educationCodeNextBtn.disabled = false;
+    }
+    if (!hasValue) {
+      renderEducationCodeFeedback("", "");
+      return true;
+    }
+    renderEducationCodeFeedback(
+      isValid ? EDUCATION_CODE_VALID_MESSAGE : EDUCATION_CODE_INVALID_MESSAGE,
+      isValid ? "valid" : "invalid",
+    );
+    return isValid;
   }
 
   function setEducationCodeScannerVisible(isVisible) {
@@ -6672,7 +6705,7 @@ function escapeHtml(text) {
         parsedUrl.searchParams.get("schoolCode") ||
         parsedUrl.searchParams.get("code");
       if (byQuery) {
-        return byQuery.trim().slice(0, 20);
+        return byQuery.trim().toUpperCase().slice(0, 20);
       }
     } catch {
       // URLでない場合はそのまま次の判定へ進む
@@ -6680,17 +6713,17 @@ function escapeHtml(text) {
 
     const keyValueMatch = text.match(/(?:educationCode|schoolCode|code)\s*[:=]\s*([A-Za-z0-9_-]+)/i);
     if (keyValueMatch?.[1]) {
-      return keyValueMatch[1].trim().slice(0, 20);
+      return keyValueMatch[1].trim().toUpperCase().slice(0, 20);
     }
 
-    return text.slice(0, 20);
+    return text.toUpperCase().slice(0, 20);
   }
 
   function applyEducationCodeValue(nextValue) {
     if (!educationCodeInput) {
       return;
     }
-    educationCodeInput.value = String(nextValue ?? "").trim().slice(0, 20);
+    educationCodeInput.value = String(nextValue ?? "").trim().toUpperCase().slice(0, 20);
     syncEducationCodeStep();
     saveDraft();
   }
@@ -6818,7 +6851,7 @@ function escapeHtml(text) {
           ? initialDraft.schoolCode
           : "";
     if (educationCodeInput && initialEducationCode) {
-      educationCodeInput.value = initialEducationCode;
+      educationCodeInput.value = initialEducationCode.trim().toUpperCase().slice(0, 20);
     }
     if (typeof initialDraft.avatarPreset === "string" && initialDraft.avatarPreset.trim()) {
       const avatarInput = avatarInputs.find((input) => input.value === initialDraft.avatarPreset);
@@ -6872,6 +6905,7 @@ function escapeHtml(text) {
   });
 
   educationCodeInput?.addEventListener("input", () => {
+    educationCodeInput.value = educationCodeInput.value.toUpperCase().slice(0, 20);
     syncEducationCodeStep();
     saveDraft();
   });
@@ -6925,6 +6959,9 @@ function escapeHtml(text) {
           return;
         }
         commitOnboardingNickname();
+      }
+      if (activeStepName === "educationCode" && !syncEducationCodeStep()) {
+        return;
       }
       setActiveStep(activeStepIndex + 1);
       return;

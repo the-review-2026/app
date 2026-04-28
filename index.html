@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260428-2" />
+    <link rel="stylesheet" href="./app.css?v=20260428-3" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -433,27 +433,21 @@
           class="panel settings-section settings-tab-panel is-active"
           data-settings-panel="account"
         >
-            <h2>リビューアカウント</h2>
+            <h2 class="account-panel-title">
+              <span>リビューアカウント</span>
+              <strong id="authLoginStatusText" class="account-status-badge is-guest">Guest Mode</strong>
+            </h2>
             <div class="settings-section-content settings-line-list">
               <div class="setting-row">
                 <span>ニックネーム</span>
                 <strong id="authNicknameText">未設定</strong>
               </div>
-              <div class="setting-row">
-                <span>ログイン状況</span>
-                <strong id="authLoginStatusText">Guest Mode</strong>
+              <div class="setting-row account-edit-row">
+                <button id="accountEditBtn" class="secondary account-icon-button account-edit-button" type="button">アカウント情報を編集</button>
               </div>
-              <div class="setting-row">
-                <span>メールアドレス</span>
-                <strong id="authEmailText">未設定</strong>
-              </div>
-              <div class="setting-row">
-                <span>ログアウト</span>
-                <button id="logoutBtn" class="secondary" type="button">ログアウト</button>
-              </div>
-              <div class="setting-row">
-                <span>アカウントを削除</span>
-                <button id="deleteAccountBtn" class="danger" type="button">削除する</button>
+              <div class="setting-row account-action-row">
+                <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">ログアウト</button>
+                <button id="deleteAccountBtn" class="danger account-icon-button account-delete-button" type="button">削除する</button>
               </div>
             </div>
           </section>
@@ -616,7 +610,7 @@
     <dialog id="accountActionDialog" class="text-reset-dialog" aria-labelledby="accountActionDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="accountActionDialogTitle">ログアウト</h3>
-        <p id="accountActionDialogMessage">ログアウトしてlogin.htmlに移動します。よろしいですか？</p>
+        <p id="accountActionDialogMessage">ログイン画面に戻ります。続行しますか？</p>
         <div class="guest-mode-actions account-action-actions">
           <button class="secondary" type="button" data-account-action="cancel">いいえ</button>
           <button id="accountActionConfirmBtn" class="primary" type="button" data-account-action="confirm">はい</button>
@@ -644,6 +638,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260428-2" charset="UTF-8"></script>
+    <script src="./app.js?v=20260428-3" charset="UTF-8"></script>
   </body>
 </html>

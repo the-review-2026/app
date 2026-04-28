@@ -4459,6 +4459,16 @@ body.login-page .primary:hover:enabled {
   filter: brightness(1.06);
 }
 
+.account-action-actions #accountActionConfirmBtn.primary:enabled {
+  background: var(--band-tab-background);
+  background-blend-mode: var(--band-tab-background-blend);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 18px rgba(2, 24, 40, 0.16);
+}
+
+.account-action-actions #accountActionConfirmBtn.primary:hover:enabled {
+  filter: brightness(1.06);
+}
+
 .secondary {
   color: #2f4760;
   background: #e2ecf6;
@@ -4926,6 +4936,83 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   border-radius: 0;
   background: transparent;
   padding: 0.64rem 0;
+}
+
+.account-panel-title > span {
+  min-width: 0;
+}
+
+.account-status-badge {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 0.26rem 0.68rem;
+  background: #4f667a;
+  color: #ffffff;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.account-status-badge.is-logged-in {
+  background: #2c7a52;
+}
+
+.account-status-badge.is-guest {
+  background: #3d657f;
+}
+
+.account-status-badge.is-logged-out {
+  background: #6c727a;
+}
+
+.settings-line-list .account-edit-row,
+.settings-line-list .account-action-row {
+  align-items: stretch;
+}
+
+.account-edit-row {
+  display: block;
+}
+
+.account-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.52rem;
+}
+
+.account-icon-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.84rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  font-weight: 800;
+}
+
+.account-icon-button::before {
+  width: 1.28rem;
+  height: 1.28rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.account-edit-button::before {
+  content: "✎";
+}
+
+.account-logout-button::before {
+  content: "↩";
+}
+
+.account-delete-button::before {
+  content: "×";
 }
 
 body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
@@ -6141,6 +6228,41 @@ body.login-page .aurora {
   color: rgba(221, 233, 248, 0.72);
 }
 
+.auth-provider-actions {
+  display: grid;
+  gap: 0.56rem;
+}
+
+.auth-provider-actions button {
+  width: 100%;
+  min-height: 3.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.48rem;
+  font-weight: 800;
+}
+
+.auth-provider-actions button::before {
+  width: 1.34rem;
+  height: 1.34rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.36);
+}
+
+#authLoginAuth0Btn::before {
+  content: "+";
+}
+
+#authLoginGuestBtn::before {
+  content: "G";
+}
+
 .education-code-mode-actions {
   display: flex;
   flex-wrap: wrap;
@@ -6179,6 +6301,23 @@ body.login-page .aurora {
   border-radius: 10px;
   border: 1px solid rgba(166, 189, 214, 0.45);
   background: rgba(2, 20, 34, 0.9);
+}
+
+.education-code-feedback {
+  min-height: 1.4rem;
+  margin: 0;
+  color: #d0d8e2;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.education-code-feedback.is-valid {
+  color: #9de7b5;
+}
+
+.education-code-feedback.is-invalid {
+  color: #ffb4aa;
 }
 
 .avatar-grid {
