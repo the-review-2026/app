@@ -8613,7 +8613,7 @@ body.learn-popover-open #screen-learn .page-title-row {
 }
 
 body.learn-popover-open #screen-learn .page-title-row::after {
-  content: "With LEARN";
+  content: "With Learn";
   position: absolute;
   right: 0;
   bottom: -0.08rem;

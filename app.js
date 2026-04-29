@@ -6585,13 +6585,6 @@ function renderHomeGreeting() {
 
 function getHomeGreetingMessage(date) {
   const hour = date.getHours();
-  let greeting = "こんばんは。";
-  if (hour >= 5 && hour < 11) {
-    greeting = "おはようございます。";
-  } else if (hour >= 11 && hour < 18) {
-    greeting = "こんにちは。";
-  }
-  return `${greeting}\nいつも勉強お疲れさまです。`;
 }
 
 function isJapaneseBusinessDay(date) {
