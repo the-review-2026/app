@@ -8227,34 +8227,11 @@ body[data-theme="the-paper"] .flashcard-binder-use-btn {
   box-shadow: 0 6px 16px rgba(20, 40, 58, 0.12);
 }
 
-#mypageFlashcardPanel .flashcard-binder-list {
-  scroll-padding-left: 0;
+/* Reduce the gap between the instruction text and the binder area */
+#mypageFlashcardPanel .flashcard-static-message {
+  margin-bottom: 2px;
 }
 
-/* Make the first series divider visible at the initial position */
 #mypageFlashcardPanel .flashcard-binder-list {
-  padding-left: 0;
-  scroll-padding-left: 0;
-}
-
-/* Show first divider without creating left scroll space */
-#mypageFlashcardPanel .flashcard-binder-list {
-  justify-content: flex-start;
-  padding-left: 0;
-  scroll-padding-left: 0;
-  overscroll-behavior-x: contain;
-}
-
-/* Show first divider visually without creating left scroll space */
-#mypageFlashcardPanel .flashcard-binder-list {
-  padding-left: 0;
-  scroll-padding-left: 0;
-  padding-right: 96px;
-  justify-content: flex-start;
-  overflow-x: auto;
-  overflow-y: visible;
-}
-
-#mypageFlashcardPanel .flashcard-binder-list > * {
-  transform: translateX(44px);
+  margin-top: -5px;
 }
