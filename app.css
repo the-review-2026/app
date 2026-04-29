@@ -8260,3 +8260,15 @@ body[data-theme="the-paper"] .flashcard-binder-use-btn {
   text-align: right;
   white-space: nowrap;
 }
+
+/* Disable double-tap zoom / unwanted touch zoom */
+html,
+body,
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  touch-action: manipulation;
+}
