@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260429-1" />
+    <link rel="stylesheet" href="./app.css?v=20260429-3" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -69,11 +69,20 @@
             <strong id="infoMenuNickname" class="info-menu-user-value">未設定</strong>
           </div>
           <div class="info-menu-list">
-            <button class="info-menu-item" type="button" data-screen="settings">設定</button>
-            <a id="managerMenuLink" class="info-menu-item" href="./manager.html" hidden>The Review Manager</a>
+            <button class="info-menu-item info-menu-settings-item" type="button" data-screen="settings">
+              <span class="info-menu-item-icon info-menu-icon-settings" aria-hidden="true"></span>
+              <span>設定</span>
+            </button>
+            <a id="managerMenuLink" class="info-menu-item info-menu-manager-item" href="./manager.html" hidden>
+              <span class="info-menu-item-icon info-menu-icon-manager" aria-hidden="true"></span>
+              <span>The Review Manager</span>
+            </a>
           </div>
           <section class="info-menu-notices" aria-label="お知らせ">
-            <h3>お知らせ</h3>
+            <h3>
+              <span class="info-menu-item-icon info-menu-icon-notice" aria-hidden="true"></span>
+              <span>お知らせ</span>
+            </h3>
             <div id="infoMenuNoticeList" class="info-menu-notice-list"></div>
           </section>
         </section>
@@ -90,7 +99,7 @@
             <span class="top-nav-icon top-nav-icon-home" aria-hidden="true"></span>
             <span>ホーム</span>
           </button>
-          <button class="top-nav-item" type="button" data-screen="learn" aria-label="らあんと勉強する / with LEARN">
+          <button class="top-nav-item" type="button" data-screen="learn" aria-label="らーんと勉強する">
               <span class="top-nav-avatar-label" aria-hidden="true"></span>
           </button>
           <div class="top-nav-character avater-preview avater-preview-nav" data-avater-preview aria-hidden="true">
@@ -193,8 +202,22 @@
 
       <section id="screen-learn" class="screen learn-layout">
         <div class="page-title-row">
-          <h1 class="page-script-title">With LEARN</h1>
+          <h1 class="page-script-title">らーんと勉強する</h1>
         </div>
+        <section class="learn-overview" aria-label="らーんと勉強する">
+          <article class="learn-overview-section">
+            <h2>挨拶</h2>
+            <p id="learnGreetingMessage" class="learn-overview-message" aria-live="polite"></p>
+          </article>
+          <article class="learn-overview-section">
+            <h2>今後の予定</h2>
+            <ul id="learnScheduleList" class="learn-schedule-list" aria-label="今後の予定"></ul>
+          </article>
+          <article class="learn-overview-section learn-timer-entry">
+            <h2>タイマー</h2>
+            <button id="learnTimerOpenBtn" class="primary learn-timer-open-btn" type="button">タイマーを開く</button>
+          </article>
+        </section>
         <section id="mypage-selfcheck" class="mypage-selfcheck-page learn-page">
           <section class="panel selfcheck-section">
             <h2>カレンダー</h2>
@@ -730,6 +753,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260429-1" charset="UTF-8"></script>
+    <script src="./app.js?v=20260429-3" charset="UTF-8"></script>
   </body>
 </html>

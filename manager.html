@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260429-1" />
+    <link rel="stylesheet" href="./app.css?v=20260429-3" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
     <style>
       body.manager-page {
@@ -64,7 +64,7 @@
         content: "";
         display: block;
         width: 1px;
-        height: 2.52rem;
+        height: 2.16rem;
       }
 
       body.manager-page .top-nav.manager-nav {
@@ -983,6 +983,10 @@
           width: min(246px, 64vw);
           max-width: none;
         }
+
+        body.manager-page .header-menu-block::before {
+          height: 1.43rem;
+        }
       }
 
       @media (max-width: 720px) {
@@ -1306,6 +1310,9 @@
       </section>
 
       <section id="screen-store" class="screen" hidden>
+        <div class="page-title-row">
+          <h1 class="page-script-title">Store</h1>
+        </div>
         <div class="manager-store-layout">
           <section class="panel manager-published-items-panel">
             <div class="manager-title-row">

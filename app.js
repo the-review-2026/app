@@ -324,6 +324,7 @@ const elements = {
   infoMenuTrigger: document.getElementById("infoMenuTrigger"),
   infoMenuCloseBtn: document.getElementById("infoMenuCloseBtn"),
   infoMenuPanel: document.getElementById("infoMenuPanel"),
+  infoMenuUser: document.querySelector("#infoMenuPanel .info-menu-user"),
   infoMenuNickname: document.getElementById("infoMenuNickname"),
   infoMenuNoticeBadge: document.getElementById("infoMenuNoticeBadge"),
   infoMenuNoticeList: document.getElementById("infoMenuNoticeList"),
@@ -389,6 +390,10 @@ const elements = {
   themeUnlockAfterCoin: document.getElementById("themeUnlockAfterCoin"),
   themeUnlockActionButtons: Array.from(document.querySelectorAll("[data-theme-unlock-action]")),
   homeGreeting: document.getElementById("homeGreeting"),
+  learnScreen: document.getElementById("screen-learn"),
+  learnGreetingMessage: document.getElementById("learnGreetingMessage"),
+  learnScheduleList: document.getElementById("learnScheduleList"),
+  learnTimerOpenBtn: document.getElementById("learnTimerOpenBtn"),
   homeCardTrack: document.getElementById("homeCardTrack"),
   homeCardSlides: Array.from(document.querySelectorAll("#homeCardTrack .home-card-slide")),
   homeCardNavButtons: Array.from(document.querySelectorAll("[data-home-card-nav]")),
@@ -460,10 +465,12 @@ const flashcardBookIntentTimerByKey = new Map();
 const flashcardBookActionQueueBySeries = new Map();
 let isFlashcardFocusMode = false;
 let isSelfcheckTimerFocusMode = false;
+let isLearnPopoverOpen = false;
 let pendingGuestModeAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
 let managerAccessState = loadManagerAccessCache();
+let lastReviewAccountProfileSync = null;
 let activeAvaterCategory = "clothes";
 let draggingAvaterItemId = "";
 let avaterLayerDragState = null;
@@ -486,7 +493,7 @@ const FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX = 46;
 const LOGIN_ONBOARDING_STEP_STORAGE_KEY = "the-review-login-onboarding-step";
 const AUTH_LOGOUT_INTENT_STORAGE_KEY = "the-review-explicit-logout-v1";
 const AUTH_LOCAL_LOGOUT_REQUEST_STORAGE_KEY = "the-review-auth-local-logout-request-v1";
-const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "nickname", "educationCode", "avatar", "notification"];
+const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "nickname", "educationCode", "avatar"];
 const ACCOUNT_ACTION_DIALOG_COPY = {
   logout: {
     title: "ログアウト",
@@ -614,7 +621,14 @@ async function initLoginPage() {
   } else {
     authRedirectAppState = await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
   }
-  const nextOnboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep) || requestedOnboardingStep;
+  const returnedToExistingReviewAccount =
+    isAuthCallback &&
+    state.auth.isLoggedIn &&
+    state.auth.provider !== "guest" &&
+    lastReviewAccountProfileSync?.isNewReviewAccount === false;
+  const nextOnboardingStep = returnedToExistingReviewAccount
+    ? ""
+    : normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep) || requestedOnboardingStep;
   if (nextOnboardingStep) {
     requestLoginOnboardingStep(nextOnboardingStep);
   }
@@ -761,6 +775,7 @@ function bindLoginPageAuthEvents() {
         requestGuestModeLogin({
           targetScreen: "mypage",
           targetMypagePage: "top",
+          onboardingStep: "educationCode",
           deferRedirectOnLoginPage: true,
         });
         return;
@@ -794,6 +809,11 @@ function bindSharedDataAndGuestDialogEvents() {
       if (categoryTarget) {
         activeAvaterCategory = normalizeAvaterCategory(categoryTarget.dataset.avaterCategory) || activeAvaterCategory;
         renderAvater();
+        return;
+      }
+      const noneTarget = event.target.closest("[data-avater-none-category]");
+      if (noneTarget) {
+        handleAvaterNoneAction(noneTarget.dataset.avaterNoneCategory || "");
         return;
       }
       const target = event.target.closest("[data-avater-item]");
@@ -1061,6 +1081,10 @@ function bindEvents() {
       if (!screen) {
         return;
       }
+      if (screen === "learn") {
+        toggleLearnPopover();
+        return;
+      }
       if (screen === "mypage" && activeScreen === "mypage" && state.auth.isLoggedIn) {
         toggleMypageSubmenu();
         return;
@@ -1260,6 +1284,9 @@ function bindEvents() {
       toggleSelfcheckTimerFocusMode();
     });
   }
+  if (elements.learnTimerOpenBtn) {
+    elements.learnTimerOpenBtn.addEventListener("click", openLearnTimerPage);
+  }
 
   if (elements.logoutBtn) {
     elements.logoutBtn.addEventListener("click", logoutAccount);
@@ -1394,6 +1421,12 @@ function bindEvents() {
       closeInfoMenu();
     }
 
+    const clickedInsideLearn = elements.learnScreen?.contains(event.target);
+    const clickedLearnButton = event.target instanceof Element && Boolean(event.target.closest('[data-screen="learn"]'));
+    if (isLearnPopoverOpen && !clickedInsideLearn && !clickedLearnButton) {
+      closeLearnPopover();
+    }
+
     if (!isMypageSubmenuOpen()) {
       return;
     }
@@ -1409,6 +1442,7 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeInfoMenu();
       closeMypageSubmenu();
+      closeLearnPopover();
       if (isFlashcardFocusMode || isSelfcheckTimerFocusMode) {
         setFlashcardFocusMode(false);
         setSelfcheckTimerFocusMode(false);
@@ -1428,8 +1462,78 @@ function bindEvents() {
   });
 }
 
+function toggleLearnPopover() {
+  if (isLearnPopoverOpen) {
+    closeLearnPopover();
+    return;
+  }
+  openLearnPopover();
+}
+
+function openLearnPopover() {
+  if (!elements.learnScreen) {
+    return;
+  }
+  isLearnPopoverOpen = true;
+  document.body.classList.remove("learn-timer-page-open");
+  document.body.classList.add("learn-popover-open");
+  elements.learnScreen.classList.add("is-active");
+  elements.navButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.screen === "learn");
+  });
+  closeInfoMenu();
+  closeMypageSubmenu();
+  renderLearnOverview();
+  renderSelfcheckCalendar();
+}
+
+function closeLearnPopover() {
+  if (!isLearnPopoverOpen) {
+    return;
+  }
+  isLearnPopoverOpen = false;
+  document.body.classList.remove("learn-popover-open");
+  if (activeScreen !== "learn") {
+    elements.learnScreen?.classList.remove("is-active");
+  }
+  elements.navButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.screen === activeScreen);
+  });
+}
+
+function openLearnTimerPage() {
+  closeLearnPopover();
+  document.body.classList.add("learn-timer-page-open");
+  activateScreen("learn");
+  renderSelfcheckCalendar();
+  renderSelfcheckTimerDisplay();
+  elements.mypageTimerPanel?.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+function renderLearnOverview() {
+  if (elements.learnGreetingMessage) {
+    const now = new Date();
+    const weekdayNames = ["日", "月", "火", "水", "木", "金", "土"];
+    const hour = now.getHours();
+    const greeting = hour < 11 ? "おはようございます" : hour < 18 ? "こんにちは" : "こんばんは";
+    const todayText = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日（${weekdayNames[now.getDay()]}）`;
+    elements.learnGreetingMessage.textContent = `${greeting}。今日は${todayText}です。短い集中をひとつ積み上げていきましょう。`;
+  }
+
+  if (elements.learnScheduleList) {
+    elements.learnScheduleList.replaceChildren();
+    const item = document.createElement("li");
+    item.textContent = "直近の予定はまだ登録されていません。";
+    elements.learnScheduleList.append(item);
+  }
+}
+
 function activateScreen(screen) {
   const normalizedScreen = normalizeScreen(screen);
+  if (normalizedScreen !== "learn") {
+    closeLearnPopover();
+    document.body.classList.remove("learn-timer-page-open");
+  }
   activeScreen = normalizedScreen;
   elements.screens.forEach((element) => {
     element.classList.toggle("is-active", element.id === `screen-${normalizedScreen}`);
@@ -1520,6 +1624,10 @@ function proceedGuestModeLogin() {
   loginAsGuest(appState);
   if (IS_LOGIN_PAGE && !shouldDeferRedirectOnLoginPage) {
     redirectToIndexPage();
+    return;
+  }
+  if (IS_LOGIN_PAGE && shouldDeferRedirectOnLoginPage) {
+    requestLoginOnboardingStep(appState?.onboardingStep || "educationCode");
   }
 }
 
@@ -1839,6 +1947,7 @@ async function getAuth0AccessTokenForApi() {
 
 async function syncReviewAccountProfileToApi() {
   if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+    lastReviewAccountProfileSync = null;
     return null;
   }
 
@@ -1849,6 +1958,7 @@ async function syncReviewAccountProfileToApi() {
     "Review Account profile sync token"
   );
   if (!accessToken) {
+    lastReviewAccountProfileSync = null;
     return null;
   }
 
@@ -1866,9 +1976,11 @@ async function syncReviewAccountProfileToApi() {
     });
     if (!response.ok) {
       console.warn("Failed to sync Review Account profile:", response.status);
+      lastReviewAccountProfileSync = null;
       return null;
     }
     const payload = await response.json().catch(() => null);
+    lastReviewAccountProfileSync = payload;
     if (payload?.managerMember) {
       const member = payload.managerMember;
       const role = typeof member?.role === "string" ? member.role : null;
@@ -1883,6 +1995,7 @@ async function syncReviewAccountProfileToApi() {
     return payload;
   } catch (error) {
     console.warn("Failed to sync Review Account profile:", error);
+    lastReviewAccountProfileSync = null;
     return null;
   }
 }
@@ -1894,7 +2007,9 @@ function updateManagerMenuVisibilityFromAccess(access) {
   } else {
     clearManagerAccessCache();
   }
-  const hasManagerRole = Boolean(access?.canAccess);
+  const role = typeof access?.member?.role === "string" ? access.member.role : "";
+  const status = access?.member?.status || access?.status;
+  const hasManagerRole = Boolean(access?.canAccess) && status === "approved" && Boolean(role);
   if (elements.managerMenuLink) {
     elements.managerMenuLink.hidden = !hasManagerRole;
   }
@@ -2085,7 +2200,7 @@ async function syncAuthStateFromAuth0(options = {}) {
     email: typeof user?.email === "string" && user.email.trim() ? user.email : null,
   });
   saveState();
-  void syncReviewAccountProfileToApi();
+  await syncReviewAccountProfileToApi();
 }
 
 function applyAuthRedirectState(appState) {
@@ -2161,6 +2276,7 @@ function renderAll() {
   renderSelfcheckTimerDisplay();
   updateSelfcheckTimerButtons();
   renderHomeGreeting();
+  renderLearnOverview();
   renderDailyLogin();
   renderDailyTryPanel();
   updateHomeCardCarouselControls();
@@ -4996,12 +5112,25 @@ function renderAvaterItemList(container, options = {}) {
     return `<button class="avater-category-tab ${isActive ? "is-active" : ""}" type="button" data-avater-category="${escapeHtml(category)}" aria-pressed="${String(isActive)}">${escapeHtml(label)}</button>`;
   }).join("");
   const categoryItems = items.filter((item) => item.category === activeAvaterCategory);
+  const isNoneEquipped = !state.avater.equipped?.[activeAvaterCategory];
+  const noneCard = `
+      <article class="avater-item-card avater-none-card ${isNoneEquipped ? "is-equipped" : ""}" data-avater-none-category="${escapeHtml(activeAvaterCategory)}" aria-disabled="false">
+        <div class="avater-item-sample avater-item-sample-none" aria-hidden="true"></div>
+        <div class="avater-item-body">
+          <p class="avater-item-category">${escapeHtml(AVATER_CATEGORY_LABELS[activeAvaterCategory] || activeAvaterCategory)}</p>
+          <h3>なし</h3>
+        </div>
+        <button class="secondary" type="button" data-avater-none-category="${escapeHtml(activeAvaterCategory)}">
+          ${isNoneEquipped ? "選択中" : "選ぶ"}
+        </button>
+      </article>
+    `;
   const itemCards = categoryItems.map((item) => {
     const isUnlocked = isAvaterItemUnlocked(item.id);
     const isEquipped = state.avater.equipped?.[item.category] === item.id;
     const canAfford = hasUnlimitedReviewCoins() || state.reviewCoin >= item.cost;
     const canUseItem = isUnlocked || canAfford;
-    const buttonText = isEquipped ? "使用中" : isUnlocked ? "追加する" : `${item.cost}`;
+    const buttonText = isEquipped ? "選択中" : isUnlocked ? "追加する" : `${item.cost}`;
     return `
       <article class="avater-item-card ${isEquipped ? "is-equipped" : ""}" draggable="${String(canUseItem)}" data-avater-item="${escapeHtml(item.id)}" aria-disabled="${String(!canUseItem)}">
         <div class="avater-item-sample ${item.className} avater-category-${item.category}" aria-hidden="true"></div>
@@ -5020,11 +5149,10 @@ function renderAvaterItemList(container, options = {}) {
       </article>
     `;
   }).join("");
-  const emptyText = "配信中のAvaterアイテムはありません。";
   container.innerHTML = `
     <div class="avater-category-tabs" role="tablist" aria-label="Avaterカテゴリー">${categoryButtons}</div>
     <div class="avater-category-panel">
-      ${itemCards || `<p class="hint-text avater-empty-text">${escapeHtml(emptyText)}</p>`}
+      ${noneCard}${itemCards}
     </div>
   `;
 }
@@ -5063,6 +5191,14 @@ function isAvaterItemUnlocked(itemId) {
     return false;
   }
   return item.cost === 0 || Boolean(state.avater.unlockedItems?.[itemId]);
+}
+
+function handleAvaterNoneAction(category) {
+  const normalizedCategory = normalizeAvaterCategory(category) || activeAvaterCategory;
+  state.avater = normalizeAvaterState(state.avater);
+  state.avater.equipped[normalizedCategory] = "";
+  saveState();
+  renderAvater();
 }
 
 function handleAvaterItemAction(itemId, options = {}) {
@@ -5318,6 +5454,9 @@ function getAuthNicknameText(fallbackText = "未設定") {
 
 function renderMypageSettings() {
   const nicknameText = getAuthNicknameText();
+  if (elements.infoMenuUser) {
+    elements.infoMenuUser.hidden = state.auth.isLoggedIn && state.auth.provider === "guest";
+  }
   if (elements.infoMenuNickname) {
     elements.infoMenuNickname.textContent = nicknameText;
   }
@@ -5387,7 +5526,7 @@ function renderAuthPanel() {
     const requiresConnection = requiresAuthConnection(provider);
     const isCurrentProvider = isLoggedIn && currentProvider === provider;
     button.disabled = !canLogin || (requiresConnection && !connection) || isCurrentProvider;
-    button.textContent = isCurrentProvider ? "Review Account利用中" : "Review Accountを作成する";
+    button.textContent = isCurrentProvider ? "Review Account利用中" : IS_LOGIN_PAGE ? "作成する" : "Review Accountを作成する";
   });
   if (elements.authConfigHint) {
     elements.authConfigHint.hidden = canCreateAuth0Client;
@@ -5917,10 +6056,13 @@ function renderInfoMenuNotices() {
   }
   elements.infoMenuNoticeList.innerHTML = INFO_MENU_NOTICES.map(
     (notice) => `
-      <article class="info-menu-notice-item">
-        <h4>${escapeHtml(notice.title)}</h4>
-        <p>${escapeHtml(notice.body)}</p>
-      </article>
+      <button class="info-menu-notice-item" type="button" data-info-notice-id="${escapeHtml(notice.id)}">
+        <span class="info-menu-item-icon info-menu-icon-notice" aria-hidden="true"></span>
+        <span class="info-menu-notice-body">
+          <strong>${escapeHtml(notice.title)}</strong>
+          <span>${escapeHtml(notice.body)}</span>
+        </span>
+      </button>
     `,
   ).join("");
 }
@@ -7039,14 +7181,13 @@ function escapeHtml(text) {
   const onboardingFixedStepNumber = document.getElementById("onboardingFixedStepNumber");
   const onboardingFixedStepCurrent = document.getElementById("onboardingFixedStepCurrent");
   const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
-  const ONBOARDING_PROGRESS_TOTAL = 6;
+  const ONBOARDING_PROGRESS_TOTAL = 5;
   const ONBOARDING_PROGRESS_BY_STEP = {
     terms: 1,
     auth: 2,
     nickname: 3,
     educationCode: 4,
     avatar: 5,
-    notification: 6,
   };
   const ONBOARDING_PROGRESS_LABEL_BY_STEP = {
     terms: "利用規約とプライバシーポリシーへの同意",
@@ -7054,7 +7195,6 @@ function escapeHtml(text) {
     nickname: "Nickname",
     educationCode: "Education Code",
     avatar: "Avater",
-    notification: "通知",
   };
 
   let activeStepIndex = 0;
@@ -7114,7 +7254,10 @@ function escapeHtml(text) {
   }
 
   function setActiveStepByName(stepName) {
-    const normalizedStepName = normalizeLoginOnboardingStep(stepName);
+    let normalizedStepName = normalizeLoginOnboardingStep(stepName);
+    if (normalizedStepName === "nickname" && state.auth?.provider === "guest") {
+      normalizedStepName = "educationCode";
+    }
     if (!normalizedStepName) {
       return false;
     }
@@ -7191,6 +7334,9 @@ function escapeHtml(text) {
   }
 
   function getOnboardingNotificationSettingsFromToggles() {
+    if (!loginNotifyReviewPeriodToggle && !loginNotifyTodaysMissionToggle && !loginNotifyNoticeToggle) {
+      return normalizeNotificationSettings(state.settings?.notifications);
+    }
     return {
       dailyLogin: loginNotifyReviewPeriodToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.dailyLogin,
       dailyTry: loginNotifyTodaysMissionToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.dailyTry,
@@ -7276,6 +7422,17 @@ function escapeHtml(text) {
     if (nicknameNextBtn) {
       nicknameNextBtn.disabled = getOnboardingNickname().length === 0;
     }
+  }
+
+  function syncNicknameInputLock() {
+    if (!nicknameInput) {
+      return;
+    }
+    const shouldLockNickname =
+      state.auth?.isLoggedIn && state.auth.provider !== "guest" && normalizeNicknameText(state.auth.nickname).length > 0;
+    nicknameInput.readOnly = shouldLockNickname;
+    nicknameInput.setAttribute("aria-readonly", String(shouldLockNickname));
+    nicknameInput.classList.toggle("is-readonly", shouldLockNickname);
   }
 
   function commitOnboardingNickname() {
@@ -7613,6 +7770,7 @@ function escapeHtml(text) {
     applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
     applyOnboardingNotificationTimeMinutes(state.settings.notificationTimeMinutes);
   }
+  syncNicknameInputLock();
 
   termsAgreeCheckbox?.addEventListener("change", () => {
     syncTermsStep();
@@ -7704,7 +7862,11 @@ function escapeHtml(text) {
       return;
     }
     if (direction === "prev") {
-      setActiveStep(activeStepIndex - 1);
+      let previousIndex = activeStepIndex - 1;
+      if (steps[previousIndex]?.dataset.onboardingStep === "nickname" && state.auth?.provider === "guest") {
+        previousIndex -= 1;
+      }
+      setActiveStep(previousIndex);
     }
   });
 
@@ -7726,6 +7888,7 @@ function escapeHtml(text) {
   syncEducationCodeScannerAvailability();
   syncTermsStep();
   syncNicknameStep();
+  syncNicknameInputLock();
   syncEducationCodeStep();
   if (!setActiveStepByName(getRequestedLoginOnboardingStep())) {
     setActiveStep(0);

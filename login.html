@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260429-1" />
+    <link rel="stylesheet" href="./app.css?v=20260429-3" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body class="login-page" data-theme="sea">
@@ -31,7 +31,11 @@
 
       <section class="panel auth-panel onboarding-panel">
         <section class="onboarding-step is-active" data-onboarding-step="welcome">
-          <h2>理解は、記憶にかえよう。</h2>
+          <h2 class="login-catchcopy" aria-label="理解は記憶にかえる">
+            <span>理解は</span>
+            <span>記憶に</span>
+            <span>かえる</span>
+          </h2>
           <div class="action-row onboarding-step-actions">
             <button class="secondary" type="button" data-onboarding-goto="auth">ログインする</button>
             <button class="primary" type="button" data-onboarding-nav="next">はじめる</button>
@@ -68,15 +72,14 @@
           <h2>Review Account</h2>
           <p class="hint-text">アプリをご利用になったデータ（Review Data）をクラウド上に保存することができます。他のデバイスでは、ログインするだけでかんたんにReview Dataを引きつげます。</p>
           <p class="hint-text">Googleアカウントで作成することもできます。</p>
-          <div class="action-row auth-provider-actions">
-            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">Review Accountを作成する</button>
+          <div class="action-row auth-provider-actions auth-guest-actions">
             <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">Guest Modeで続ける</button>
           </div>
           <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
             auth0-config.js の domain / clientId / defaultConnection を確認してください。</p>
           <div class="action-row onboarding-step-actions">
             <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button class="primary" type="button" data-onboarding-nav="next">次へ</button>
+            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">作成する</button>
           </div>
         </section>
 
@@ -128,58 +131,6 @@
           </div>
           <div class="action-row onboarding-step-actions">
             <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="avatarNextBtn" class="primary" type="button" data-onboarding-nav="next">次へ</button>
-          </div>
-        </section>
-
-        <section class="onboarding-step" data-onboarding-step="notification">
-          <h2>通知</h2>
-          <p class="hint-text">The Reviewからは通知を3種類送ります。</p>
-          <div class="onboarding-notify-list">
-            <div class="onboarding-notify-row">
-              <div class="onboarding-notify-labels">
-                <span>リビュー日数</span>
-              </div>
-              <label class="toggle-switch" for="loginNotifyReviewPeriodToggle">
-                <input id="loginNotifyReviewPeriodToggle" type="checkbox" checked />
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
-            <div class="onboarding-notify-row">
-              <div class="onboarding-notify-labels">
-                <span>この問題にTRY!</span>
-              </div>
-              <label class="toggle-switch" for="loginNotifyTodaysMissionToggle">
-                <input id="loginNotifyTodaysMissionToggle" type="checkbox" checked />
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
-            <div class="onboarding-notify-row">
-              <div class="onboarding-notify-labels">
-                <span>お知らせ</span>
-              </div>
-              <label class="toggle-switch" for="loginNotifyNoticeToggle">
-                <input id="loginNotifyNoticeToggle" type="checkbox" checked />
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
-          </div>
-          <div class="onboarding-notify-time-common">
-            <p class="onboarding-notify-time-title">通知時刻（全通知共通）</p>
-            <small id="loginNotifyCommonTimeDescription">
-              07:00に毎日アプリをご利用できるよう通知を送信します
-            </small>
-            <input
-              id="loginNotifyCommonTimeInput"
-              class="onboarding-notify-time-input"
-              type="time"
-              value="07:00"
-              step="300"
-              aria-label="全通知共通の時刻"
-            />
-          </div>
-          <div class="action-row onboarding-step-actions">
-            <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
             <button id="onboardingSaveBtn" class="primary" type="button">設定を保存</button>
           </div>
           <p id="onboardingSavedNote" class="onboarding-note" hidden>
@@ -195,7 +146,7 @@
       </div>
       <p id="onboardingFixedStepNumber" class="onboarding-fixed-step-number">
         <span id="onboardingFixedStepCurrent" class="onboarding-fixed-step-current">1</span>
-        <span class="onboarding-fixed-step-rest">/ 6</span>
+        <span class="onboarding-fixed-step-rest">/ 5</span>
       </p>
     </div>
 
@@ -216,6 +167,6 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260429-1"></script>
+    <script src="./app.js?v=20260429-3"></script>
   </body>
 </html>

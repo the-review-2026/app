@@ -279,6 +279,7 @@ async function getAuthenticatedSupabaseContext(request, env) {
     supabase,
     claims: authResult.claims,
     user: userResult.user,
+    userCreated: Boolean(userResult.created),
   };
 }
 
@@ -315,6 +316,7 @@ async function upsertCurrentReviewAccount(request, env) {
   return json({
     user,
     managerMember: memberResult.member,
+    isNewReviewAccount: Boolean(context.userCreated),
   });
 }
 
@@ -519,8 +521,14 @@ async function getOrCreateUserByAuth0Sub(supabase, claims) {
   }
 
   const existingUser = await getUserByAuth0Sub(supabase, auth0Sub);
-  if (!existingUser.ok || existingUser.user) {
+  if (!existingUser.ok) {
     return existingUser;
+  }
+  if (existingUser.user) {
+    return {
+      ...existingUser,
+      created: false,
+    };
   }
 
   const createdUser = await createUser(supabase, {
@@ -528,11 +536,20 @@ async function getOrCreateUserByAuth0Sub(supabase, claims) {
     display_name: getDisplayNameFromClaims(claims),
   });
   if (createdUser.ok) {
-    return createdUser;
+    return {
+      ...createdUser,
+      created: true,
+    };
   }
 
   if (createdUser.status === 409) {
-    return getUserByAuth0Sub(supabase, auth0Sub);
+    const racedUser = await getUserByAuth0Sub(supabase, auth0Sub);
+    return racedUser.ok
+      ? {
+          ...racedUser,
+          created: false,
+        }
+      : racedUser;
   }
 
   return createdUser;
