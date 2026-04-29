@@ -799,6 +799,28 @@
         gap: 0.72rem;
       }
 
+      body.manager-page .manager-published-items-panel {
+        display: grid;
+        gap: 0.74rem;
+      }
+
+      body.manager-page .manager-published-avater-items {
+        display: grid;
+        gap: 0.72rem;
+      }
+
+      body.manager-page .manager-price-field {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0.42rem;
+      }
+
+      body.manager-page .manager-price-field img {
+        width: 1.36rem;
+        height: auto;
+      }
+
       body.manager-page .manager-store-item {
         border: 1px solid rgba(0, 0, 0, 0.16);
         border-radius: 12px;
@@ -813,6 +835,18 @@
       body.manager-page .manager-store-item p {
         margin: 0;
         color: #555555;
+      }
+
+      body.manager-page .manager-store-price {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.24rem;
+        font-weight: 800;
+      }
+
+      body.manager-page .manager-store-price img {
+        width: 1.05rem;
+        height: auto;
       }
 
       body.manager-page .manager-store-preview {
@@ -1104,6 +1138,23 @@
               <button class="primary" type="button" data-home-link="profile">開く</button>
             </article>
           </div>
+          <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
+            <div class="manager-members-head">
+              <div class="manager-title-row">
+                <h2>メンバー管理</h2>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">オーナー</span>
+                </span>
+              </div>
+              <button id="managerMembersRefreshBtn" class="secondary manager-icon-btn" type="button" aria-label="メンバーを更新">↻</button>
+            </div>
+            <label class="field-block manager-member-search" for="managerMemberSearchInput">
+              <span class="field-label-row">ユーザーを検索</span>
+              <input id="managerMemberSearchInput" type="search" placeholder="Nickname / メール / Auth0 ID" />
+            </label>
+            <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
+            <div id="managerMembersList" class="manager-members-list"></div>
+          </section>
         </div>
       </section>
 
@@ -1256,6 +1307,12 @@
 
       <section id="screen-store" class="screen" hidden>
         <div class="manager-store-layout">
+          <section class="panel manager-published-items-panel">
+            <div class="manager-title-row">
+              <h2>配信しているアイテム</h2>
+            </div>
+            <div id="managerAvaterItemList" class="manager-store-list manager-published-avater-list"></div>
+          </section>
           <section class="panel">
             <div class="manager-title-row">
               <h2>ストアを管理する</h2>
@@ -1266,26 +1323,37 @@
             <div class="manager-field-grid">
               <label class="field-block" for="avaterItemNameInput">
                 <span class="field-label-row">アイテム名</span>
-                <input id="avaterItemNameInput" type="text" maxlength="32" placeholder="例: ブルーリボン" />
+                <input id="avaterItemNameInput" type="text" maxlength="32" />
               </label>
               <label class="field-block" for="avaterItemCategorySelect">
-                <span class="field-label-row">カテゴリ</span>
+                <span class="field-label-row">カテゴリー</span>
                 <select id="avaterItemCategorySelect">
-                  <option value="clothes">服</option>
-                  <option value="accessory">アクセサリー</option>
+                  <option value="clothes">うわぎ</option>
                   <option value="glasses">めがね</option>
+                  <option value="accessory">アクセサリー</option>
                 </select>
               </label>
               <label class="field-block" for="avaterItemCostInput">
-                <span class="field-label-row">必要なリビューコイン</span>
-                <input id="avaterItemCostInput" type="number" min="0" step="10" value="100" />
+                <span class="field-label-row">価格</span>
+                <span class="manager-price-field">
+                  <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+                  <select id="avaterItemCostInput">
+                    <option value="0">0</option>
+                    <option value="50">50</option>
+                    <option value="80">80</option>
+                    <option value="100" selected>100</option>
+                    <option value="120">120</option>
+                    <option value="150">150</option>
+                    <option value="200">200</option>
+                    <option value="300">300</option>
+                  </select>
+                </span>
               </label>
               <div class="action-row">
                 <button id="addAvaterItemBtn" class="primary" type="button">アイテムを追加</button>
               </div>
               <p id="storeConfigFeedback" class="feedback" aria-live="polite"></p>
             </div>
-            <div id="managerAvaterItemList" class="manager-store-list"></div>
           </section>
         </div>
       </section>
@@ -1308,23 +1376,6 @@
               <p id="profileRoleValue" class="profile-info-value">確認中</p>
             </div>
           </div>
-        </section>
-        <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
-          <div class="manager-members-head">
-            <div class="manager-title-row">
-              <h2>メンバー管理</h2>
-              <span class="manager-role-tags" aria-label="対象ロール">
-                <span class="manager-role-tag">オーナー</span>
-              </span>
-            </div>
-            <button id="managerMembersRefreshBtn" class="secondary manager-icon-btn" type="button" aria-label="メンバーを更新">↻</button>
-          </div>
-          <label class="field-block manager-member-search" for="managerMemberSearchInput">
-            <span class="field-label-row">ユーザーを検索</span>
-            <input id="managerMemberSearchInput" type="search" placeholder="Nickname / メール / Auth0 ID" />
-          </label>
-          <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
-          <div id="managerMembersList" class="manager-members-list"></div>
         </section>
       </section>
     </main>
@@ -1400,14 +1451,12 @@
           approved: "承認済み",
           suspended: "停止",
         };
-        const MANAGER_AVATER_ITEM_CLASSES = {
-          "school-blue": "avater-item-school-blue",
-          "mint-ribbon": "avater-item-mint-ribbon",
-          "round-glasses": "avater-item-round-glasses",
-          "star-pin": "avater-item-star-pin",
-          "lab-coat": "avater-item-lab-coat",
-          "aqua-glasses": "avater-item-aqua-glasses",
+        const MANAGER_AVATER_CATEGORY_LABELS = {
+          clothes: "うわぎ",
+          glasses: "めがね",
+          accessory: "アクセサリー",
         };
+        const MANAGER_AVATER_ITEM_CLASSES = {};
 
         const NOTE_BY_BINDER = {
           "Reboot 1st Edition (JESH)": ["現代の国語", "言語文化", "論理・表現Ⅰ", "ＥＣⅠ", "公共", "保健"],
@@ -1457,6 +1506,7 @@
           auth: loadAuthSummary(),
           managerAccess: null,
           managerMembers: [],
+          activeAvaterCategory: "clothes",
           infoMenuCloseTimerId: null,
           draggingId: null,
           lastDragOverKey: null,
@@ -1675,6 +1725,14 @@
 
         function initializeStoreSettings() {
           elements.addAvaterItemBtn?.addEventListener("click", addManagerAvaterItem);
+          elements.managerAvaterItemList?.addEventListener("click", (event) => {
+            const categoryButton = event.target.closest("[data-manager-avater-category]");
+            if (!categoryButton) {
+              return;
+            }
+            state.activeAvaterCategory = normalizeManagerAvaterCategory(categoryButton.dataset.managerAvaterCategory);
+            renderManagerAvaterItems();
+          });
         }
 
         async function initializeManagerAccess() {
@@ -1818,7 +1876,7 @@
 
         function addManagerAvaterItem() {
           const name = String(elements.avaterItemNameInput?.value || "").trim();
-          const category = String(elements.avaterItemCategorySelect?.value || "accessory").trim();
+          const category = normalizeManagerAvaterCategory(elements.avaterItemCategorySelect?.value);
           const cost = Math.max(0, Math.floor(Number(elements.avaterItemCostInput?.value) || 0));
           if (!name) {
             if (elements.storeConfigFeedback) {
@@ -1843,25 +1901,44 @@
           renderManagerAvaterItems();
         }
 
+        function normalizeManagerAvaterCategory(value) {
+          const category = String(value || "").trim();
+          return Object.prototype.hasOwnProperty.call(MANAGER_AVATER_CATEGORY_LABELS, category) ? category : "accessory";
+        }
+
         function renderManagerAvaterItems() {
           if (!elements.managerAvaterItemList) {
             return;
           }
           const items = loadManagerAvaterItems();
-          if (items.length === 0) {
-            elements.managerAvaterItemList.innerHTML = '<p class="hint-text">追加されたAvaterアイテムはありません。</p>';
-            return;
-          }
-          elements.managerAvaterItemList.innerHTML = items
+          const activeCategory = normalizeManagerAvaterCategory(state.activeAvaterCategory);
+          const categoryTabs = Object.entries(MANAGER_AVATER_CATEGORY_LABELS)
+            .map(([category, label]) => {
+              const isActive = category === activeCategory;
+              return `<button class="avater-category-tab ${isActive ? "is-active" : ""}" type="button" data-manager-avater-category="${escapeHtml(category)}" aria-pressed="${String(isActive)}">${escapeHtml(label)}</button>`;
+            })
+            .join("");
+          const visibleItems = items.filter((item) => normalizeManagerAvaterCategory(item.category) === activeCategory);
+          const cards = visibleItems
             .map(
-              (item) => `
+              (item) => {
+                const category = normalizeManagerAvaterCategory(item.category);
+                return `
                 <article class="manager-store-item">
                   <h3>${escapeHtml(item.name || "未設定")}</h3>
-                  <p>${escapeHtml(item.category || "accessory")} / ${escapeHtml(String(item.cost || 0))} coin</p>
+                  <p>${escapeHtml(MANAGER_AVATER_CATEGORY_LABELS[category])}</p>
+                  <p class="manager-store-price"><img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />${escapeHtml(String(item.cost || 0))}</p>
                 </article>
-              `,
+              `;
+              },
             )
             .join("");
+          elements.managerAvaterItemList.innerHTML = `
+            <div class="avater-category-tabs" role="tablist" aria-label="Avaterカテゴリー">${categoryTabs}</div>
+            <div class="manager-published-avater-items">
+              ${cards || '<p class="hint-text">追加されたAvaterアイテムはありません。</p>'}
+            </div>
+          `;
         }
 
         async function loadManagerMembers() {
@@ -1907,7 +1984,7 @@
           const query = String(elements.managerMemberSearchInput?.value || "").trim().toLowerCase();
           const visibleMembers = query
             ? state.managerMembers.filter((member) =>
-                [member?.nickname, member?.display_name, member?.email, member?.auth0_sub]
+                [getManagerMemberNickname(member), member?.email, member?.auth0_sub]
                   .map((value) => String(value || "").toLowerCase())
                   .some((value) => value.includes(query)),
               )
@@ -1927,7 +2004,7 @@
               const id = member?.id || "";
               const roleValue = member?.role || "developer";
               const statusValue = member?.status || "pending";
-              const name = member?.nickname || member?.display_name || member?.email || member?.auth0_sub || "未設定";
+              const name = getManagerMemberNickname(member);
               const sub = member?.email || member?.auth0_sub || "";
               const roleOptions = Object.entries(MANAGER_ROLE_LABELS)
                 .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === roleValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
@@ -1951,6 +2028,24 @@
               `;
             })
             .join("");
+        }
+
+        function getManagerMemberNickname(member) {
+          const candidates = [
+            member?.nickname,
+            member?.profile?.nickname,
+            member?.user_metadata?.nickname,
+            member?.display_name,
+            member?.name,
+          ];
+          const nickname = candidates
+            .map((value) => String(value || "").trim())
+            .find((value) => value && !looksLikeAuth0Subject(value));
+          return nickname || "Nickname未設定";
+        }
+
+        function looksLikeAuth0Subject(value) {
+          return /^[a-z0-9_-]+\|/i.test(String(value || "").trim());
         }
 
         async function saveManagerMemberAccess(memberId) {
@@ -2876,17 +2971,19 @@
           const appState = loadJson(APP_STATE_KEY, {});
           const avater = appState?.avater || {};
           const equipped = avater?.equipped && typeof avater.equipped === "object" ? avater.equipped : {};
+          const itemOffsets = avater?.itemOffsets && typeof avater.itemOffsets === "object" ? avater.itemOffsets : {};
           elements.managerAvaterPreviews.forEach((preview) => {
-            preview.style.setProperty("--avater-offset-x", `${Number(avater.offsetX) || 0}px`);
-            preview.style.setProperty("--avater-offset-y", `${Number(avater.offsetY) || 0}px`);
             preview.querySelectorAll(".avater-layer").forEach((layer) => layer.remove());
-            Object.values(equipped).forEach((itemId) => {
+            Object.entries(equipped).forEach(([category, itemId]) => {
               const className = MANAGER_AVATER_ITEM_CLASSES[itemId] || (String(itemId).startsWith("custom-") ? "avater-item-custom" : "");
               if (!className) {
                 return;
               }
+              const offset = itemOffsets[itemId] || {};
               const layer = document.createElement("span");
-              layer.className = `avater-layer ${className}`;
+              layer.className = `avater-layer ${className} avater-category-${category}`;
+              layer.style.setProperty("--avater-item-offset-x", `${Number(offset.x) || 0}px`);
+              layer.style.setProperty("--avater-item-offset-y", `${Number(offset.y) || 0}px`);
               layer.setAttribute("aria-hidden", "true");
               preview.append(layer);
             });

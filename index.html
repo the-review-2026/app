@@ -110,9 +110,6 @@
           <div class="home-greeting-hero">
             <h1 class="page-script-title">Home</h1>
             <div class="home-greeting-wrap">
-              <div class="home-greeting-avatar" aria-hidden="true">
-                <img src="./assets/avater/らーん1-1.png" alt="" />
-              </div>
               <p id="homeGreeting" class="home-greeting" aria-live="polite">こんにちは。</p>
             </div>
           </div>
@@ -227,20 +224,22 @@
           <section id="mypageTimerPanel" class="panel selfcheck-section mypage-timer-panel">
             <h2 class="timer-panel-head">
               <span class="panel-title-text">タイマー</span>
-              <button
-                id="selfcheckTimerFullscreenBtn"
-                class="panel-fullscreen-btn"
-                type="button"
-                aria-pressed="false"
-                aria-label="タイマーを全画面で表示"
-              >
-                全画面
-              </button>
             </h2>
             <div class="selfcheck-section-content selfcheck-timer-layout">
-              <div class="selfcheck-timer-head">
-                <div class="selfcheck-timer-bubble">
-                  <p id="selfcheckTimerDisplay" class="timer-display">25:00</p>
+              <p id="selfcheckTimerDisplay" class="timer-display" aria-live="polite">25:00</p>
+              <div class="timer-adjuster" aria-label="タイマー時間設定">
+                <div class="timer-adjust-column">
+                  <button class="timer-adjust-btn" type="button" data-timer-adjust="minute-up" aria-label="分を増やす">↑</button>
+                  <span id="selfcheckTimerMinuteValue" class="timer-adjust-value">25</span>
+                  <span class="timer-adjust-label">分</span>
+                  <button class="timer-adjust-btn" type="button" data-timer-adjust="minute-down" aria-label="分を減らす">↓</button>
+                </div>
+                <span class="timer-adjust-separator" aria-hidden="true">:</span>
+                <div class="timer-adjust-column">
+                  <button class="timer-adjust-btn" type="button" data-timer-adjust="second-up" aria-label="秒を増やす">↑</button>
+                  <span id="selfcheckTimerSecondValue" class="timer-adjust-value">00</span>
+                  <span class="timer-adjust-label">秒</span>
+                  <button class="timer-adjust-btn" type="button" data-timer-adjust="second-down" aria-label="秒を減らす">↓</button>
                 </div>
               </div>
               <div class="timer-controls">

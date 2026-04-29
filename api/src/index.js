@@ -27,6 +27,14 @@ export default {
       return json(questions);
     }
 
+    if (pathname === "/me" && ["GET", "POST", "PATCH"].includes(request.method)) {
+      return upsertCurrentReviewAccount(request, env);
+    }
+
+    if (pathname === "/education-codes/validate" && request.method === "POST") {
+      return validateEducationCode(request, env);
+    }
+
     if (pathname === "/me/answers" && request.method === "POST") {
       return createAnswer(request, env);
     }
@@ -274,6 +282,70 @@ async function getAuthenticatedSupabaseContext(request, env) {
   };
 }
 
+async function upsertCurrentReviewAccount(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const body = request.method === "GET" ? null : await readJsonBody(request);
+  if (body?.ok === false) {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const nickname = normalizeSupabaseText(body?.value?.nickname);
+  const displayName = nickname || getDisplayNameFromClaims(context.claims);
+  let user = context.user;
+  if (user?.id && displayName && displayName !== user.display_name) {
+    const updatedUser = await updateUserById(context.supabase, user.id, {
+      display_name: displayName,
+    });
+    if (updatedUser.ok && updatedUser.user) {
+      user = updatedUser.user;
+    }
+  }
+
+  const memberResult = await getOrCreateManagerMember(context.supabase, user, context.claims, env, {
+    displayName,
+  });
+  if (!memberResult.ok) {
+    return json(memberResult.body, memberResult.status);
+  }
+
+  return json({
+    user,
+    managerMember: memberResult.member,
+  });
+}
+
+async function validateEducationCode(request, env) {
+  const body = await readJsonBody(request);
+  if (body?.ok === false) {
+    return json({ valid: false, message: "Invalid JSON body" }, 400);
+  }
+
+  const code = normalizeEducationCode(body?.value?.code);
+  if (!code) {
+    return json({ valid: true, message: "" });
+  }
+
+  const educationCodeMap = parseEducationCodes(env);
+  const match = educationCodeMap.get(code);
+  if (!match) {
+    return json({ valid: false });
+  }
+
+  const schoolName = normalizeSupabaseText(match.schoolName);
+  const message =
+    normalizeSupabaseText(match.message) ||
+    (schoolName ? `これは${schoolName}のEducation Codeです。` : "Education Codeを確認しました。");
+  return json({
+    valid: true,
+    schoolName,
+    message,
+  });
+}
+
 async function createAnswer(request, env) {
   const supabase = getSupabaseConfig(env);
   if (!supabase) {
@@ -285,14 +357,12 @@ async function createAnswer(request, env) {
     return json(authResult.body, authResult.status);
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
+  const bodyResult = await readJsonBody(request);
+  if (!bodyResult.ok) {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  const answerPayload = normalizeAnswerPayload(body);
+  const answerPayload = normalizeAnswerPayload(bodyResult.value);
   if (!answerPayload.ok) {
     return json(
       {
@@ -505,6 +575,26 @@ async function createUser(supabase, user) {
   };
 }
 
+async function updateUserById(supabase, userId, patch) {
+  const response = await supabaseRequest(supabase, `/users?id=eq.${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(patch),
+  });
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to update the Auth0 user in Supabase");
+  }
+
+  const users = await response.json();
+  return {
+    ok: true,
+    user: Array.isArray(users) ? users[0] ?? null : users,
+  };
+}
+
 async function insertAnswer(supabase, answer) {
   const response = await supabaseRequest(supabase, "/answers", {
     method: "POST",
@@ -525,7 +615,7 @@ async function insertAnswer(supabase, answer) {
   };
 }
 
-async function getOrCreateManagerMember(supabase, user, claims, env) {
+async function getOrCreateManagerMember(supabase, user, claims, env, profile = {}) {
   if (!user?.id) {
     return {
       ok: false,
@@ -542,17 +632,26 @@ async function getOrCreateManagerMember(supabase, user, claims, env) {
   }
 
   const shouldBootstrapOwner = isBootstrapManagerOwner(claims, env);
+  const displayName = normalizeSupabaseText(profile?.displayName) || getDisplayNameFromClaims(claims);
+  const email = normalizeSupabaseText(profile?.email) || normalizeSupabaseText(claims?.email) || null;
   if (existing.member) {
-    if (
-      shouldBootstrapOwner &&
-      (existing.member.role !== "owner" || existing.member.status !== "approved")
-    ) {
-      return updateManagerMemberById(supabase, existing.member.id, {
+    const patch = {};
+    if (displayName && displayName !== existing.member.display_name) {
+      patch.display_name = displayName;
+    }
+    if (email !== (existing.member.email ?? null)) {
+      patch.email = email;
+    }
+    if (shouldBootstrapOwner && (existing.member.role !== "owner" || existing.member.status !== "approved")) {
+      Object.assign(patch, {
         role: "owner",
         status: "approved",
         approved_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       });
+    }
+    if (Object.keys(patch).length > 0) {
+      patch.updated_at = new Date().toISOString();
+      return updateManagerMemberById(supabase, existing.member.id, patch);
     }
     return existing;
   }
@@ -560,8 +659,8 @@ async function getOrCreateManagerMember(supabase, user, claims, env) {
   return createManagerMember(supabase, {
     user_id: user.id,
     auth0_sub: normalizeSupabaseText(claims?.sub),
-    display_name: getDisplayNameFromClaims(claims),
-    email: normalizeSupabaseText(claims?.email) || null,
+    display_name: displayName,
+    email,
     role: shouldBootstrapOwner ? "owner" : null,
     status: shouldBootstrapOwner ? "approved" : "pending",
     approved_at: shouldBootstrapOwner ? new Date().toISOString() : null,
@@ -678,6 +777,69 @@ function getDisplayNameFromClaims(claims) {
 
 function normalizeSupabaseText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeEducationCode(value) {
+  return normalizeSupabaseText(value).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 32);
+}
+
+function parseEducationCodes(env) {
+  const map = new Map();
+  const rawConfig = typeof env?.EDUCATION_CODES === "string" ? env.EDUCATION_CODES.trim() : "";
+  if (!rawConfig) {
+    return map;
+  }
+
+  try {
+    const parsed = JSON.parse(rawConfig);
+    if (Array.isArray(parsed)) {
+      parsed.forEach((entry) => {
+        addEducationCodeEntry(map, entry?.code, entry?.schoolName ?? entry?.school_name, entry?.message);
+      });
+      return map;
+    }
+    if (parsed && typeof parsed === "object") {
+      Object.entries(parsed).forEach(([code, entry]) => {
+        if (typeof entry === "string") {
+          addEducationCodeEntry(map, code, entry, "");
+          return;
+        }
+        addEducationCodeEntry(map, code, entry?.schoolName ?? entry?.school_name, entry?.message);
+      });
+      return map;
+    }
+  } catch {
+    rawConfig.split(/[;\n]/).forEach((entry) => {
+      const [code, schoolName = "", message = ""] = entry.split("|").map((part) => part.trim());
+      addEducationCodeEntry(map, code, schoolName, message);
+    });
+  }
+  return map;
+}
+
+function addEducationCodeEntry(map, code, schoolName, message) {
+  const normalizedCode = normalizeEducationCode(code);
+  if (!normalizedCode) {
+    return;
+  }
+  map.set(normalizedCode, {
+    schoolName: normalizeSupabaseText(schoolName),
+    message: normalizeSupabaseText(message),
+  });
+}
+
+async function readJsonBody(request) {
+  try {
+    return {
+      ok: true,
+      value: await request.json(),
+    };
+  } catch {
+    return {
+      ok: false,
+      value: null,
+    };
+  }
 }
 
 async function verifyAuth0Jwt(token, auth0) {

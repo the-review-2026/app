@@ -75,6 +75,7 @@ const REVIEW_DATA_EXPORT_KEY = "TheReview::DataExport::v1";
 const STORE_CONFIG_KEY = "the-review-store-config-v1";
 const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
 const INFO_NOTICE_READ_KEY = "the-review-info-notice-read-v1";
+const MANAGER_ACCESS_CACHE_KEY = "the-review-manager-access-v1";
 const INFO_MENU_NOTICES = [
   {
     id: "20260429-review-account-update",
@@ -87,18 +88,12 @@ const DEFAULT_STORE_CONFIG = {
   avatarMessage: "Avaterアイテムを選べます。",
 };
 const AVATER_BASE_IMAGE = "./assets/avater/らーん1-1.png";
-const AVATER_ITEMS = [
-  { id: "school-blue", category: "clothes", name: "ブルージャケット", cost: 0, className: "avater-item-school-blue" },
-  { id: "mint-ribbon", category: "accessory", name: "ミントリボン", cost: 0, className: "avater-item-mint-ribbon" },
-  { id: "round-glasses", category: "glasses", name: "ラウンドめがね", cost: 0, className: "avater-item-round-glasses" },
-  { id: "star-pin", category: "accessory", name: "スターのヘアピン", cost: 80, className: "avater-item-star-pin" },
-  { id: "lab-coat", category: "clothes", name: "サイエンスコート", cost: 120, className: "avater-item-lab-coat" },
-  { id: "aqua-glasses", category: "glasses", name: "アクアめがね", cost: 100, className: "avater-item-aqua-glasses" },
-];
+const AVATER_ITEMS = [];
+const AVATER_CATEGORY_ORDER = ["clothes", "glasses", "accessory"];
 const AVATER_CATEGORY_LABELS = {
-  clothes: "服",
-  accessory: "アクセサリー",
+  clothes: "うわぎ",
   glasses: "めがね",
+  accessory: "アクセサリー",
 };
 const FLASHCARD_DEFAULT_SERIES = {
   id: "reboot-1st-edition",
@@ -339,6 +334,9 @@ const elements = {
   calendarNextMonthBtn: document.getElementById("calendarNextMonthBtn"),
   calendarGrid: document.getElementById("calendarGrid"),
   selfcheckTimerDisplay: document.getElementById("selfcheckTimerDisplay"),
+  selfcheckTimerMinuteValue: document.getElementById("selfcheckTimerMinuteValue"),
+  selfcheckTimerSecondValue: document.getElementById("selfcheckTimerSecondValue"),
+  selfcheckTimerAdjustButtons: Array.from(document.querySelectorAll("[data-timer-adjust]")),
   selfcheckTimerStartBtn: document.getElementById("selfcheckTimerStartBtn"),
   selfcheckTimerPauseBtn: document.getElementById("selfcheckTimerPauseBtn"),
   selfcheckTimerResetBtn: document.getElementById("selfcheckTimerResetBtn"),
@@ -465,7 +463,11 @@ let isSelfcheckTimerFocusMode = false;
 let pendingGuestModeAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
-let managerAccessState = null;
+let managerAccessState = loadManagerAccessCache();
+let activeAvaterCategory = "clothes";
+let draggingAvaterItemId = "";
+let avaterLayerDragState = null;
+let avaterLayerClickSuppressUntil = 0;
 let liftedFlashcardNoteElement = null;
 let liftedFlashcardBinderElement = null;
 let activeFlashcardBinderElement = null;
@@ -786,19 +788,50 @@ function bindSharedDataAndGuestDialogEvents() {
   if (elements.reviewDataImportInput) {
     elements.reviewDataImportInput.addEventListener("change", handleReviewDataImportSelection);
   }
-  elements.avaterNudgeButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      nudgeAvater(button.dataset.avaterNudge || "");
-    });
-  });
   [elements.loginAvaterItemList, elements.storeAvatarHint].forEach((list) => {
     list?.addEventListener("click", (event) => {
+      const categoryTarget = event.target.closest("[data-avater-category]");
+      if (categoryTarget) {
+        activeAvaterCategory = normalizeAvaterCategory(categoryTarget.dataset.avaterCategory) || activeAvaterCategory;
+        renderAvater();
+        return;
+      }
       const target = event.target.closest("[data-avater-item]");
-      if (!target) {
+      if (!target || target.hasAttribute("disabled")) {
         return;
       }
       handleAvaterItemAction(target.dataset.avaterItem || "");
     });
+    list?.addEventListener("dragstart", (event) => {
+      const target = event.target.closest("[data-avater-item]");
+      if (!target || target.getAttribute("aria-disabled") === "true") {
+        event.preventDefault();
+        return;
+      }
+      draggingAvaterItemId = target.dataset.avaterItem || "";
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData("text/plain", draggingAvaterItemId);
+    });
+  });
+  elements.avaterPreviews.forEach((preview) => {
+    preview.addEventListener("dragover", (event) => {
+      if (!draggingAvaterItemId) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    });
+    preview.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const itemId = event.dataTransfer.getData("text/plain") || draggingAvaterItemId;
+      draggingAvaterItemId = "";
+      handleAvaterItemAction(itemId, { forceEquip: true });
+    });
+    preview.addEventListener("pointerdown", handleAvaterLayerPointerDown);
+    preview.addEventListener("pointermove", handleAvaterLayerPointerMove);
+    preview.addEventListener("pointerup", finishAvaterLayerPointerDrag);
+    preview.addEventListener("pointercancel", finishAvaterLayerPointerDrag);
+    preview.addEventListener("click", handleAvaterPreviewClick);
   });
   elements.guestModeActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -1324,6 +1357,11 @@ function bindEvents() {
   if (elements.selfcheckTimerResetBtn) {
     elements.selfcheckTimerResetBtn.addEventListener("click", resetSelfcheckTimer);
   }
+  elements.selfcheckTimerAdjustButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      adjustSelfcheckTimer(button.dataset.timerAdjust || "");
+    });
+  });
   if (elements.calendarPrevMonthBtn) {
     elements.calendarPrevMonthBtn.addEventListener("click", () => {
       moveSelfcheckCalendarMonth(-1);
@@ -1610,9 +1648,12 @@ async function loginWithAuth0(appState, options = {}) {
         targetMypagePage: "top",
         ...appState,
       },
+      authorizationParams: {
+        screen_hint: "signup",
+      },
     };
     if (connection) {
-      loginOptions.authorizationParams = { connection };
+      loginOptions.authorizationParams.connection = connection;
     }
     await loginClient.loginWithRedirect(loginOptions);
   } catch (error) {
@@ -1796,13 +1837,67 @@ async function getAuth0AccessTokenForApi() {
   }
 }
 
+async function syncReviewAccountProfileToApi() {
+  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+    return null;
+  }
+
+  const accessToken = await withTimeout(
+    getAuth0AccessTokenForApi(),
+    2400,
+    null,
+    "Review Account profile sync token"
+  );
+  if (!accessToken) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/me`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        nickname: normalizeNicknameText(state.auth.nickname),
+      }),
+    });
+    if (!response.ok) {
+      console.warn("Failed to sync Review Account profile:", response.status);
+      return null;
+    }
+    const payload = await response.json().catch(() => null);
+    if (payload?.managerMember) {
+      const member = payload.managerMember;
+      const role = typeof member?.role === "string" ? member.role : null;
+      const access = {
+        canAccess: member?.status === "approved" && Boolean(role),
+        status: member?.status ?? "pending",
+        member,
+        permissions: managerAccessState?.permissions ?? {},
+      };
+      updateManagerMenuVisibilityFromAccess(access);
+    }
+    return payload;
+  } catch (error) {
+    console.warn("Failed to sync Review Account profile:", error);
+    return null;
+  }
+}
+
 function updateManagerMenuVisibilityFromAccess(access) {
   managerAccessState = access || null;
-  if (!elements.managerMenuLink) {
-    return;
+  if (access) {
+    saveManagerAccessCache(access);
+  } else {
+    clearManagerAccessCache();
   }
   const hasManagerRole = Boolean(access?.canAccess);
-  elements.managerMenuLink.hidden = !hasManagerRole;
+  if (elements.managerMenuLink) {
+    elements.managerMenuLink.hidden = !hasManagerRole;
+  }
   renderCoinBoard();
   renderMypageCoin();
   renderThemeCardSelection();
@@ -1810,15 +1905,34 @@ function updateManagerMenuVisibilityFromAccess(access) {
 
 function clearManagerAccessCache() {
   try {
-    window.sessionStorage.removeItem("the-review-manager-access-v1");
+    window.sessionStorage.removeItem(MANAGER_ACCESS_CACHE_KEY);
+  } catch {
+    // noop
+  }
+  managerAccessState = null;
+}
+
+function saveManagerAccessCache(access) {
+  try {
+    window.sessionStorage.setItem(MANAGER_ACCESS_CACHE_KEY, JSON.stringify(access));
   } catch {
     // noop
   }
 }
 
+function loadManagerAccessCache() {
+  try {
+    const raw = window.sessionStorage.getItem(MANAGER_ACCESS_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 async function updateManagerMenuVisibility() {
-  updateManagerMenuVisibilityFromAccess(null);
   if (!elements.managerMenuLink || !state.auth.isLoggedIn || state.auth.provider === "guest") {
+    updateManagerMenuVisibilityFromAccess(null);
     return;
   }
 
@@ -1847,7 +1961,6 @@ async function updateManagerMenuVisibility() {
     updateManagerMenuVisibilityFromAccess(access);
   } catch (error) {
     console.warn("Failed to check The Review Manager access:", error);
-    updateManagerMenuVisibilityFromAccess(null);
   }
 }
 
@@ -1972,6 +2085,7 @@ async function syncAuthStateFromAuth0(options = {}) {
     email: typeof user?.email === "string" && user.email.trim() ? user.email : null,
   });
   saveState();
+  void syncReviewAccountProfileToApi();
 }
 
 function applyAuthRedirectState(appState) {
@@ -4795,7 +4909,15 @@ function renderMypageCoin() {
 }
 
 function hasUnlimitedReviewCoins() {
-  return Boolean(state.auth.isLoggedIn && managerAccessState?.canAccess === true);
+  if (!state.auth.isLoggedIn || !managerAccessState) {
+    return false;
+  }
+  if (managerAccessState.canAccess === true) {
+    return true;
+  }
+  const role = typeof managerAccessState?.member?.role === "string" ? managerAccessState.member.role : "";
+  const status = managerAccessState?.member?.status || managerAccessState?.status;
+  return status === "approved" && ["owner", "developer", "checker", "system_designer", "character_designer"].includes(role);
 }
 
 function loadStoreConfig() {
@@ -4842,17 +4964,22 @@ function renderAvaterPreview(preview) {
   if (baseImage) {
     baseImage.src = AVATER_BASE_IMAGE;
   }
-  preview.style.setProperty("--avater-offset-x", `${state.avater.offsetX}px`);
-  preview.style.setProperty("--avater-offset-y", `${state.avater.offsetY}px`);
-  preview.querySelectorAll(".avater-layer").forEach((layer) => layer.remove());
+  preview.querySelectorAll(".avater-layer, .avater-delete-popover").forEach((layer) => layer.remove());
   Object.values(state.avater.equipped || {}).forEach((itemId) => {
     const item = getAvaterItem(itemId);
     if (!item) {
       return;
     }
+    const offset = getAvaterItemOffset(item.id);
     const layer = document.createElement("span");
-    layer.className = `avater-layer ${item.className}`;
-    layer.setAttribute("aria-hidden", "true");
+    layer.className = `avater-layer ${item.className} avater-category-${item.category}`;
+    layer.dataset.avaterLayer = item.id;
+    layer.dataset.avaterCategory = item.category;
+    layer.style.setProperty("--avater-item-offset-x", `${offset.x}px`);
+    layer.style.setProperty("--avater-item-offset-y", `${offset.y}px`);
+    layer.setAttribute("role", "button");
+    layer.setAttribute("tabindex", "0");
+    layer.setAttribute("aria-label", `${item.name}を調整`);
     preview.append(layer);
   });
 }
@@ -4862,14 +4989,22 @@ function renderAvaterItemList(container, options = {}) {
     return;
   }
   const storeMode = Boolean(options.storeMode);
-  container.innerHTML = getAvailableAvaterItems().map((item) => {
+  const items = getAvailableAvaterItems();
+  const categoryButtons = AVATER_CATEGORY_ORDER.map((category) => {
+    const label = AVATER_CATEGORY_LABELS[category] || category;
+    const isActive = category === activeAvaterCategory;
+    return `<button class="avater-category-tab ${isActive ? "is-active" : ""}" type="button" data-avater-category="${escapeHtml(category)}" aria-pressed="${String(isActive)}">${escapeHtml(label)}</button>`;
+  }).join("");
+  const categoryItems = items.filter((item) => item.category === activeAvaterCategory);
+  const itemCards = categoryItems.map((item) => {
     const isUnlocked = isAvaterItemUnlocked(item.id);
     const isEquipped = state.avater.equipped?.[item.category] === item.id;
     const canAfford = hasUnlimitedReviewCoins() || state.reviewCoin >= item.cost;
-    const buttonText = isEquipped ? "使用中" : isUnlocked ? "使う" : `${item.cost}`;
+    const canUseItem = isUnlocked || canAfford;
+    const buttonText = isEquipped ? "使用中" : isUnlocked ? "追加する" : `${item.cost}`;
     return `
-      <article class="avater-item-card ${isEquipped ? "is-equipped" : ""}">
-        <div class="avater-item-sample ${item.className}" aria-hidden="true"></div>
+      <article class="avater-item-card ${isEquipped ? "is-equipped" : ""}" draggable="${String(canUseItem)}" data-avater-item="${escapeHtml(item.id)}" aria-disabled="${String(!canUseItem)}">
+        <div class="avater-item-sample ${item.className} avater-category-${item.category}" aria-hidden="true"></div>
         <div class="avater-item-body">
           <p class="avater-item-category">${escapeHtml(AVATER_CATEGORY_LABELS[item.category] || item.category)}</p>
           <h3>${escapeHtml(item.name)}</h3>
@@ -4879,12 +5014,19 @@ function renderAvaterItemList(container, options = {}) {
               : ""
           }
         </div>
-        <button class="${isUnlocked ? "secondary" : "primary"}" type="button" data-avater-item="${escapeHtml(item.id)}" ${!isUnlocked && !canAfford ? "disabled" : ""}>
+        <button class="${isUnlocked ? "secondary" : "primary"}" type="button" data-avater-item="${escapeHtml(item.id)}" ${!canUseItem ? "disabled" : ""}>
           ${escapeHtml(buttonText)}
         </button>
       </article>
     `;
   }).join("");
+  const emptyText = "配信中のAvaterアイテムはありません。";
+  container.innerHTML = `
+    <div class="avater-category-tabs" role="tablist" aria-label="Avaterカテゴリー">${categoryButtons}</div>
+    <div class="avater-category-panel">
+      ${itemCards || `<p class="hint-text avater-empty-text">${escapeHtml(emptyText)}</p>`}
+    </div>
+  `;
 }
 
 function getAvaterItem(itemId) {
@@ -4904,7 +5046,7 @@ function loadCustomAvaterItems() {
     return parsed
       .map((item) => ({
         id: String(item?.id || "").trim(),
-        category: String(item?.category || "").trim(),
+        category: normalizeAvaterCategory(item?.category) || "accessory",
         name: String(item?.name || "").trim(),
         cost: normalizeCoinAmount(item?.cost),
         className: "avater-item-custom",
@@ -4923,11 +5065,12 @@ function isAvaterItemUnlocked(itemId) {
   return item.cost === 0 || Boolean(state.avater.unlockedItems?.[itemId]);
 }
 
-function handleAvaterItemAction(itemId) {
+function handleAvaterItemAction(itemId, options = {}) {
   const item = getAvaterItem(itemId);
   if (!item) {
     return;
   }
+  const previousCoin = state.reviewCoin;
   if (!isAvaterItemUnlocked(item.id)) {
     if (!hasUnlimitedReviewCoins() && state.reviewCoin < item.cost) {
       return;
@@ -4937,29 +5080,142 @@ function handleAvaterItemAction(itemId) {
     }
     state.avater.unlockedItems[item.id] = true;
   }
-  state.avater.equipped[item.category] = state.avater.equipped[item.category] === item.id ? "" : item.id;
+  const isCurrentlyEquipped = state.avater.equipped[item.category] === item.id;
+  state.avater.equipped[item.category] = options.forceEquip || !isCurrentlyEquipped ? item.id : "";
   saveState();
+  if (previousCoin > state.reviewCoin) {
+    markReviewCoinSpendAnimation();
+  }
   renderCoinBoard();
   renderMypageCoin();
   renderAvater();
 }
 
-function nudgeAvater(direction) {
-  const step = 4;
-  if (direction === "reset") {
-    state.avater.offsetX = 0;
-    state.avater.offsetY = 0;
-  } else if (direction === "left") {
-    state.avater.offsetX = Math.max(-24, state.avater.offsetX - step);
-  } else if (direction === "right") {
-    state.avater.offsetX = Math.min(24, state.avater.offsetX + step);
-  } else if (direction === "up") {
-    state.avater.offsetY = Math.max(-24, state.avater.offsetY - step);
-  } else if (direction === "down") {
-    state.avater.offsetY = Math.min(24, state.avater.offsetY + step);
+function normalizeAvaterCategory(value) {
+  const category = typeof value === "string" ? value.trim() : "";
+  return AVATER_CATEGORY_ORDER.includes(category) ? category : "";
+}
+
+function getAvaterItemOffset(itemId) {
+  const offset = state.avater.itemOffsets?.[itemId] || {};
+  return {
+    x: Math.max(-56, Math.min(56, Number(offset.x) || 0)),
+    y: Math.max(-56, Math.min(56, Number(offset.y) || 0)),
+  };
+}
+
+function setAvaterItemOffset(itemId, offset) {
+  if (!itemId) {
+    return;
   }
+  state.avater.itemOffsets = state.avater.itemOffsets && typeof state.avater.itemOffsets === "object" ? state.avater.itemOffsets : {};
+  state.avater.itemOffsets[itemId] = {
+    x: Math.max(-56, Math.min(56, Number(offset.x) || 0)),
+    y: Math.max(-56, Math.min(56, Number(offset.y) || 0)),
+  };
+}
+
+function handleAvaterLayerPointerDown(event) {
+  const layer = event.target.closest("[data-avater-layer]");
+  if (!layer || event.button !== 0) {
+    return;
+  }
+  event.preventDefault();
+  removeAvaterDeletePopovers();
+  const itemId = layer.dataset.avaterLayer || "";
+  avaterLayerDragState = {
+    pointerId: event.pointerId,
+    layer,
+    itemId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startOffset: getAvaterItemOffset(itemId),
+    moved: false,
+  };
+  layer.classList.add("is-dragging");
+  layer.setPointerCapture?.(event.pointerId);
+}
+
+function handleAvaterLayerPointerMove(event) {
+  if (!avaterLayerDragState || avaterLayerDragState.pointerId !== event.pointerId) {
+    return;
+  }
+  const dx = event.clientX - avaterLayerDragState.startX;
+  const dy = event.clientY - avaterLayerDragState.startY;
+  if (Math.abs(dx) + Math.abs(dy) > 3) {
+    avaterLayerDragState.moved = true;
+  }
+  const nextOffset = {
+    x: avaterLayerDragState.startOffset.x + dx,
+    y: avaterLayerDragState.startOffset.y + dy,
+  };
+  setAvaterItemOffset(avaterLayerDragState.itemId, nextOffset);
+  avaterLayerDragState.layer.style.setProperty("--avater-item-offset-x", `${getAvaterItemOffset(avaterLayerDragState.itemId).x}px`);
+  avaterLayerDragState.layer.style.setProperty("--avater-item-offset-y", `${getAvaterItemOffset(avaterLayerDragState.itemId).y}px`);
+}
+
+function finishAvaterLayerPointerDrag(event) {
+  if (!avaterLayerDragState || avaterLayerDragState.pointerId !== event.pointerId) {
+    return;
+  }
+  avaterLayerDragState.layer.classList.remove("is-dragging");
+  avaterLayerDragState.layer.releasePointerCapture?.(event.pointerId);
+  if (avaterLayerDragState.moved) {
+    avaterLayerClickSuppressUntil = Date.now() + 180;
+    saveState();
+    renderAvater();
+  } else {
+    saveState();
+  }
+  avaterLayerDragState = null;
+}
+
+function handleAvaterPreviewClick(event) {
+  const removeButton = event.target.closest("[data-avater-remove-item]");
+  if (removeButton) {
+    removeEquippedAvaterItem(removeButton.dataset.avaterRemoveItem || "");
+    return;
+  }
+  const layer = event.target.closest("[data-avater-layer]");
+  if (layer) {
+    if (Date.now() < avaterLayerClickSuppressUntil) {
+      return;
+    }
+    showAvaterDeletePopover(layer);
+    return;
+  }
+  removeAvaterDeletePopovers();
+}
+
+function showAvaterDeletePopover(layer) {
+  const preview = layer.closest("[data-avater-preview]");
+  if (!preview) {
+    return;
+  }
+  removeAvaterDeletePopovers();
+  const previewRect = preview.getBoundingClientRect();
+  const layerRect = layer.getBoundingClientRect();
+  const popover = document.createElement("div");
+  popover.className = "avater-delete-popover";
+  popover.style.left = `${Math.max(18, Math.min(previewRect.width - 18, layerRect.left + layerRect.width / 2 - previewRect.left))}px`;
+  popover.style.top = `${Math.max(8, layerRect.top - previewRect.top - 8)}px`;
+  popover.innerHTML = `<button type="button" data-avater-remove-item="${escapeHtml(layer.dataset.avaterLayer || "")}">このアイテムを削除する</button>`;
+  preview.append(popover);
+}
+
+function removeEquippedAvaterItem(itemId) {
+  const item = getAvaterItem(itemId);
+  if (!item || state.avater.equipped?.[item.category] !== item.id) {
+    removeAvaterDeletePopovers();
+    return;
+  }
+  state.avater.equipped[item.category] = "";
   saveState();
   renderAvater();
+}
+
+function removeAvaterDeletePopovers() {
+  document.querySelectorAll(".avater-delete-popover").forEach((popover) => popover.remove());
 }
 
 function formatCoinAmount(value) {
@@ -5025,6 +5281,18 @@ function animateReviewCoinValue(fromValue, toValue) {
   };
 
   reviewCoinAnimationFrameId = window.requestAnimationFrame(tick);
+}
+
+function markReviewCoinSpendAnimation() {
+  if (!elements.reviewCoinBoard) {
+    return;
+  }
+  elements.reviewCoinBoard.classList.remove("is-spending");
+  void elements.reviewCoinBoard.offsetWidth;
+  elements.reviewCoinBoard.classList.add("is-spending");
+  window.setTimeout(() => {
+    elements.reviewCoinBoard?.classList.remove("is-spending");
+  }, 700);
 }
 
 function openStoreFromCoinBoard() {
@@ -5168,6 +5436,8 @@ function renderThemeCardSelection() {
         lockCost.textContent = String(getThemeUnlockCost(themeKey));
       }
       lockLabel.hidden = isUnlocked;
+      lockLabel.style.display = isUnlocked ? "none" : "";
+      lockLabel.setAttribute("aria-hidden", String(isUnlocked));
     }
   });
 }
@@ -5263,12 +5533,16 @@ function proceedThemeUnlock(themeKey) {
     return;
   }
 
+  const previousCoin = state.reviewCoin;
   if (!hasUnlimitedReviewCoins()) {
     state.reviewCoin -= unlockCost;
   }
   state.settings.unlockedThemes[themeKey] = true;
   state.settings.themeUnlockPolicyVersion = THEME_UNLOCK_POLICY_VERSION;
   saveState();
+  if (previousCoin > state.reviewCoin) {
+    markReviewCoinSpendAnimation();
+  }
   renderCoinBoard();
   renderMypageCoin();
   renderMypageSettings();
@@ -5636,6 +5910,7 @@ function renderInfoMenuNotices() {
     const unreadCount = getUnreadInfoNoticeCount();
     elements.infoMenuNoticeBadge.textContent = String(unreadCount);
     elements.infoMenuNoticeBadge.hidden = unreadCount === 0;
+    elements.infoMenuNoticeBadge.style.display = unreadCount === 0 ? "none" : "";
   }
   if (!elements.infoMenuNoticeList) {
     return;
@@ -5893,17 +6168,44 @@ function resetSelfcheckTimer() {
   updateSelfcheckTimerButtons();
 }
 
+function adjustSelfcheckTimer(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  const minuteStep = 60;
+  const secondStep = 5;
+  if (normalizedAction === "minute-up") {
+    selfcheckTimerRemainingSeconds += minuteStep;
+  } else if (normalizedAction === "minute-down") {
+    selfcheckTimerRemainingSeconds -= minuteStep;
+  } else if (normalizedAction === "second-up") {
+    selfcheckTimerRemainingSeconds += secondStep;
+  } else if (normalizedAction === "second-down") {
+    selfcheckTimerRemainingSeconds -= secondStep;
+  } else {
+    return;
+  }
+  selfcheckTimerRemainingSeconds = Math.max(0, Math.min(99 * 60 + 55, selfcheckTimerRemainingSeconds));
+  renderSelfcheckTimerDisplay();
+  updateSelfcheckTimerButtons();
+}
+
 function renderSelfcheckTimerDisplay() {
-  if (!elements.selfcheckTimerDisplay) {
+  if (!elements.selfcheckTimerDisplay && !elements.selfcheckTimerMinuteValue && !elements.selfcheckTimerSecondValue) {
     return;
   }
 
   const minutes = Math.floor(selfcheckTimerRemainingSeconds / 60);
   const seconds = selfcheckTimerRemainingSeconds % 60;
-  elements.selfcheckTimerDisplay.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
-    2,
-    "0"
-  )}`;
+  const minuteText = String(minutes).padStart(2, "0");
+  const secondText = String(seconds).padStart(2, "0");
+  if (elements.selfcheckTimerDisplay) {
+    elements.selfcheckTimerDisplay.textContent = `${minuteText}:${secondText}`;
+  }
+  if (elements.selfcheckTimerMinuteValue) {
+    elements.selfcheckTimerMinuteValue.textContent = minuteText;
+  }
+  if (elements.selfcheckTimerSecondValue) {
+    elements.selfcheckTimerSecondValue.textContent = secondText;
+  }
 }
 
 function updateSelfcheckTimerButtons() {
@@ -6427,15 +6729,12 @@ function createDefaultAvaterState() {
   return {
     baseImage: AVATER_BASE_IMAGE,
     equipped: {
-      clothes: "school-blue",
-      accessory: "mint-ribbon",
+      clothes: "",
       glasses: "",
+      accessory: "",
     },
-    unlockedItems: {
-      "school-blue": true,
-      "mint-ribbon": true,
-      "round-glasses": true,
-    },
+    unlockedItems: {},
+    itemOffsets: {},
     offsetX: 0,
     offsetY: 0,
   };
@@ -6456,6 +6755,19 @@ function normalizeAvaterState(value) {
       equipped[category] = "";
     }
   });
+  const itemOffsets = {};
+  if (value.itemOffsets && typeof value.itemOffsets === "object" && !Array.isArray(value.itemOffsets)) {
+    Object.entries(value.itemOffsets).forEach(([itemId, offset]) => {
+      const normalizedItemId = String(itemId || "").trim();
+      if (!normalizedItemId || !getAvaterItem(normalizedItemId)) {
+        return;
+      }
+      itemOffsets[normalizedItemId] = {
+        x: Math.max(-56, Math.min(56, Number(offset?.x) || 0)),
+        y: Math.max(-56, Math.min(56, Number(offset?.y) || 0)),
+      };
+    });
+  }
   return {
     baseImage: typeof value.baseImage === "string" && value.baseImage.trim() ? value.baseImage.trim() : fallback.baseImage,
     equipped,
@@ -6466,6 +6778,7 @@ function normalizeAvaterState(value) {
             ...value.unlockedItems,
           }
         : fallback.unlockedItems,
+    itemOffsets,
     offsetX: Math.max(-24, Math.min(24, Number(value.offsetX) || 0)),
     offsetY: Math.max(-24, Math.min(24, Number(value.offsetY) || 0)),
   };
@@ -6975,6 +7288,7 @@ function escapeHtml(text) {
       nickname,
     });
     saveState();
+    void syncReviewAccountProfileToApi();
   }
 
   function getEducationCodeValue() {
@@ -7037,7 +7351,7 @@ function escapeHtml(text) {
         body: JSON.stringify({ code: value }),
       });
       const json = await response.json().catch(() => null);
-      const isValid = response.ok && Boolean(json?.valid);
+      const isValid = response.ok && Boolean(json?.valid ?? json?.isValid ?? json?.ok);
       const schoolName = typeof json?.schoolName === "string" ? json.schoolName.trim() : "";
       const serverMessage = typeof json?.message === "string" ? json.message.trim() : "";
       const message = isValid
