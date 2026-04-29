@@ -7735,3 +7735,129 @@ function escapeHtml(text) {
 
   window.addEventListener("beforeunload", stopEducationCodeScanner);
 })();
+
+function clampBinderUseTipPosition() {
+  const panel = document.getElementById("mypageFlashcardPanel");
+  const list = document.getElementById("flashcardBinderList");
+  if (!panel || !list) return;
+
+  const tip =
+    document.querySelector(".flashcard-binder-use-tip") ||
+    document.querySelector(".flashcard-binder-use-tooltip") ||
+    document.querySelector(".flashcard-binder-action-tip");
+
+  const activeBinder =
+    document.querySelector(".flashcard-binder.is-lifted") ||
+    document.querySelector(".flashcard-binder.is-active") ||
+    document.querySelector(".flashcard-binder-item.is-lifted") ||
+    document.querySelector(".flashcard-binder-item.is-active");
+
+  if (!tip || !activeBinder) return;
+
+  const panelRect = panel.getBoundingClientRect();
+  const binderRect = activeBinder.getBoundingClientRect();
+  const tipRect = tip.getBoundingClientRect();
+
+  const margin = 8;
+
+  const binderCenterX = binderRect.left + binderRect.width / 2;
+  const desiredLeft = binderCenterX - tipRect.width / 2;
+
+  const minLeft = panelRect.left + margin;
+  const maxLeft = panelRect.right - tipRect.width - margin;
+
+  const clampedLeft = Math.min(Math.max(desiredLeft, minLeft), maxLeft);
+
+  tip.style.left = `${clampedLeft}px`;
+
+  const arrowX = binderCenterX - clampedLeft;
+  const safeArrowX = Math.min(Math.max(arrowX, 14), tipRect.width - 14);
+
+  tip.style.setProperty("--binder-tip-arrow-x", `${safeArrowX}px`);
+}
+
+function startBinderUseTipClampObserver() {
+  const target = document.getElementById("mypageFlashcardPanel");
+  if (!target) return;
+
+  const update = () => {
+    requestAnimationFrame(clampBinderUseTipPosition);
+  };
+
+  const observer = new MutationObserver(update);
+  observer.observe(target, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class", "style"],
+  });
+
+  window.addEventListener("resize", update);
+  window.addEventListener("scroll", update, true);
+  document.getElementById("flashcardBinderList")?.addEventListener("scroll", update);
+
+  update();
+}
+
+startBinderUseTipClampObserver();
+
+function clampBinderUseButtonPosition() {
+  const panel = document.getElementById("mypageFlashcardPanel");
+  if (!panel) return;
+
+  const tip = document.querySelector(".flashcard-binder-use-btn");
+
+  const activeBinder =
+    document.querySelector(".flashcard-binder.is-lifted") ||
+    document.querySelector(".flashcard-binder.is-active") ||
+    document.querySelector(".flashcard-binder-item.is-lifted") ||
+    document.querySelector(".flashcard-binder-item.is-active");
+
+  if (!tip || !activeBinder) return;
+
+  const panelRect = panel.getBoundingClientRect();
+  const binderRect = activeBinder.getBoundingClientRect();
+  const tipRect = tip.getBoundingClientRect();
+
+  const margin = 60;
+
+  const binderCenterX = binderRect.left + binderRect.width / 2;
+  const desiredLeft = binderCenterX - tipRect.width / 2;
+
+  const minLeft = panelRect.left + margin;
+  const maxLeft = panelRect.right - tipRect.width - margin;
+
+  const clampedLeft = Math.min(Math.max(desiredLeft, minLeft), maxLeft);
+
+  tip.style.left = `${clampedLeft}px`;
+
+  const arrowX = binderCenterX - clampedLeft;
+  const safeArrowX = Math.min(Math.max(arrowX, 16), tipRect.width - 16);
+
+  tip.style.setProperty("--binder-tip-arrow-x", `${safeArrowX}px`);
+}
+
+function startBinderUseButtonClampObserver() {
+  const target = document.getElementById("mypageFlashcardPanel");
+  if (!target) return;
+
+  const update = () => {
+    requestAnimationFrame(clampBinderUseButtonPosition);
+  };
+
+  const observer = new MutationObserver(update);
+  observer.observe(target, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class", "style"],
+  });
+
+  window.addEventListener("resize", update);
+  window.addEventListener("scroll", update, true);
+  document.getElementById("flashcardBinderList")?.addEventListener("scroll", update);
+
+  update();
+}
+
+startBinderUseButtonClampObserver();

@@ -8041,3 +8041,163 @@ body.flashcard-binder-global-focus .top-nav-character {
     transform: translate3d(0, -12px, 0);
   }
 }
+
+/* Let's Review! title position / theme color */
+#mypageFlashcardPanel {
+  position: relative;
+  overflow: visible;
+  padding-top: clamp(76px, 13vw, 110px);
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 8;
+
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 0;
+
+  transform: translate(-50%, -34%);
+
+  font-family: "Corinthia-Regular", "Corinthia", cursive;
+  font-size: clamp(64px, 14vw, 96px);
+  line-height: 0.95;
+  white-space: nowrap;
+
+  color: var(--band-tab-base, var(--primary));
+  text-shadow: 0 10px 24px color-mix(in srgb, var(--band-tab-base, var(--primary)) 22%, transparent);
+
+  pointer-events: none;
+}
+
+/* Bring subtitle closer to Let's Review title */
+#mypageFlashcardPanel .flashcard-static-message {
+  margin-top: -6px;
+}
+
+#mypageFlashcardPanel .flashcard-panel {
+  margin-top: -24px;
+}
+
+/* Fix lifted binder / tooltip clipping */
+#mypageFlashcardPanel,
+#mypageFlashcardPanel .flashcard-panel,
+#mypageFlashcardPanel .flashcard-binder-item,
+#mypageFlashcardPanel .flashcard-binder {
+  overflow: visible;
+}
+
+#mypageFlashcardPanel .flashcard-binder-list {
+  overflow-x: auto;
+  overflow-y: visible;
+
+  /* lifted binder and tooltip safe area */
+  padding-top: 42px;
+  padding-bottom: 18px;
+  padding-left: 18px;
+  padding-right: 52px;
+
+  /* keep the whole binder area close to the title */
+  margin-top: -24px;
+}
+
+/* Binder use balloon: keep body inside panel, move only arrow */
+.flashcard-binder-use-btn {
+  --binder-tip-arrow-x: 50%;
+
+  position: fixed;
+  z-index: 30;
+  max-width: min(180px, calc(100vw - 32px));
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.flashcard-binder-use-btn::after {
+  content: "";
+  position: absolute;
+  left: var(--binder-tip-arrow-x);
+  bottom: -7px;
+  transform: translateX(-50%);
+
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid #ffffff;
+}
+
+/* Binder divider labels */
+#mypageFlashcardPanel .flashcard-binder-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 6;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+
+  width: calc(100% - 16px);
+  height: 34px;
+  margin: 0;
+
+  transform: translateX(-50%);
+
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+
+  border-radius: 10px 10px 4px 4px;
+  background: var(--band-tab-background, linear-gradient(90deg, var(--band-tab-base), #1d1d1d));
+  background-blend-mode: var(--band-tab-background-blend, overlay, normal);
+  color: #ffffff;
+
+  font-family: "Noto Sans", "Noto Sans JP", sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.22),
+    0 5px 12px rgba(0, 0, 0, 0.16);
+
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#mypageFlashcardPanel .flashcard-binder-series {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 7px;
+
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#mypageFlashcardPanel .flashcard-binder-code {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+
+  display: block;
+  transform: translateX(-50%) rotate(90deg);
+  transform-origin: center;
+
+  color: #17243a;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Make room for the divider at the top of each binder */
+#mypageFlashcardPanel .flashcard-binder {
+  position: relative;
+  padding-top: 42px;
+}
