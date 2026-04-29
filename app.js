@@ -6725,6 +6725,9 @@ function submitDailyTryAnswer() {
 }
 
 function startHomeGreetingTicker() {
+  if (!elements.homeGreeting) {
+    return;
+  }
   renderHomeGreeting();
   if (homeGreetingTimerId !== null) {
     window.clearInterval(homeGreetingTimerId);
@@ -6738,6 +6741,9 @@ function startHomeGreetingTicker() {
 }
 
 function renderHomeGreeting() {
+  if (!elements.homeGreeting) {
+    return;
+  }
   elements.homeGreeting.textContent = getHomeGreetingMessage(new Date());
 }
 
