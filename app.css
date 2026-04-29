@@ -6561,7 +6561,7 @@ body.login-page .aurora {
 }
 
 #authLoginAuth0Btn::before {
-  content: "+";
+  content: "login";
 }
 
 #authLoginGuestBtn::before {
@@ -7110,6 +7110,47 @@ body.login-page .avater-item-body h3 {
 .onboarding-step-actions > button {
   flex: 1 1 0;
   min-width: 0;
+}
+
+.onboarding-action-callout {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+}
+
+.onboarding-action-callout > button {
+  width: 100%;
+}
+
+.onboarding-action-callout-label {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.68rem);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(17rem, 48vw);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d1d1d;
+  box-shadow: 0 0.42rem 1.3rem rgba(0, 0, 0, 0.18);
+  padding: 0.42rem 0.76rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+}
+
+.onboarding-action-callout-label::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 0.08rem);
+  width: 0.62rem;
+  height: 0.62rem;
+  background: #ffffff;
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .onboarding-step[data-onboarding-step="welcome"] button[data-auth-return="index"] {
@@ -8426,6 +8467,7 @@ body.manager-page .header-menu-block::before {
 }
 
 .onboarding-step-actions > button[data-onboarding-nav],
+.onboarding-action-callout > button[data-onboarding-nav],
 #authLoginAuth0Btn {
   display: inline-flex;
   align-items: center;
@@ -8434,7 +8476,9 @@ body.manager-page .header-menu-block::before {
 }
 
 .onboarding-step-actions > button[data-onboarding-nav]::before,
-.onboarding-step-actions > button[data-onboarding-nav]::after {
+.onboarding-step-actions > button[data-onboarding-nav]::after,
+.onboarding-action-callout > button[data-onboarding-nav]::before,
+.onboarding-action-callout > button[data-onboarding-nav]::after {
   content: "";
   width: 0.46rem;
   height: 0.46rem;
@@ -8443,32 +8487,37 @@ body.manager-page .header-menu-block::before {
   flex: 0 0 auto;
 }
 
-.onboarding-step-actions > button[data-onboarding-nav="prev"]::before {
+.onboarding-step-actions > button[data-onboarding-nav="prev"]::before,
+.onboarding-action-callout > button[data-onboarding-nav="prev"]::before {
   transform: rotate(-135deg);
 }
 
-.onboarding-step-actions > button[data-onboarding-nav="prev"]::after {
+.onboarding-step-actions > button[data-onboarding-nav="prev"]::after,
+.onboarding-action-callout > button[data-onboarding-nav="prev"]::after {
   display: none;
 }
 
-.onboarding-step-actions > button[data-onboarding-nav="next"]::before {
+.onboarding-step-actions > button[data-onboarding-nav="next"]::before,
+.onboarding-action-callout > button[data-onboarding-nav="next"]::before {
   display: none;
 }
 
-.onboarding-step-actions > button[data-onboarding-nav="next"]::after {
+.onboarding-step-actions > button[data-onboarding-nav="next"]::after,
+.onboarding-action-callout > button[data-onboarding-nav="next"]::after {
   transform: rotate(45deg);
 }
 
 #authLoginAuth0Btn::before {
-  content: "+";
+  content: "login";
   width: 1.22rem;
   height: 1.22rem;
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.3);
+  font-family: "Material Symbols Rounded";
   font-size: 0.95rem;
-  font-weight: 900;
+  font-weight: 400;
   line-height: 1;
 }
 
@@ -8836,7 +8885,9 @@ textarea,
 }
 
 .onboarding-step-actions > button[data-onboarding-nav]::before,
-.onboarding-step-actions > button[data-onboarding-nav]::after {
+.onboarding-step-actions > button[data-onboarding-nav]::after,
+.onboarding-action-callout > button[data-onboarding-nav]::before,
+.onboarding-action-callout > button[data-onboarding-nav]::after {
   border: 0;
   width: auto;
   height: auto;
@@ -8845,12 +8896,14 @@ textarea,
   line-height: 1;
 }
 
-.onboarding-step-actions > button[data-onboarding-nav="prev"]::before {
+.onboarding-step-actions > button[data-onboarding-nav="prev"]::before,
+.onboarding-action-callout > button[data-onboarding-nav="prev"]::before {
   content: "arrow_back";
   transform: none;
 }
 
-.onboarding-step-actions > button[data-onboarding-nav="next"]::after {
+.onboarding-step-actions > button[data-onboarding-nav="next"]::after,
+.onboarding-action-callout > button[data-onboarding-nav="next"]::after {
   content: "arrow_forward";
   transform: none;
 }

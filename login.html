@@ -7,7 +7,7 @@
     <!-- App shell assets: PWA metadata, shared fonts, and app styles. -->
     <link rel="icon" type="image/png" href="./assets/favicon/favicon.png?v=20260326-1" />
     <link rel="apple-touch-icon" href="./assets/favicon/favicon.png?v=20260326-1" />
-    <link rel="manifest" href="./manifest.webmanifest?v=20260429-7" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260430-1" />
     <meta name="theme-color" content="#1d1d1d" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,7 +19,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260429-7" />
+    <link rel="stylesheet" href="./app.css?v=20260430-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body class="login-page" data-theme="sea">
@@ -52,8 +52,14 @@
             <source src="./assets/movies/PR%202.mp4" type="video/mp4" />
           </video>
           <div class="action-row onboarding-step-actions">
-            <button class="secondary" type="button" data-auth-provider="auth0" data-auth-return="index">ログインする</button>
-            <button class="primary" type="button" data-onboarding-nav="next">はじめる</button>
+            <div class="onboarding-action-callout">
+              <span class="onboarding-action-callout-label">Review Accountを持っている方</span>
+              <button class="secondary" type="button" data-auth-provider="auth0" data-auth-return="index">ログインする</button>
+            </div>
+            <div class="onboarding-action-callout">
+              <span class="onboarding-action-callout-label">はじめてご利用になる方</span>
+              <button class="primary" type="button" data-onboarding-nav="next">はじめる</button>
+            </div>
           </div>
         </section>
 
@@ -94,7 +100,7 @@
             auth0-config.js の domain / clientId / defaultConnection を確認してください。</p>
           <div class="action-row onboarding-step-actions">
             <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">作成する</button>
+            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">ログインする</button>
           </div>
         </section>
 
@@ -183,6 +189,6 @@
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
     <script src="./app.js?v=20260429-7"></script>
-    <script src="./pwa.js?v=20260429-7" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260430-1" charset="UTF-8"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-const APP_SHELL_VERSION = "2026.04.29.7";
+const APP_SHELL_VERSION = "2026.04.30.1";
 const APP_SHELL_CACHE = `the-review-shell-${APP_SHELL_VERSION}`;
 
 // Only cache the app shell. Problem data and store items are intentionally fetched live
@@ -8,12 +8,12 @@ const APP_SHELL_URLS = [
   "./index.html",
   "./login.html",
   "./manager.html",
-  "./app.css?v=20260429-7",
+  "./app.css?v=20260430-1",
   "./app.js?v=20260429-7",
-  "./pwa.js?v=20260429-7",
+  "./pwa.js?v=20260430-1",
   "./Loaders.css?v=20260326-1",
   "./auth0-config.js?v=20260426-1",
-  "./manifest.webmanifest?v=20260429-7",
+  "./manifest.webmanifest?v=20260430-1",
   "./assets/favicon/favicon.png?v=20260326-1",
   "./assets/logos/original.png?v=20260326-1",
   "./assets/logos/manager.png?v=20260326-1",
