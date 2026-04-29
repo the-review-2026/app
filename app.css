@@ -8227,11 +8227,36 @@ body[data-theme="the-paper"] .flashcard-binder-use-btn {
   box-shadow: 0 6px 16px rgba(20, 40, 58, 0.12);
 }
 
-/* Reduce the gap between the instruction text and the binder area */
-#mypageFlashcardPanel .flashcard-static-message {
-  margin-bottom: 2px;
+/* Page title Japanese label: right aligned */
+#screen-home .page-script-title,
+#screen-notice .page-script-title {
+  position: relative;
+  width: 100%;
+  display: block;
 }
 
-#mypageFlashcardPanel .flashcard-binder-list {
-  margin-top: -5px;
+#screen-home .page-script-title::after {
+  content: "ホーム";
+}
+
+#screen-notice .page-script-title::after {
+  content: "ストア";
+}
+
+#screen-home .page-script-title::after,
+#screen-notice .page-script-title::after {
+  position: absolute;
+  right: 10px;
+  top: 40%;
+  transform: translateY(-45%);
+
+  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+
+  color: #ffffff;
+  text-align: right;
+  white-space: nowrap;
 }
