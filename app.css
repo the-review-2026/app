@@ -8128,76 +8128,133 @@ body.flashcard-binder-global-focus .top-nav-character {
   border-top: 7px solid #ffffff;
 }
 
-/* Binder divider labels */
-#mypageFlashcardPanel .flashcard-binder-label {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 6;
+#mypageFlashcardPanel .flashcard-binder-divider span {
+  display: block;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-
-  width: calc(100% - 16px);
-  height: 34px;
-  margin: 0;
-
-  transform: translateX(-50%);
-
-  writing-mode: horizontal-tb;
+  writing-mode: vertical-rl;
   text-orientation: mixed;
 
-  border-radius: 10px 10px 4px 4px;
-  background: var(--band-tab-background, linear-gradient(90deg, var(--band-tab-base), #1d1d1d));
-  background-blend-mode: var(--band-tab-background-blend, overlay, normal);
   color: #ffffff;
+  font-family: "Noto Sans", "Noto Sans JP", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
 
+  white-space: nowrap;
+}
+
+/* Divider: line + text */
+#mypageFlashcardPanel .flashcard-binder-divider {
+  position: relative;
+  flex: 0 0 24px;
+  align-self: stretch;
+  min-height: 330px;
+  margin: 0 6px 0 2px;
+
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* vertical separator line */
+#mypageFlashcardPanel .flashcard-binder-divider::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 7px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--band-tab-base, var(--primary));
+  opacity: 0.95;
+}
+
+/* vertical label text */
+#mypageFlashcardPanel .flashcard-binder-divider span {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  right: 0;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  text-align: right;
+
+  color: var(--band-tab-base, var(--primary));
   font-family: "Noto Sans", "Noto Sans JP", sans-serif;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   line-height: 1;
+  white-space: nowrap;
 
-  box-shadow:
-    inset 0 -1px 0 rgba(255, 255, 255, 0.22),
-    0 5px 12px rgba(0, 0, 0, 0.16);
-
-  overflow: hidden;
-  pointer-events: none;
+  text-shadow: none;
 }
 
-#mypageFlashcardPanel .flashcard-binder-series {
-  display: block;
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0 7px;
+/* Extend the blue mypage background behind the flashcard panel */
+#screen-mypage {
+  padding-bottom: 75px;
+}
 
+#mypage-top {
+  padding-bottom: 75px;
+}
+
+/* Default tooltip button */
+.flashcard-binder-use-btn {
+  background: #1d1d1d;
   color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
-#mypageFlashcardPanel .flashcard-binder-code {
-  position: absolute;
-  top: 44px;
-  left: 50%;
-
-  display: block;
-  transform: translateX(-50%) rotate(90deg);
-  transform-origin: center;
-
-  color: #17243a;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+/* Light themes: make it white */
+body[data-theme="sea"] .flashcard-binder-use-btn,
+body[data-theme="forest"] .flashcard-binder-use-btn,
+body[data-theme="lemonade"] .flashcard-binder-use-btn,
+body[data-theme="strawberry"] .flashcard-binder-use-btn,
+body[data-theme="the-paper"] .flashcard-binder-use-btn {
+  background: #ffffff;
+  color: var(--text-main);
+  border: 1px solid rgba(29, 29, 29, 0.12);
+  box-shadow: 0 6px 16px rgba(20, 40, 58, 0.12);
 }
 
-/* Make room for the divider at the top of each binder */
-#mypageFlashcardPanel .flashcard-binder {
-  position: relative;
-  padding-top: 42px;
+#mypageFlashcardPanel .flashcard-binder-list {
+  scroll-padding-left: 0;
+}
+
+/* Make the first series divider visible at the initial position */
+#mypageFlashcardPanel .flashcard-binder-list {
+  padding-left: 0;
+  scroll-padding-left: 0;
+}
+
+/* Show first divider without creating left scroll space */
+#mypageFlashcardPanel .flashcard-binder-list {
+  justify-content: flex-start;
+  padding-left: 0;
+  scroll-padding-left: 0;
+  overscroll-behavior-x: contain;
+}
+
+/* Show first divider visually without creating left scroll space */
+#mypageFlashcardPanel .flashcard-binder-list {
+  padding-left: 0;
+  scroll-padding-left: 0;
+  padding-right: 96px;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+#mypageFlashcardPanel .flashcard-binder-list > * {
+  transform: translateX(44px);
 }
