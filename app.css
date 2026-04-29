@@ -8613,7 +8613,7 @@ body.learn-popover-open #screen-learn .page-title-row {
 }
 
 body.learn-popover-open #screen-learn .page-title-row::after {
-  content: "With Learn";
+  content: "Learn";
   position: absolute;
   right: 0;
   bottom: -0.08rem;
@@ -8778,4 +8778,363 @@ select,
 textarea,
 [role="button"] {
   touch-action: manipulation;
+}
+
+/* 2026-04-29 app shell refinements: PWA, Material Symbols, Learn popover, and account UI. */
+.material-symbols-rounded {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.28em;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+}
+
+.info-menu-item-icon.material-symbols-rounded,
+.review-data-action-icon.material-symbols-rounded {
+  display: inline-grid;
+  place-items: center;
+  font-size: 1.18rem;
+}
+
+.info-menu-item-icon.material-symbols-rounded {
+  width: 1.12rem;
+  height: 1.12rem;
+  flex: 0 0 1.12rem;
+}
+
+.review-data-action-icon.material-symbols-rounded {
+  font-size: 1.08rem;
+}
+
+.account-icon-button::before {
+  content: none;
+}
+
+.account-icon-button .material-symbols-rounded {
+  font-size: 1.18rem;
+}
+
+.onboarding-step-actions > button[data-onboarding-nav]::before,
+.onboarding-step-actions > button[data-onboarding-nav]::after {
+  border: 0;
+  width: auto;
+  height: auto;
+  font-family: "Material Symbols Rounded";
+  font-size: 1.18rem;
+  line-height: 1;
+}
+
+.onboarding-step-actions > button[data-onboarding-nav="prev"]::before {
+  content: "arrow_back";
+  transform: none;
+}
+
+.onboarding-step-actions > button[data-onboarding-nav="next"]::after {
+  content: "arrow_forward";
+  transform: none;
+}
+
+.home-card-nav-symbol.material-symbols-rounded {
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+#screen-mypage,
+#mypage-top {
+  padding-bottom: 0;
+}
+
+#screen-settings > .page-title-row {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: clamp(4.35rem, 13vw, 5.35rem);
+  margin: 0 0 0.86rem;
+  padding: 0.66rem 0.9rem 1.16rem;
+  overflow: hidden;
+  border-radius: 0 0 20px 20px;
+  background: var(--band-tab-background);
+  background-blend-mode: var(--band-tab-background-blend);
+}
+
+#screen-settings > .page-title-row::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 18px;
+  background:
+    var(--bg-pattern-a),
+    var(--bg-pattern-b),
+    linear-gradient(135deg, var(--bg-sky), var(--bg-warm) 56%, var(--bg-cool));
+  clip-path: polygon(
+    0 72%,
+    12% 42%,
+    26% 70%,
+    40% 38%,
+    56% 66%,
+    70% 40%,
+    86% 68%,
+    100% 44%,
+    100% 100%,
+    0 100%
+  );
+  pointer-events: none;
+}
+
+#screen-settings > .page-title-row .page-script-title {
+  position: relative;
+  z-index: 1;
+  color: #ffffff;
+  font-family: "Corinthia-Regular", cursive;
+  font-size: clamp(2.65rem, 9vw, 4.15rem);
+  font-weight: 700;
+  line-height: 0.86;
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+}
+
+#screen-settings .page-script-title::after,
+body.manager-page #screen-problem .page-script-title::after,
+body.manager-page #screen-store .page-script-title::after,
+body.manager-page #screen-profile .page-script-title::after {
+  position: absolute;
+  right: 0.82rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  text-align: right;
+  white-space: nowrap;
+}
+
+#screen-settings .page-script-title::after {
+  content: "設定";
+}
+
+body.manager-page #screen-problem .page-script-title::after {
+  content: "問題";
+}
+
+body.manager-page #screen-store .page-script-title::after {
+  content: "ストア";
+}
+
+body.manager-page #screen-profile .page-script-title::after {
+  content: "プロフィール";
+}
+
+body.learn-popover-open::after {
+  z-index: 22;
+  opacity: 1;
+  background: rgba(5, 10, 18, 0.58);
+}
+
+body.learn-popover-open .top-nav-character {
+  z-index: 25;
+}
+
+body.learn-popover-open #screen-learn {
+  z-index: 24;
+  border-color: rgba(255, 255, 255, 0.2);
+  background:
+    var(--band-tab-grain),
+    linear-gradient(135deg, rgba(29, 29, 29, 0.92), rgba(29, 29, 29, 0.76));
+  background-blend-mode: soft-light, normal;
+  color: #ffffff;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(18px) saturate(1.12);
+}
+
+body.learn-popover-open #screen-learn::after {
+  border-top-color: rgba(29, 29, 29, 0.86);
+}
+
+body.learn-popover-open #screen-learn .page-title-row::after {
+  content: "Learn";
+  right: 0;
+  bottom: -0.12rem;
+  color: #ffffff;
+  opacity: 0.34;
+}
+
+body.learn-popover-open #screen-learn .page-script-title,
+body.learn-popover-open #screen-learn .learn-overview,
+body.learn-popover-open #screen-learn .learn-overview-message {
+  color: #ffffff;
+}
+
+body.learn-popover-open #screen-learn .learn-overview-section {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+body.learn-popover-open #screen-learn .learn-overview-section:first-child {
+  border-top: 0;
+}
+
+.daily-login-reward {
+  transform: translateX(-50%);
+}
+
+.daily-login-reward.is-claimed {
+  color: #ffd45f;
+  opacity: 1;
+}
+
+.daily-login-card.is-reward-ready .daily-login-current-node {
+  box-shadow: 0 0 0 2px rgba(255, 212, 95, 0.34);
+}
+
+.account-edit-option {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.account-edit-option-icon {
+  display: none;
+}
+
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .setting-row,
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .account-edit-option,
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .theme-card,
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .avater-category-tab,
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .avater-item-card {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .theme-card-name,
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .avater-item-category,
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .avater-item-body h3,
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .avater-item-cost {
+  color: var(--text-main);
+}
+
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .avater-item-sample {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.avater-editor-preview-wrap {
+  position: relative;
+}
+
+.avater-preview-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 0.5rem;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  width: min(210px, 58vw);
+  padding: 0 0.46rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.avater-preview-control {
+  width: 2.34rem;
+  height: 2.34rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: rgba(29, 29, 29, 0.78);
+  color: #ffffff;
+  padding: 0;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.avater-preview-control.is-active {
+  background:
+    var(--band-tab-grain),
+    linear-gradient(135deg, var(--primary), #1d1d1d);
+  background-blend-mode: overlay, normal;
+}
+
+html.avater-scroll-locked,
+body.avater-scroll-locked {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.text-reset-dialog.is-delete-action .account-action-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.text-reset-dialog.is-delete-action #accountActionConfirmBtn {
+  grid-column: 1 / -1;
+  order: 3;
+}
+
+.text-reset-dialog.is-delete-action #accountActionConfirmBtn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  filter: saturate(0.7);
+}
+
+.pwa-update-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flashcard-binder-use-btn {
+  --flashcard-binder-use-bg: #1d1d1d;
+  --binder-tip-arrow-x: 50%;
+  position: absolute;
+  left: 50%;
+  top: -2.34rem;
+  z-index: 360;
+  transform: translate3d(-50%, 4px, 0);
+  background: #1d1d1d !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 24px rgba(5, 10, 18, 0.24);
+}
+
+.flashcard-binder-use-btn::after {
+  left: var(--binder-tip-arrow-x);
+  top: calc(100% - 1px);
+  bottom: auto;
+  border-top-color: #1d1d1d !important;
+}
+
+.flashcard-binder-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+}
+
+.flashcard-binder-close-btn .material-symbols-rounded {
+  font-size: 1rem;
+}
+
+.flashcard-note-reader-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
 }

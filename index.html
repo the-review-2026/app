@@ -22,15 +22,22 @@
         }
       })();
     </script>
+    <!-- App shell assets: PWA metadata, shared fonts, and app styles. -->
     <link rel="icon" type="image/png" href="./assets/favicon/favicon.png?v=20260326-1" />
     <link rel="apple-touch-icon" href="./assets/favicon/favicon.png?v=20260326-1" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260429-4" />
+    <meta name="theme-color" content="#1d1d1d" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260429-3" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./app.css?v=20260429-4" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -70,17 +77,17 @@
           </div>
           <div class="info-menu-list">
             <button class="info-menu-item info-menu-settings-item" type="button" data-screen="settings">
-              <span class="info-menu-item-icon info-menu-icon-settings" aria-hidden="true"></span>
+              <span class="material-symbols-rounded info-menu-item-icon" aria-hidden="true">settings</span>
               <span>設定</span>
             </button>
             <a id="managerMenuLink" class="info-menu-item info-menu-manager-item" href="./manager.html" hidden>
-              <span class="info-menu-item-icon info-menu-icon-manager" aria-hidden="true"></span>
+              <span class="material-symbols-rounded info-menu-item-icon" aria-hidden="true">admin_panel_settings</span>
               <span>The Review Manager</span>
             </a>
           </div>
           <section class="info-menu-notices" aria-label="お知らせ">
             <h3>
-              <span class="info-menu-item-icon info-menu-icon-notice" aria-hidden="true"></span>
+              <span class="material-symbols-rounded info-menu-item-icon" aria-hidden="true">notifications</span>
               <span>お知らせ</span>
             </h3>
             <div id="infoMenuNoticeList" class="info-menu-notice-list"></div>
@@ -99,7 +106,7 @@
             <span class="top-nav-icon top-nav-icon-home" aria-hidden="true"></span>
             <span>ホーム</span>
           </button>
-          <button class="top-nav-item" type="button" data-screen="learn" aria-label="らーんと勉強する">
+          <button class="top-nav-item" type="button" data-screen="learn" aria-label="らーん">
               <span class="top-nav-avatar-label" aria-hidden="true"></span>
           </button>
           <div class="top-nav-character avater-preview avater-preview-nav" data-avater-preview aria-hidden="true">
@@ -118,9 +125,6 @@
         <div class="home-top-row">
           <div class="home-greeting-hero">
             <h1 class="page-script-title">Home</h1>
-            <div class="home-greeting-wrap">
-              <p id="homeGreeting" class="home-greeting" aria-live="polite">こんにちは。</p>
-            </div>
           </div>
           <div class="home-card-carousel" aria-label="ホームカード">
             <div id="homeCardTrack" class="home-card-track" tabindex="0">
@@ -154,14 +158,18 @@
                         <span id="dailyLoginNextFarNode" class="daily-login-node is-faded" hidden></span>
                         <span id="dailyLoginNextOuterNode" class="daily-login-node is-faded" hidden></span>
                       </div>
-                      <div class="daily-login-rewards">
-                        <span id="dailyLoginReward3" class="daily-login-reward reward-3">
+                      <div id="dailyLoginRewards" class="daily-login-rewards">
+                        <span class="daily-login-reward reward-1">
                           <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
                           <span>10</span>
                         </span>
-                        <span id="dailyLoginReward7" class="daily-login-reward reward-7">
+                        <span class="daily-login-reward reward-3">
                           <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
                           <span>20</span>
+                        </span>
+                        <span class="daily-login-reward reward-recurring">
+                          <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+                          <span>30</span>
                         </span>
                       </div>
                       <p class="daily-login-script">Review Period</p>
@@ -185,11 +193,11 @@
             </div>
             <div class="home-card-controls" aria-label="ホームカードを移動">
               <button class="home-card-nav-btn home-card-nav-btn-prev" type="button" data-home-card-nav="prev" aria-label="リビュー日数へ移動">
-                <span class="home-card-nav-symbol" aria-hidden="true">&lt;</span>
+                <span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_left</span>
               </button>
               <button class="home-card-nav-btn home-card-nav-btn-next" type="button" data-home-card-nav="next" aria-label="この問題にTRY!へ移動">
                 <span class="home-card-nav-bubble" aria-hidden="true">1日1回問題に挑戦しよう！</span>
-                <span class="home-card-nav-symbol" aria-hidden="true">&gt;</span>
+                <span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_right</span>
               </button>
             </div>
             <div id="homeCardProgress" class="home-card-progress" aria-label="ホームカードの位置">
@@ -202,84 +210,12 @@
 
       <section id="screen-learn" class="screen learn-layout">
         <div class="page-title-row">
-          <h1 class="page-script-title">らーんと勉強する</h1>
+          <h1 class="page-script-title">らーん</h1>
         </div>
-        <section class="learn-overview" aria-label="らーんと勉強する">
+        <section class="learn-overview" aria-label="らーん">
           <article class="learn-overview-section">
-            <h2>挨拶</h2>
             <p id="learnGreetingMessage" class="learn-overview-message" aria-live="polite"></p>
           </article>
-          <article class="learn-overview-section">
-            <h2>今後の予定</h2>
-            <ul id="learnScheduleList" class="learn-schedule-list" aria-label="今後の予定"></ul>
-          </article>
-          <article class="learn-overview-section learn-timer-entry">
-            <h2>タイマー</h2>
-            <button id="learnTimerOpenBtn" class="primary learn-timer-open-btn" type="button">タイマーを開く</button>
-          </article>
-          <div class="learn-popover-signature" aria-hidden="true">With Learn</div>
-        </section>
-        <section id="mypage-selfcheck" class="mypage-selfcheck-page learn-page">
-          <section class="panel selfcheck-section">
-            <h2>カレンダー</h2>
-            <div class="selfcheck-section-content">
-              <div class="calendar-head">
-                <button id="calendarPrevMonthBtn" class="calendar-nav-btn" type="button" aria-label="Previous month">
-                  &lt;
-                </button>
-                <p id="calendarMonthLabel" class="calendar-month selfcheck-month"></p>
-                <button id="calendarNextMonthBtn" class="calendar-nav-btn" type="button" aria-label="Next month">
-                  &gt;
-                </button>
-              </div>
-              <div class="calendar-weekdays">
-                <span>日</span>
-                <span>月</span>
-                <span>火</span>
-                <span>水</span>
-                <span>木</span>
-                <span>金</span>
-                <span>土</span>
-              </div>
-              <div id="calendarGrid" class="calendar-grid"></div>
-            </div>
-          </section>
-
-          <section id="mypageTimerPanel" class="panel selfcheck-section mypage-timer-panel">
-            <h2 class="timer-panel-head">
-              <span class="panel-title-text">タイマー</span>
-            </h2>
-            <div class="selfcheck-section-content selfcheck-timer-layout">
-              <p id="selfcheckTimerDisplay" class="timer-display" aria-live="polite">25:00</p>
-              <div class="timer-adjuster" aria-label="タイマー時間設定">
-                <div class="timer-adjust-column">
-                  <button class="timer-adjust-btn" type="button" data-timer-adjust="minute-up" aria-label="分を増やす">↑</button>
-                  <span id="selfcheckTimerMinuteValue" class="timer-adjust-value">25</span>
-                  <span class="timer-adjust-label">分</span>
-                  <button class="timer-adjust-btn" type="button" data-timer-adjust="minute-down" aria-label="分を減らす">↓</button>
-                </div>
-                <span class="timer-adjust-separator" aria-hidden="true">:</span>
-                <div class="timer-adjust-column">
-                  <button class="timer-adjust-btn" type="button" data-timer-adjust="second-up" aria-label="秒を増やす">↑</button>
-                  <span id="selfcheckTimerSecondValue" class="timer-adjust-value">00</span>
-                  <span class="timer-adjust-label">秒</span>
-                  <button class="timer-adjust-btn" type="button" data-timer-adjust="second-down" aria-label="秒を減らす">↓</button>
-                </div>
-              </div>
-              <div class="timer-controls">
-                <button id="selfcheckTimerStartBtn" class="primary" type="button">開始</button>
-                <button id="selfcheckTimerPauseBtn" class="secondary" type="button">一時停止</button>
-                <button id="selfcheckTimerResetBtn" class="secondary" type="button">リセット</button>
-              </div>
-            </div>
-          </section>
-
-          <section id="learnCollectionPanel" class="panel selfcheck-section learn-collection-panel">
-            <h2>コレクション</h2>
-            <div class="selfcheck-section-content">
-              <p class="hint-text">コレクションの中身は準備中です。</p>
-            </div>
-          </section>
         </section>
       </section>
 
@@ -480,8 +416,8 @@
       </section>
 
       <section id="screen-settings" class="screen settings-page">
-        <div class="settings-page-head">
-          <h1>設定</h1>
+        <div class="page-title-row settings-page-head">
+          <h1 class="page-script-title">Settings</h1>
         </div>
 
         <section
@@ -495,46 +431,24 @@
             </h2>
             <div class="settings-section-content settings-line-list">
               <div class="setting-row">
-                <span>ニックネーム</span>
+                <span>Nickname</span>
                 <strong id="authNicknameText">未設定</strong>
               </div>
               <div class="setting-row account-edit-row">
-                <button id="accountEditBtn" class="secondary account-icon-button account-edit-button" type="button">アカウント情報を編集</button>
+                <button id="accountEditBtn" class="secondary account-icon-button account-edit-button" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+                  <span>編集する</span>
+                </button>
               </div>
               <div class="setting-row account-action-row">
-                <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">ログアウト</button>
-                <button id="deleteAccountBtn" class="danger account-icon-button account-delete-button" type="button">アカウントを削除する</button>
-              </div>
-            </div>
-          </section>
-
-        <section
-          id="settingsPanelNotification"
-          class="panel settings-section settings-tab-panel"
-          data-settings-panel="notification"
-        >
-            <h2>通知</h2>
-            <div class="settings-section-content">
-              <div class="setting-row">
-                <span>リビュー日数</span>
-                <label class="toggle-switch" for="notifyReviewPeriodToggle">
-                  <input id="notifyReviewPeriodToggle" type="checkbox" />
-                  <span class="toggle-slider" aria-hidden="true"></span>
-                </label>
-              </div>
-              <div class="setting-row">
-                <span>この問題にTRY!</span>
-                <label class="toggle-switch" for="notifyTodaysMissionToggle">
-                  <input id="notifyTodaysMissionToggle" type="checkbox" />
-                  <span class="toggle-slider" aria-hidden="true"></span>
-                </label>
-              </div>
-              <div class="setting-row">
-                <span>ストア</span>
-                <label class="toggle-switch" for="notifyNoticeToggle">
-                  <input id="notifyNoticeToggle" type="checkbox" />
-                  <span class="toggle-slider" aria-hidden="true"></span>
-                </label>
+                <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">logout</span>
+                  <span>ログアウト</span>
+                </button>
+                <button id="deleteAccountBtn" class="danger account-icon-button account-delete-button" type="button">
+                  <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+                  <span>削除する</span>
+                </button>
               </div>
             </div>
           </section>
@@ -548,11 +462,11 @@
             <div class="settings-section-content">
               <div class="review-data-actions" aria-label="リビューデータ操作">
                 <button id="reviewDataExportBtn" class="secondary review-data-action" type="button">
-                  <span class="review-data-action-icon" aria-hidden="true">↑</span>
+                  <span class="material-symbols-rounded review-data-action-icon" aria-hidden="true">upload</span>
                   <span>エクスポート</span>
                 </button>
                 <button id="reviewDataImportBtn" class="secondary review-data-action" type="button">
-                  <span class="review-data-action-icon" aria-hidden="true">↓</span>
+                  <span class="material-symbols-rounded review-data-action-icon" aria-hidden="true">download</span>
                   <span>インポート</span>
                 </button>
               </div>
@@ -583,6 +497,20 @@
               <div class="avater-editor-preview-wrap">
                 <div class="avater-preview avater-preview-large" data-avater-preview>
                   <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
+                </div>
+                <div class="avater-preview-controls" aria-label="Avater操作">
+                  <button id="avaterResetBtn" class="avater-preview-control" type="button" aria-label="Avaterの位置をリセット">
+                    <span class="material-symbols-rounded" aria-hidden="true">restart_alt</span>
+                  </button>
+                  <button
+                    id="avaterScrollLockBtn"
+                    class="avater-preview-control"
+                    type="button"
+                    aria-pressed="false"
+                    aria-label="Avater編集中のスクロール固定"
+                  >
+                    <span class="material-symbols-rounded" aria-hidden="true">lock_open</span>
+                  </button>
                 </div>
               </div>
               <div id="storeAvatarHint" class="avater-store-list"></div>
@@ -675,28 +603,25 @@
 
     <dialog id="accountEditDialog" class="text-reset-dialog account-edit-dialog" aria-labelledby="accountEditDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="accountEditDialogTitle">アカウント情報を編集</h3>
+        <h3 id="accountEditDialogTitle">Review Accountを編集する</h3>
         <div class="account-edit-options">
           <article class="account-edit-option">
-            <span class="account-edit-option-icon" aria-hidden="true">＠</span>
             <div>
               <h4>メールアドレス</h4>
               <p id="accountEditEmailText">未設定</p>
-              <button class="secondary" type="button" disabled>Auth0で変更</button>
+              <button class="secondary" type="button" disabled>変更する</button>
             </div>
           </article>
           <article class="account-edit-option">
-            <span class="account-edit-option-icon" aria-hidden="true">鍵</span>
             <div>
               <h4>パスワード</h4>
-              <p>パスワードの変更・再設定はAuth0のアカウント管理で行います。</p>
-              <button class="secondary" type="button" disabled>変更リンクを送信</button>
+              <p>パスワードを変更する場合は変更用のメールを受けとる必要があります。</p>
+              <button class="secondary" type="button" disabled>メールを受けとって変更する</button>
             </div>
           </article>
           <article class="account-edit-option">
-            <span class="account-edit-option-icon" aria-hidden="true">G</span>
             <div>
-              <h4>Googleアカウントとの紐づけ</h4>
+              <h4>Googleアカウントとの連携</h4>
               <p id="accountEditGoogleText">Googleアカウントとの連携状態を確認できます。</p>
               <button class="secondary" type="button" disabled>連携を管理</button>
             </div>
@@ -736,7 +661,7 @@
             <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
             <span id="themeUnlockCurrentCoin">0</span>
           </span>
-          <span aria-hidden="true">→</span>
+          <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
           <span class="coin-inline">
             <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
             <span id="themeUnlockAfterCoin">0</span>
@@ -754,6 +679,7 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260429-3" charset="UTF-8"></script>
+    <script src="./app.js?v=20260429-4" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260429-4" charset="UTF-8"></script>
   </body>
 </html>

@@ -1,0 +1,25 @@
+{
+  "name": "The Review",
+  "short_name": "The Review",
+  "description": "The Review learning app",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1d1d1d",
+  "theme_color": "#1d1d1d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./assets/favicon/favicon.png?v=20260326-1",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/the-review-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -50,7 +50,7 @@ const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
 const MYPAGE_PAGE_IDS = ["top"];
 const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings"];
-const SETTINGS_TAB_IDS = ["account", "notification", "review-data"];
+const SETTINGS_TAB_IDS = ["account", "review-data"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const DEFAULT_TEXT_SETTINGS = {
   size: 100,
@@ -63,6 +63,15 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   notice: true,
 };
 const DEFAULT_NOTIFICATION_TIME_MINUTES = 7 * 60;
+// App-wide values that should be easy to adjust without digging through UI code.
+const INITIAL_REVIEW_COIN_GRANT = 100;
+const DAILY_LOGIN_REWARD_RULES = Object.freeze({
+  firstDay: 10,
+  thirdDay: 20,
+  recurringFromDay: 7,
+  recurringIntervalDays: 3,
+  recurringAmount: 30,
+});
 const DAILY_LOGIN_DESKTOP_WINDOW_RADIUS = 2;
 const DAILY_LOGIN_MOBILE_WINDOW_RADIUS = 3;
 const DAILY_LOGIN_MOBILE_BREAKPOINT_PX = 760;
@@ -345,6 +354,8 @@ const elements = {
   reviewCoinValue: document.getElementById("reviewCoinValue"),
   mypageCoinValueNumber: document.getElementById("mypageCoinValueNumber"),
   storeAvatarHint: document.getElementById("storeAvatarHint"),
+  avaterResetBtn: document.getElementById("avaterResetBtn"),
+  avaterScrollLockBtn: document.getElementById("avaterScrollLockBtn"),
   authNicknameText: document.getElementById("authNicknameText"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
@@ -405,6 +416,7 @@ const elements = {
   dailyLoginScaleNumbers: Array.from(document.querySelectorAll("#dailyLoginScale li")),
   dailyLoginTrack: document.querySelector(".daily-login-track"),
   dailyLoginProgressFill: document.getElementById("dailyLoginProgressFill"),
+  dailyLoginRewards: document.getElementById("dailyLoginRewards"),
   dailyLoginPrevOuterNode: document.getElementById("dailyLoginPrevOuterNode"),
   dailyLoginPrevFarNode: document.getElementById("dailyLoginPrevFarNode"),
   dailyLoginPrevNearNode: document.getElementById("dailyLoginPrevNearNode"),
@@ -412,8 +424,6 @@ const elements = {
   dailyLoginNextNearNode: document.getElementById("dailyLoginNextNearNode"),
   dailyLoginNextFarNode: document.getElementById("dailyLoginNextFarNode"),
   dailyLoginNextOuterNode: document.getElementById("dailyLoginNextOuterNode"),
-  dailyLoginReward3: document.getElementById("dailyLoginReward3"),
-  dailyLoginReward7: document.getElementById("dailyLoginReward7"),
   dailyTryPrompt: document.getElementById("dailyTryPrompt"),
   dailyTryChoiceList: document.getElementById("dailyTryChoiceList"),
   dailyTryFeedback: document.getElementById("dailyTryFeedback"),
@@ -469,9 +479,12 @@ let isLearnPopoverOpen = false;
 let pendingGuestModeAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
+let accountActionCountdownTimerId = 0;
+let accountActionCountdownRemainingSeconds = 0;
 let managerAccessState = loadManagerAccessCache();
 let lastReviewAccountProfileSync = null;
 let activeAvaterCategory = "clothes";
+let isAvaterScrollLocked = false;
 let draggingAvaterItemId = "";
 let avaterLayerDragState = null;
 let avaterLayerClickSuppressUntil = 0;
@@ -499,11 +512,13 @@ const ACCOUNT_ACTION_DIALOG_COPY = {
     title: "ログアウト",
     message: "ログイン画面に戻ります。続行しますか？",
     confirmClass: "primary",
+    confirmText: "はい",
   },
   delete: {
-    title: "アカウントを削除する",
+    title: "Review Accountを削除する",
     message: "Review Dataはクラウド上から削除されます。続行しますか？",
     confirmClass: "danger",
+    confirmText: "はい",
   },
 };
 const IS_LOGIN_PAGE = isCurrentLoginPage();
@@ -647,6 +662,7 @@ async function initializeFlashcardsAfterFirstPaint() {
   await new Promise((resolve) => window.requestAnimationFrame(resolve));
   await withTimeout(initializeFlashcards(), FLASHCARD_INIT_TIMEOUT_MS, undefined, "Flashcard initialization");
   initializeFlashcardNoteBinder();
+  resetFlashcardBinderScroll();
   renderFlashcardPanel();
 }
 
@@ -853,6 +869,12 @@ function bindSharedDataAndGuestDialogEvents() {
     preview.addEventListener("pointercancel", finishAvaterLayerPointerDrag);
     preview.addEventListener("click", handleAvaterPreviewClick);
   });
+  if (elements.avaterResetBtn) {
+    elements.avaterResetBtn.addEventListener("click", resetAvaterOffsets);
+  }
+  if (elements.avaterScrollLockBtn) {
+    elements.avaterScrollLockBtn.addEventListener("click", toggleAvaterScrollLock);
+  }
   elements.guestModeActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
       handleGuestModeDialogAction(button.dataset.guestModeAction);
@@ -862,6 +884,13 @@ function bindSharedDataAndGuestDialogEvents() {
     button.addEventListener("click", () => {
       handleAccountActionDialogAction(button.dataset.accountAction);
     });
+  });
+  elements.accountActionDialog?.addEventListener("cancel", () => {
+    clearAccountDeleteCountdown();
+    pendingAccountAction = null;
+  });
+  elements.accountActionDialog?.addEventListener("close", () => {
+    clearAccountDeleteCountdown();
   });
 }
 
@@ -994,11 +1023,6 @@ function injectTabScriptLabels() {
     appendTabScriptLabel(panel, label);
   });
 
-  const learnSections = Array.from(document.querySelectorAll("#screen-learn .selfcheck-section"));
-  appendTabScriptLabel(learnSections[0] ?? null, "Calendar");
-  appendTabScriptLabel(learnSections[1] ?? null, "Timer");
-  appendTabScriptLabel(learnSections[2] ?? null, "Collection");
-
   const storeSections = Array.from(document.querySelectorAll("#screen-notice .settings-section"));
   const storeLabels = ["Number of Review Coins", "Avater", "Color Schemes"];
   storeLabels.forEach((label, index) => {
@@ -1006,7 +1030,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
-  const settingsLabels = ["Review Account", "Notice", "Review Data"];
+  const settingsLabels = ["Review Account", "Review Data"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -1047,7 +1071,7 @@ function ensureInitialCoinGrant() {
   if (state.coinGrant5000Applied) {
     return;
   }
-  state.reviewCoin = 5000;
+  state.reviewCoin = Math.max(normalizeCoinAmount(state.reviewCoin), INITIAL_REVIEW_COIN_GRANT);
   state.coinGrant5000Applied = true;
   saveState();
 }
@@ -1543,6 +1567,9 @@ function activateScreen(screen) {
   });
   if (normalizedScreen === "mypage") {
     setMypagePage(activeMypagePage);
+    if (activeMypagePage === "top") {
+      resetFlashcardBinderScroll();
+    }
   } else {
     clearAllFlashcardBookIntentTimers();
     setFlashcardPanelBookDimmed(false);
@@ -1680,12 +1707,19 @@ function requestAccountAction(action) {
   if (elements.accountActionConfirmBtn) {
     elements.accountActionConfirmBtn.classList.remove("primary", "danger");
     elements.accountActionConfirmBtn.classList.add(copy.confirmClass);
+    elements.accountActionConfirmBtn.textContent = copy.confirmText;
+    elements.accountActionConfirmBtn.disabled = false;
   }
   if (elements.accountActionExportBtn) {
     elements.accountActionExportBtn.hidden = normalizedAction !== "delete";
   }
   if (!elements.accountActionDialog.open) {
     elements.accountActionDialog.showModal();
+  }
+  if (normalizedAction === "delete") {
+    startAccountDeleteCountdown();
+  } else {
+    clearAccountDeleteCountdown();
   }
 }
 
@@ -1703,6 +1737,9 @@ function handleAccountActionDialogAction(action) {
   if (normalizedAction !== "confirm") {
     return;
   }
+  if (pendingAccountAction === "delete" && accountActionCountdownRemainingSeconds > 0) {
+    return;
+  }
 
   const actionToRun = pendingAccountAction;
   pendingAccountAction = null;
@@ -1711,9 +1748,47 @@ function handleAccountActionDialogAction(action) {
 }
 
 function closeAccountActionDialog() {
+  clearAccountDeleteCountdown();
   if (elements.accountActionDialog?.open) {
     elements.accountActionDialog.close();
   }
+}
+
+function startAccountDeleteCountdown() {
+  clearAccountDeleteCountdown();
+  accountActionCountdownRemainingSeconds = 5;
+  updateAccountDeleteCountdownLabel();
+  accountActionCountdownTimerId = window.setInterval(() => {
+    accountActionCountdownRemainingSeconds = Math.max(0, accountActionCountdownRemainingSeconds - 1);
+    updateAccountDeleteCountdownLabel();
+    if (accountActionCountdownRemainingSeconds <= 0) {
+      clearAccountDeleteCountdown({ keepReadyLabel: true });
+    }
+  }, 1000);
+}
+
+function clearAccountDeleteCountdown(options = {}) {
+  if (accountActionCountdownTimerId) {
+    window.clearInterval(accountActionCountdownTimerId);
+    accountActionCountdownTimerId = 0;
+  }
+  const keepReadyLabel = Boolean(options.keepReadyLabel);
+  if (!keepReadyLabel) {
+    accountActionCountdownRemainingSeconds = 0;
+  }
+  if (elements.accountActionConfirmBtn && (!keepReadyLabel || pendingAccountAction !== "delete")) {
+    elements.accountActionConfirmBtn.disabled = false;
+    elements.accountActionConfirmBtn.textContent = ACCOUNT_ACTION_DIALOG_COPY[pendingAccountAction]?.confirmText || "はい";
+  }
+}
+
+function updateAccountDeleteCountdownLabel() {
+  if (!elements.accountActionConfirmBtn || pendingAccountAction !== "delete") {
+    return;
+  }
+  const remaining = Math.max(0, accountActionCountdownRemainingSeconds);
+  elements.accountActionConfirmBtn.disabled = remaining > 0;
+  elements.accountActionConfirmBtn.textContent = remaining > 0 ? `はい (${remaining})` : "はい";
 }
 
 function normalizeAccountAction(action) {
@@ -1782,7 +1857,7 @@ function openAccountEdit() {
     elements.accountEditGoogleText.textContent =
       state.auth.provider === "google"
         ? "Googleアカウントと連携されています。"
-        : "Googleアカウントとの連携はAuth0のアカウント管理で行います。";
+        : "Googleアカウントとの連携状態を確認できます。";
   }
   if (elements.accountEditDialog && typeof elements.accountEditDialog.showModal === "function") {
     if (!elements.accountEditDialog.open) {
@@ -2462,7 +2537,7 @@ function initializeFlashcardNoteBinder() {
       closeButton.dataset.flashcardCloseBinder = "1";
       binder.append(closeButton);
     }
-    closeButton.textContent = "← バインダーをしまう";
+    closeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span><span>バインダーをしまう</span>';
     closeButton.tabIndex = -1;
     closeButton.setAttribute("aria-hidden", "true");
   });
@@ -2540,6 +2615,16 @@ function initializeFlashcardNoteBinder() {
   binderList.addEventListener("pointerup", handleFlashcardNoteBinderPointerUp);
   binderList.addEventListener("pointercancel", clearFlashcardNoteBinderPointerState);
   window.addEventListener("resize", () => updateFlashcardBinderTargetWidth());
+}
+
+function resetFlashcardBinderScroll() {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList) {
+    return;
+  }
+  window.requestAnimationFrame(() => {
+    binderList.scrollTo({ left: 0, top: 0, behavior: "auto" });
+  });
 }
 
 function createFlashcardDeckProblemCountByLabelMap() {
@@ -3289,7 +3374,7 @@ function renderFlashcardNotebook() {
   closeButton.type = "button";
   closeButton.className = "flashcard-note-reader-close-btn";
   closeButton.dataset.flashcardNoteReaderAction = "close";
-  closeButton.textContent = "← ノートを閉じる";
+  closeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span><span>ノートを閉じる</span>';
   (flashcardBinderStageElement ?? reader).append(closeButton);
 
   if (hasLeftContent) {
@@ -5070,6 +5155,7 @@ function renderAvater() {
   elements.avaterPreviews.forEach(renderAvaterPreview);
   renderAvaterItemList(elements.loginAvaterItemList, { storeMode: false });
   renderAvaterItemList(elements.storeAvatarHint, { storeMode: true });
+  updateAvaterControlState();
 }
 
 function renderAvaterPreview(preview) {
@@ -5352,6 +5438,39 @@ function removeEquippedAvaterItem(itemId) {
 
 function removeAvaterDeletePopovers() {
   document.querySelectorAll(".avater-delete-popover").forEach((popover) => popover.remove());
+}
+
+function resetAvaterOffsets() {
+  state.avater = normalizeAvaterState(state.avater);
+  state.avater.itemOffsets = {};
+  state.avater.offsetX = 0;
+  state.avater.offsetY = 0;
+  removeAvaterDeletePopovers();
+  saveState();
+  renderAvater();
+}
+
+function toggleAvaterScrollLock() {
+  setAvaterScrollLock(!isAvaterScrollLocked);
+}
+
+function setAvaterScrollLock(shouldLock) {
+  isAvaterScrollLocked = Boolean(shouldLock);
+  document.documentElement.classList.toggle("avater-scroll-locked", isAvaterScrollLocked);
+  document.body.classList.toggle("avater-scroll-locked", isAvaterScrollLocked);
+  updateAvaterControlState();
+}
+
+function updateAvaterControlState() {
+  if (!elements.avaterScrollLockBtn) {
+    return;
+  }
+  elements.avaterScrollLockBtn.classList.toggle("is-active", isAvaterScrollLocked);
+  elements.avaterScrollLockBtn.setAttribute("aria-pressed", String(isAvaterScrollLocked));
+  const icon = elements.avaterScrollLockBtn.querySelector(".material-symbols-rounded");
+  if (icon) {
+    icon.textContent = isAvaterScrollLocked ? "lock" : "lock_open";
+  }
 }
 
 function formatCoinAmount(value) {
@@ -6057,7 +6176,7 @@ function renderInfoMenuNotices() {
   elements.infoMenuNoticeList.innerHTML = INFO_MENU_NOTICES.map(
     (notice) => `
       <button class="info-menu-notice-item" type="button" data-info-notice-id="${escapeHtml(notice.id)}">
-        <span class="info-menu-item-icon info-menu-icon-notice" aria-hidden="true"></span>
+        <span class="material-symbols-rounded info-menu-item-icon" aria-hidden="true">notifications</span>
         <span class="info-menu-notice-body">
           <strong>${escapeHtml(notice.title)}</strong>
           <span>${escapeHtml(notice.body)}</span>
@@ -6365,9 +6484,25 @@ function markDailyLogin() {
     return;
   }
   const key = todayKey();
+  let shouldSave = false;
   if (!state.loginDays[key]) {
     state.loginDays[key] = true;
+    shouldSave = true;
+  }
+  state.dailyLoginRewardDays = normalizeDailyLoginRewardDays(state.dailyLoginRewardDays);
+  const streakCount = getConsecutiveLoginDayCount();
+  const rewardAmount = getDailyLoginRewardAmount(streakCount);
+  if (rewardAmount > 0 && !state.dailyLoginRewardDays[key]) {
+    state.dailyLoginRewardDays[key] = rewardAmount;
+    if (!hasUnlimitedReviewCoins()) {
+      state.reviewCoin += rewardAmount;
+    }
+    shouldSave = true;
+  }
+  if (shouldSave) {
     saveState();
+    renderCoinBoard();
+    renderMypageCoin();
   }
 }
 
@@ -6396,37 +6531,62 @@ function renderDailyLoginNode(node, slot, windowSize) {
   node.classList.toggle("is-faded", Boolean(slot.isFaded));
 }
 
-function renderDailyLoginReward(rewardElement, rewardDay, slots, windowSize) {
-  if (!rewardElement) {
+function getDailyLoginRewardAmount(dayCount) {
+  const normalizedDay = Math.floor(Number(dayCount));
+  if (!Number.isFinite(normalizedDay) || normalizedDay <= 0) {
+    return 0;
+  }
+  if (normalizedDay === 1) {
+    return DAILY_LOGIN_REWARD_RULES.firstDay;
+  }
+  if (normalizedDay === 3) {
+    return DAILY_LOGIN_REWARD_RULES.thirdDay;
+  }
+  if (
+    normalizedDay >= DAILY_LOGIN_REWARD_RULES.recurringFromDay &&
+    (normalizedDay - DAILY_LOGIN_REWARD_RULES.recurringFromDay) %
+      DAILY_LOGIN_REWARD_RULES.recurringIntervalDays ===
+      0
+  ) {
+    return DAILY_LOGIN_REWARD_RULES.recurringAmount;
+  }
+  return 0;
+}
+
+function renderDailyLoginRewards(slots, windowSize, currentDay) {
+  if (!elements.dailyLoginRewards) {
     return;
   }
-  const slot = slots.find((item) => item.day === rewardDay) ?? null;
-  const shouldShow = Boolean(slot);
-  rewardElement.hidden = !shouldShow;
-  rewardElement.style.display = shouldShow ? "inline-flex" : "none";
-  if (!shouldShow) {
-    rewardElement.style.removeProperty("left");
-  }
-  if (!slot) {
-    return;
-  }
-  rewardElement.style.left = `${dailyLoginSlotToPercent(slot.index, windowSize)}%`;
+  const rewards = slots.filter((slot) => slot.day != null && getDailyLoginRewardAmount(slot.day) > 0);
+  const fragment = document.createDocumentFragment();
+  rewards.forEach((slot) => {
+    const reward = document.createElement("span");
+    const amount = getDailyLoginRewardAmount(slot.day);
+    reward.className = `daily-login-reward reward-day-${slot.day}`;
+    reward.classList.toggle("is-claimed", slot.day <= currentDay);
+    reward.style.left = `${dailyLoginSlotToPercent(slot.index, windowSize)}%`;
+    reward.innerHTML = `
+      <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+      <span>${escapeHtml(String(amount))}</span>
+    `;
+    fragment.append(reward);
+  });
+  elements.dailyLoginRewards.replaceChildren(fragment);
 }
 
 function renderDailyLogin() {
   const streakCount = getConsecutiveLoginDayCount();
   const displayCount = Math.max(1, streakCount);
-  const cycleDay = ((displayCount - 1) % 7) + 1;
-  const isCurrentDayOne = cycleDay === 1;
+  const isCurrentDayOne = displayCount === 1;
   const windowRadius = getDailyLoginWindowRadius();
   const windowSize = windowRadius * 2 + 1;
   const currentSlot = windowRadius;
-  const anchorDay = cycleDay;
+  const anchorDay = displayCount;
   const slots = Array.from({ length: windowSize }, (_, index) => {
     const day = anchorDay + index - windowRadius;
     return {
       index,
-      day: day >= 1 && day <= 7 ? day : null,
+      day: day >= 1 ? day : null,
       isCurrent: index === currentSlot,
       isFaded: Math.abs(index - currentSlot) === windowRadius,
     };
@@ -6482,12 +6642,10 @@ function renderDailyLogin() {
   renderDailyLoginNode(elements.dailyLoginNextNearNode, slots[currentSlot + 1], windowSize);
   renderDailyLoginNode(elements.dailyLoginNextFarNode, slots[currentSlot + 2], windowSize);
   renderDailyLoginNode(elements.dailyLoginNextOuterNode, slots[currentSlot + 3], windowSize);
-  renderDailyLoginReward(elements.dailyLoginReward3, 3, slots, windowSize);
-  renderDailyLoginReward(elements.dailyLoginReward7, 7, slots, windowSize);
+  renderDailyLoginRewards(slots, windowSize, displayCount);
 
   if (elements.dailyLoginCard) {
-    elements.dailyLoginCard.classList.toggle("is-reward-10-ready", cycleDay >= 3);
-    elements.dailyLoginCard.classList.toggle("is-reward-20-ready", cycleDay >= 7);
+    elements.dailyLoginCard.classList.toggle("is-reward-ready", getDailyLoginRewardAmount(displayCount) > 0);
   }
 }
 
@@ -6820,6 +6978,7 @@ function createDefaultState() {
     reviewCoin: 0,
     coinGrant5000Applied: false,
     loginDays: {},
+    dailyLoginRewardDays: {},
     dailyTryRecords: {},
     settings: {
       theme: DEFAULT_THEME,
@@ -6853,11 +7012,27 @@ function normalizePersistedState(parsed) {
       Number.isFinite(Number(parsed?.reviewCoin)) && Number(parsed.reviewCoin) >= 0 ? Number(parsed.reviewCoin) : 0,
     coinGrant5000Applied: normalizeBoolean(parsed?.coinGrant5000Applied, false),
     loginDays: parsed?.loginDays && typeof parsed.loginDays === "object" ? parsed.loginDays : {},
+    dailyLoginRewardDays: normalizeDailyLoginRewardDays(parsed?.dailyLoginRewardDays),
     dailyTryRecords: parsed?.dailyTryRecords && typeof parsed.dailyTryRecords === "object" ? parsed.dailyTryRecords : {},
     settings: normalizeSettingsState(parsed?.settings),
     auth: normalizeAuthState(parsed?.auth),
     avater: normalizeAvaterState(parsed?.avater || parsed?.avatar),
   };
+}
+
+function normalizeDailyLoginRewardDays(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const normalized = {};
+  Object.entries(value).forEach(([dateKey, amount]) => {
+    const key = String(dateKey || "").trim();
+    const normalizedAmount = normalizeCoinAmount(amount);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key) && normalizedAmount > 0) {
+      normalized[key] = normalizedAmount;
+    }
+  });
+  return normalized;
 }
 
 function createDefaultAvaterState() {
@@ -7893,127 +8068,29 @@ function escapeHtml(text) {
 })();
 
 function clampBinderUseTipPosition() {
-  const panel = document.getElementById("mypageFlashcardPanel");
-  const list = document.getElementById("flashcardBinderList");
-  if (!panel || !list) return;
-
-  const tip =
-    document.querySelector(".flashcard-binder-use-tip") ||
-    document.querySelector(".flashcard-binder-use-tooltip") ||
-    document.querySelector(".flashcard-binder-action-tip");
-
-  const activeBinder =
-    document.querySelector(".flashcard-binder.is-lifted") ||
-    document.querySelector(".flashcard-binder.is-active") ||
-    document.querySelector(".flashcard-binder-item.is-lifted") ||
-    document.querySelector(".flashcard-binder-item.is-active");
-
-  if (!tip || !activeBinder) return;
-
-  const panelRect = panel.getBoundingClientRect();
-  const binderRect = activeBinder.getBoundingClientRect();
-  const tipRect = tip.getBoundingClientRect();
-
-  const margin = 8;
-
-  const binderCenterX = binderRect.left + binderRect.width / 2;
-  const desiredLeft = binderCenterX - tipRect.width / 2;
-
-  const minLeft = panelRect.left + margin;
-  const maxLeft = panelRect.right - tipRect.width - margin;
-
-  const clampedLeft = Math.min(Math.max(desiredLeft, minLeft), maxLeft);
-
-  tip.style.left = `${clampedLeft}px`;
-
-  const arrowX = binderCenterX - clampedLeft;
-  const safeArrowX = Math.min(Math.max(arrowX, 14), tipRect.width - 14);
-
-  tip.style.setProperty("--binder-tip-arrow-x", `${safeArrowX}px`);
+  document
+    .querySelectorAll(".flashcard-binder-use-tip, .flashcard-binder-use-tooltip, .flashcard-binder-action-tip")
+    .forEach((tip) => {
+      tip.style.removeProperty("left");
+      tip.style.removeProperty("--binder-tip-arrow-x");
+    });
 }
 
 function startBinderUseTipClampObserver() {
-  const target = document.getElementById("mypageFlashcardPanel");
-  if (!target) return;
-
-  const update = () => {
-    requestAnimationFrame(clampBinderUseTipPosition);
-  };
-
-  const observer = new MutationObserver(update);
-  observer.observe(target, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["class", "style"],
-  });
-
-  window.addEventListener("resize", update);
-  window.addEventListener("scroll", update, true);
-  document.getElementById("flashcardBinderList")?.addEventListener("scroll", update);
-
-  update();
+  clampBinderUseTipPosition();
 }
 
 startBinderUseTipClampObserver();
 
 function clampBinderUseButtonPosition() {
-  const panel = document.getElementById("mypageFlashcardPanel");
-  if (!panel) return;
-
-  const tip = document.querySelector(".flashcard-binder-use-btn");
-
-  const activeBinder =
-    document.querySelector(".flashcard-binder.is-lifted") ||
-    document.querySelector(".flashcard-binder.is-active") ||
-    document.querySelector(".flashcard-binder-item.is-lifted") ||
-    document.querySelector(".flashcard-binder-item.is-active");
-
-  if (!tip || !activeBinder) return;
-
-  const panelRect = panel.getBoundingClientRect();
-  const binderRect = activeBinder.getBoundingClientRect();
-  const tipRect = tip.getBoundingClientRect();
-
-  const margin = 60;
-
-  const binderCenterX = binderRect.left + binderRect.width / 2;
-  const desiredLeft = binderCenterX - tipRect.width / 2;
-
-  const minLeft = panelRect.left + margin;
-  const maxLeft = panelRect.right - tipRect.width - margin;
-
-  const clampedLeft = Math.min(Math.max(desiredLeft, minLeft), maxLeft);
-
-  tip.style.left = `${clampedLeft}px`;
-
-  const arrowX = binderCenterX - clampedLeft;
-  const safeArrowX = Math.min(Math.max(arrowX, 16), tipRect.width - 16);
-
-  tip.style.setProperty("--binder-tip-arrow-x", `${safeArrowX}px`);
+  document.querySelectorAll(".flashcard-binder-use-btn").forEach((button) => {
+    button.style.removeProperty("left");
+    button.style.removeProperty("--binder-tip-arrow-x");
+  });
 }
 
 function startBinderUseButtonClampObserver() {
-  const target = document.getElementById("mypageFlashcardPanel");
-  if (!target) return;
-
-  const update = () => {
-    requestAnimationFrame(clampBinderUseButtonPosition);
-  };
-
-  const observer = new MutationObserver(update);
-  observer.observe(target, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["class", "style"],
-  });
-
-  window.addEventListener("resize", update);
-  window.addEventListener("scroll", update, true);
-  document.getElementById("flashcardBinderList")?.addEventListener("scroll", update);
-
-  update();
+  clampBinderUseButtonPosition();
 }
 
 startBinderUseButtonClampObserver();
