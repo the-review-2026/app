@@ -7126,7 +7126,7 @@ body.login-page .avater-item-body h3 {
 .onboarding-action-callout-label {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 0.68rem);
+  bottom: calc(100% + 0.88rem);
   transform: translateX(-50%);
   width: max-content;
   max-width: min(17rem, 48vw);
@@ -7146,11 +7146,13 @@ body.login-page .avater-item-body h3 {
   content: "";
   position: absolute;
   left: 50%;
-  top: calc(100% - 0.08rem);
-  width: 0.62rem;
-  height: 0.62rem;
-  background: #ffffff;
-  transform: translateX(-50%) rotate(45deg);
+  top: 100%;
+  width: 0;
+  height: 0;
+  border-left: 0.36rem solid transparent;
+  border-right: 0.36rem solid transparent;
+  border-top: 0.46rem solid #ffffff;
+  transform: translateX(-50%);
 }
 
 .onboarding-step[data-onboarding-step="welcome"] button[data-auth-return="index"] {

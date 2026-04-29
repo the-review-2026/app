@@ -5657,7 +5657,7 @@ function renderAuthPanel() {
     const requiresConnection = requiresAuthConnection(provider);
     const isCurrentProvider = isLoggedIn && currentProvider === provider;
     button.disabled = !canLogin || (requiresConnection && !connection) || isCurrentProvider;
-    button.textContent = isCurrentProvider ? "Review Account利用中" : IS_LOGIN_PAGE ? "作成する" : "Review Accountを作成する";
+    button.textContent = isCurrentProvider ? "Review Account利用中" : IS_LOGIN_PAGE ? "ログインする" : "Review Accountを作成する";
   });
   if (elements.authConfigHint) {
     elements.authConfigHint.hidden = canCreateAuth0Client;
