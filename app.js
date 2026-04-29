@@ -796,6 +796,16 @@ function bindLoginPageAuthEvents() {
         });
         return;
       }
+      if (button.dataset.authReturn === "index") {
+        clearRequestedLoginOnboardingStep();
+        await loginWithAuth0(
+          {
+            targetScreen: "home",
+          },
+          { provider, screenHint: "" }
+        );
+        return;
+      }
       await loginWithAuth0(
         {
           onboardingStep: "nickname",
@@ -1831,10 +1841,12 @@ async function loginWithAuth0(appState, options = {}) {
         targetMypagePage: "top",
         ...appState,
       },
-      authorizationParams: {
-        screen_hint: "signup",
-      },
+      authorizationParams: {},
     };
+    const screenHint = typeof options.screenHint === "string" ? options.screenHint.trim() : "signup";
+    if (screenHint) {
+      loginOptions.authorizationParams.screen_hint = screenHint;
+    }
     if (connection) {
       loginOptions.authorizationParams.connection = connection;
     }

@@ -7112,7 +7112,7 @@ body.login-page .avater-item-body h3 {
   min-width: 0;
 }
 
-.onboarding-step[data-onboarding-step="welcome"] button[data-onboarding-goto="auth"] {
+.onboarding-step[data-onboarding-step="welcome"] button[data-auth-return="index"] {
   color: var(--primary);
   font-weight: 700;
   background: transparent;
@@ -8411,6 +8411,18 @@ body.manager-page .header-menu-block::before {
   display: block;
   writing-mode: vertical-rl;
   text-orientation: upright;
+}
+
+.login-pr-video {
+  display: block;
+  width: min(100%, 430px);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  object-fit: cover;
+  pointer-events: none;
 }
 
 .onboarding-step-actions > button[data-onboarding-nav],
