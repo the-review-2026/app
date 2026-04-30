@@ -62,6 +62,7 @@ export default {
 
 const AUTH0_JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const auth0JwksCache = new Map();
+const MANAGER_USER_ROLE = "user";
 const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const MANAGER_STATUSES = ["pending", "approved", "suspended"];
 const MANAGER_ROLE_PERMISSIONS = {
@@ -186,15 +187,22 @@ async function updateManagerMember(request, env, memberId) {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
+  const roleText = normalizeSupabaseText(body?.role);
   const role = normalizeManagerRole(body?.role);
+  const isUserRole = roleText === MANAGER_USER_ROLE;
   const status = normalizeManagerStatus(body?.status);
   const patch = {
     updated_at: new Date().toISOString(),
   };
-  if (role) {
+  if (isUserRole) {
+    patch.role = null;
+    patch.status = "pending";
+    patch.approved_at = null;
+    patch.approved_by = null;
+  } else if (role) {
     patch.role = role;
   }
-  if (status) {
+  if (!isUserRole && status) {
     patch.status = status;
     if (status === "approved") {
       patch.approved_at = new Date().toISOString();
@@ -204,7 +212,7 @@ async function updateManagerMember(request, env, memberId) {
       patch.approved_by = null;
     }
   }
-  if (!role && !status) {
+  if (!role && !status && !isUserRole) {
     return json({ error: "role or status is required" }, 400);
   }
 

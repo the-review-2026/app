@@ -1634,6 +1634,7 @@
         };
         const DEFAULT_API_BASE = "https://api.the-review.net";
         const MANAGER_ROLE_LABELS = {
+          user: "ユーザー",
           owner: "オーナー",
           developer: "デベロッパー",
           checker: "チェッカー",
@@ -2270,12 +2271,12 @@
           }
 
           elements.managerMembersStatus.textContent = visibleMembers.length
-            ? "役割と状態を選び、保存するとアクセス設定が反映されます。"
+            ? "付与させるステータスを選んでください。"
             : "一致するユーザーはいません。";
           elements.managerMembersList.innerHTML = visibleMembers
             .map((member) => {
               const id = member?.id || "";
-              const roleValue = member?.role || "developer";
+              const roleValue = member?.role || "user";
               const statusValue = member?.status || "pending";
               const name = getManagerMemberNickname(member);
               const sub = member?.email || member?.auth0_sub || "";
@@ -2329,7 +2330,7 @@
           const card = Array.from(elements.managerMembersList?.querySelectorAll("[data-manager-member-id]") || []).find(
             (item) => item.dataset.managerMemberId === memberId
           );
-          const role = card?.querySelector("[data-manager-member-role]")?.value || "developer";
+          const role = card?.querySelector("[data-manager-member-role]")?.value || "user";
           const status = card?.querySelector("[data-manager-member-status]")?.value || "pending";
           const saveButton = card?.querySelector("[data-manager-member-save]");
           if (saveButton) {
