@@ -5156,21 +5156,28 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 .settings-line-list .account-edit-row,
-.settings-line-list .account-action-row,
-.settings-line-list .education-code-setting-row {
+.settings-line-list .account-action-row {
   align-items: stretch;
 }
 
-.education-code-setting-row {
-  display: grid;
-  gap: 0.64rem;
+.education-code-section-title > span {
+  min-width: 0;
 }
 
-.education-code-setting-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.9rem;
+.education-code-status-badge {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 0.26rem 0.68rem;
+  background: #4f667a;
+  color: #ffffff;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.education-code-setting-content {
+  display: grid;
+  gap: 0.64rem;
 }
 
 .education-code-setting-field {

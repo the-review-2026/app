@@ -434,38 +434,6 @@
                 <span>Nickname</span>
                 <strong id="authNicknameText">未設定</strong>
               </div>
-              <div class="setting-row education-code-setting-row">
-                <div class="education-code-setting-head">
-                  <span>Education Code</span>
-                  <strong id="settingsEducationCodeStatusText">未設定</strong>
-                </div>
-                <div class="education-code-mode-actions">
-                  <div class="education-code-start-scan-wrap">
-                    <button id="settingsEducationCodeStartScanBtn" class="secondary education-code-action-btn" type="button">
-                      <span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>
-                      <span>QRコードを読みとる</span>
-                    </button>
-                  </div>
-                  <button id="settingsEducationCodeStopScanBtn" class="secondary education-code-action-btn" type="button" hidden>
-                    <span class="material-symbols-rounded" aria-hidden="true">stop_circle</span>
-                    <span>読みとりを停止する</span>
-                  </button>
-                </div>
-                <div id="settingsEducationCodeScanner" class="education-code-scanner" hidden>
-                  <video id="settingsEducationCodeVideo" class="education-code-video" playsinline muted></video>
-                </div>
-                <div class="education-code-setting-field">
-                  <label for="settingsEducationCodeInput">手入力で入力する</label>
-                  <div class="education-code-setting-input-row">
-                    <input id="settingsEducationCodeInput" type="text" inputmode="text" maxlength="32" autocomplete="off" />
-                    <button id="settingsEducationCodeSaveBtn" class="primary education-code-save-btn" type="button">
-                      <span class="material-symbols-rounded" aria-hidden="true">save</span>
-                      <span>保存</span>
-                    </button>
-                  </div>
-                  <p id="settingsEducationCodeFeedback" class="education-code-feedback" aria-live="polite"></p>
-                </div>
-              </div>
               <div class="setting-row account-edit-row">
                 <button id="accountEditBtn" class="secondary account-icon-button account-edit-button" type="button">
                   <span class="material-symbols-rounded" aria-hidden="true">edit</span>
@@ -481,6 +449,45 @@
                   <span class="material-symbols-rounded" aria-hidden="true">delete</span>
                   <span>削除する</span>
                 </button>
+              </div>
+            </div>
+          </section>
+
+        <section
+          id="settingsPanelEducationCode"
+          class="panel settings-section settings-tab-panel"
+          data-settings-panel="education-code"
+        >
+            <h2 class="education-code-section-title">
+              <span>Education Code</span>
+              <strong id="settingsEducationCodeStatusText" class="education-code-status-badge">未設定</strong>
+            </h2>
+            <div class="settings-section-content education-code-setting-content">
+              <div class="education-code-mode-actions">
+                <div class="education-code-start-scan-wrap">
+                  <button id="settingsEducationCodeStartScanBtn" class="secondary education-code-action-btn" type="button">
+                    <span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>
+                    <span>QRコードを読みとる</span>
+                  </button>
+                  <button id="settingsEducationCodeStopScanBtn" class="secondary education-code-action-btn" type="button" hidden>
+                    <span class="material-symbols-rounded" aria-hidden="true">stop_circle</span>
+                    <span>読みとりを停止する</span>
+                  </button>
+                </div>
+              </div>
+              <div id="settingsEducationCodeScanner" class="education-code-scanner" hidden>
+                <video id="settingsEducationCodeVideo" class="education-code-video" playsinline muted></video>
+              </div>
+              <div class="education-code-setting-field">
+                <label for="settingsEducationCodeInput">手入力で入力する</label>
+                <div class="education-code-setting-input-row">
+                  <input id="settingsEducationCodeInput" type="text" inputmode="text" maxlength="32" autocomplete="off" />
+                  <button id="settingsEducationCodeSaveBtn" class="primary education-code-save-btn" type="button">
+                    <span class="material-symbols-rounded" aria-hidden="true">save</span>
+                    <span>保存</span>
+                  </button>
+                </div>
+                <p id="settingsEducationCodeFeedback" class="education-code-feedback" aria-live="polite"></p>
               </div>
             </div>
           </section>

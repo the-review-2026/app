@@ -798,27 +798,51 @@ function normalizeSupabaseText(value) {
 }
 
 function normalizeEducationCode(value) {
-  return normalizeSupabaseText(value).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 32);
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value).normalize("NFKC").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 32);
 }
 
 function parseEducationCodes(env) {
   const map = new Map();
-  const rawConfig = typeof env?.EDUCATION_CODES === "string" ? env.EDUCATION_CODES.trim() : "";
-  if (!rawConfig) {
+  const rawConfigs = getEducationCodeRawConfigs(env);
+  if (rawConfigs.length === 0) {
     return map;
   }
 
+  rawConfigs.forEach((rawConfig) => {
+    addEducationCodeConfig(map, rawConfig);
+  });
+  return map;
+}
+
+function getEducationCodeRawConfigs(env) {
+  return ["EDUCATION_CODES", "EDUCATION_CODE", "EDUCATION_CODE_LIST", "SCHOOL_CODES", "SCHOOL_CODE"]
+    .map((key) => (typeof env?.[key] === "string" ? env[key].trim() : ""))
+    .filter(Boolean);
+}
+
+function addEducationCodeConfig(map, rawConfig) {
   try {
     const parsed = JSON.parse(rawConfig);
+    if (typeof parsed === "string") {
+      addEducationCodeEntriesFromText(map, parsed);
+      return;
+    }
+    if (typeof parsed === "number") {
+      addEducationCodeEntry(map, parsed, "", "");
+      return;
+    }
     if (Array.isArray(parsed)) {
       parsed.forEach((entry) => {
-        if (typeof entry === "string") {
+        if (typeof entry === "string" || typeof entry === "number") {
           addEducationCodeEntry(map, entry, "", "");
           return;
         }
         addEducationCodeEntry(map, entry?.code, entry?.schoolName ?? entry?.school_name, entry?.message);
       });
-      return map;
+      return;
     }
     if (parsed && typeof parsed === "object") {
       const codeList = Array.isArray(parsed.codes)
@@ -828,7 +852,7 @@ function parseEducationCodes(env) {
           : null;
       if (codeList) {
         codeList.forEach((entry) => {
-          if (typeof entry === "string") {
+          if (typeof entry === "string" || typeof entry === "number") {
             addEducationCodeEntry(map, entry, "", "");
             return;
           }
@@ -845,16 +869,23 @@ function parseEducationCodes(env) {
         }
         addEducationCodeEntry(map, code, entry?.schoolName ?? entry?.school_name, entry?.message);
       });
-      return map;
+      return;
     }
   } catch {
-    const entries = rawConfig.includes("|") ? rawConfig.split(/[;\n]/) : rawConfig.split(/[,\s;\n]+/);
-    entries.forEach((entry) => {
-      const [code, schoolName = "", message = ""] = entry.split("|").map((part) => part.trim());
-      addEducationCodeEntry(map, code, schoolName, message);
-    });
+    addEducationCodeEntriesFromText(map, rawConfig);
   }
-  return map;
+}
+
+function addEducationCodeEntriesFromText(map, value) {
+  const text = normalizeSupabaseText(value);
+  if (!text) {
+    return;
+  }
+  const entries = text.includes("|") ? text.split(/[;\n]/) : text.split(/[,\s;\n]+/);
+  entries.forEach((entry) => {
+    const [code, schoolName = "", message = ""] = entry.split("|").map((part) => part.trim());
+    addEducationCodeEntry(map, code, schoolName, message);
+  });
 }
 
 function addEducationCodeEntry(map, code, schoolName, message) {

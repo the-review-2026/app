@@ -50,7 +50,7 @@ const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
 const MYPAGE_PAGE_IDS = ["top"];
 const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings"];
-const SETTINGS_TAB_IDS = ["account", "review-data"];
+const SETTINGS_TAB_IDS = ["account", "education-code", "review-data"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const DEFAULT_TEXT_SETTINGS = {
   size: 100,
@@ -1062,7 +1062,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
-  const settingsLabels = ["Review Account", "Review Data"];
+  const settingsLabels = ["Review Account", "Education Code", "Review Data"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -2123,15 +2123,15 @@ async function syncReviewAccountProfileToApi() {
 }
 
 function updateManagerMenuVisibilityFromAccess(access) {
-  managerAccessState = access || null;
-  if (access) {
+  const role = typeof access?.member?.role === "string" ? access.member.role : "";
+  const status = access?.member?.status || access?.status;
+  const hasManagerRole = Boolean(access?.canAccess) && status === "approved" && Boolean(role);
+  managerAccessState = hasManagerRole ? access : null;
+  if (hasManagerRole) {
     saveManagerAccessCache(access);
   } else {
     clearManagerAccessCache();
   }
-  const role = typeof access?.member?.role === "string" ? access.member.role : "";
-  const status = access?.member?.status || access?.status;
-  const hasManagerRole = Boolean(access?.canAccess) && status === "approved" && Boolean(role);
   if (elements.managerMenuLink) {
     elements.managerMenuLink.hidden = !hasManagerRole;
   }
@@ -2172,6 +2172,7 @@ async function updateManagerMenuVisibility() {
     updateManagerMenuVisibilityFromAccess(null);
     return;
   }
+  elements.managerMenuLink.hidden = true;
 
   const accessToken = await withTimeout(
     getAuth0AccessTokenForApi(),
@@ -2180,6 +2181,7 @@ async function updateManagerMenuVisibility() {
     "Manager menu access token"
   );
   if (!accessToken) {
+    updateManagerMenuVisibilityFromAccess(null);
     return;
   }
 
@@ -5160,12 +5162,13 @@ function hasUnlimitedReviewCoins() {
   if (!state.auth.isLoggedIn || !managerAccessState) {
     return false;
   }
-  if (managerAccessState.canAccess === true) {
-    return true;
-  }
   const role = typeof managerAccessState?.member?.role === "string" ? managerAccessState.member.role : "";
   const status = managerAccessState?.member?.status || managerAccessState?.status;
-  return status === "approved" && ["owner", "developer", "checker", "system_designer", "character_designer"].includes(role);
+  return (
+    managerAccessState.canAccess === true &&
+    status === "approved" &&
+    ["owner", "developer", "checker", "system_designer", "character_designer"].includes(role)
+  );
 }
 
 function loadStoreConfig() {
@@ -7589,6 +7592,7 @@ function escapeHtml(text) {
 
 function normalizeEducationCodeValue(value) {
   return String(value ?? "")
+    .normalize("NFKC")
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
@@ -7609,6 +7613,14 @@ function extractEducationCodeFromQrText(rawValue) {
       parsedUrl.searchParams.get("code");
     if (byQuery) {
       return normalizeEducationCodeValue(byQuery);
+    }
+    const pathSegments = parsedUrl.pathname
+      .split("/")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const pathCode = pathSegments.at(-1);
+    if (pathCode && !pathCode.includes(".")) {
+      return normalizeEducationCodeValue(pathCode);
     }
   } catch {
     // URLでない場合はそのまま次の判定へ進む

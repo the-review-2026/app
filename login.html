@@ -122,9 +122,15 @@
           <p class="hint-text">入力すると、限定の教材・アイテムがご利用できます。QRコードを読みとるか、コードを入力してください。後からでも設定できます。</p>
           <div class="education-code-mode-actions">
             <div class="education-code-start-scan-wrap">
-              <button id="educationCodeStartScanBtn" class="secondary" type="button">QRコードを読みとる</button>
+              <button id="educationCodeStartScanBtn" class="secondary education-code-action-btn" type="button">
+                <span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>
+                <span>QRコードを読みとる</span>
+              </button>
+              <button id="educationCodeStopScanBtn" class="secondary education-code-action-btn" type="button" hidden>
+                <span class="material-symbols-rounded" aria-hidden="true">stop_circle</span>
+                <span>読みとりを停止する</span>
+              </button>
             </div>
-            <button id="educationCodeStopScanBtn" class="secondary" type="button" hidden>読みとりを停止する</button>
           </div>
           <div id="educationCodeScanner" class="education-code-scanner" hidden>
             <video id="educationCodeVideo" class="education-code-video" playsinline muted></video>
