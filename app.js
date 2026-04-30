@@ -134,6 +134,7 @@ const FLASHCARD_REMOTE_DEFAULT_DECK_ID = "ec1";
 const FLASHCARD_REMOTE_DEFAULT_UNIT = "Questions";
 const EDUCATION_CODE_MAX_LENGTH = 32;
 const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
+const EDUCATION_CODE_DUPLICATE_MESSAGE = "このEducation Codeはすでに追加されています。";
 const FLASHCARD_REMOTE_SUBJECT_ALIASES = {
   english: "ec1",
   "english-communication-i": "ec1",
@@ -364,6 +365,10 @@ const elements = {
   authNicknameText: document.getElementById("authNicknameText"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
   settingsEducationCodeStatusText: document.getElementById("settingsEducationCodeStatusText"),
+  settingsEducationCodeList: document.getElementById("settingsEducationCodeList"),
+  settingsEducationCodeAddBtn: document.getElementById("settingsEducationCodeAddBtn"),
+  settingsEducationCodeDialog: document.getElementById("settingsEducationCodeDialog"),
+  settingsEducationCodeForm: document.querySelector("#settingsEducationCodeDialog form"),
   settingsEducationCodeInput: document.getElementById("settingsEducationCodeInput"),
   settingsEducationCodeFeedback: document.getElementById("settingsEducationCodeFeedback"),
   settingsEducationCodeSaveBtn: document.getElementById("settingsEducationCodeSaveBtn"),
@@ -371,6 +376,7 @@ const elements = {
   settingsEducationCodeStopScanBtn: document.getElementById("settingsEducationCodeStopScanBtn"),
   settingsEducationCodeScanner: document.getElementById("settingsEducationCodeScanner"),
   settingsEducationCodeVideo: document.getElementById("settingsEducationCodeVideo"),
+  settingsEducationCodeActionButtons: Array.from(document.querySelectorAll("[data-settings-education-code-action]")),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
   accountEditBtn: document.getElementById("accountEditBtn"),
@@ -1172,14 +1178,35 @@ function bindEvents() {
     button.addEventListener("keydown", handleSettingsTabKeydown);
   });
 
+  elements.settingsEducationCodeAddBtn?.addEventListener("click", openSettingsEducationCodeDialog);
+  elements.settingsEducationCodeList?.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target.closest("[data-education-code-remove]") : null;
+    if (!target) {
+      return;
+    }
+    removeSettingsEducationCode(target.dataset.educationCodeRemove || "");
+  });
   elements.settingsEducationCodeInput?.addEventListener("input", handleSettingsEducationCodeInput);
   elements.settingsEducationCodeSaveBtn?.addEventListener("click", () => {
+    void saveSettingsEducationCode();
+  });
+  elements.settingsEducationCodeForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
     void saveSettingsEducationCode();
   });
   elements.settingsEducationCodeStartScanBtn?.addEventListener("click", () => {
     void startSettingsEducationCodeScanner();
   });
   elements.settingsEducationCodeStopScanBtn?.addEventListener("click", stopSettingsEducationCodeScanner);
+  elements.settingsEducationCodeActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.settingsEducationCodeAction === "close") {
+        closeSettingsEducationCodeDialog();
+      }
+    });
+  });
+  elements.settingsEducationCodeDialog?.addEventListener("cancel", handleSettingsEducationCodeDialogClose);
+  elements.settingsEducationCodeDialog?.addEventListener("close", handleSettingsEducationCodeDialogClose);
   window.addEventListener("beforeunload", stopSettingsEducationCodeScanner);
 
   elements.authLoginButtons.forEach((button) => {
@@ -5868,15 +5895,40 @@ function renderMypageSettings() {
 }
 
 function renderSettingsEducationCode() {
-  const savedCode = normalizeEducationCodeValue(state.settings.educationCode);
+  const savedCodes = getSavedEducationCodes();
   if (elements.settingsEducationCodeStatusText) {
-    elements.settingsEducationCodeStatusText.textContent = savedCode ? "設定済み" : "未設定";
+    elements.settingsEducationCodeStatusText.textContent = savedCodes.length ? `${savedCodes.length}件設定済み` : "未設定";
   }
-  if (elements.settingsEducationCodeInput && document.activeElement !== elements.settingsEducationCodeInput) {
-    elements.settingsEducationCodeInput.value = savedCode;
+  if (elements.settingsEducationCodeList) {
+    elements.settingsEducationCodeList.innerHTML = savedCodes.length
+      ? savedCodes
+          .map(
+            (code) => `
+              <article class="education-code-chip">
+                <span class="material-symbols-rounded" aria-hidden="true">verified</span>
+                <strong>${escapeHtml(code)}</strong>
+                <button class="secondary" type="button" data-education-code-remove="${escapeHtml(code)}" aria-label="${escapeHtml(code)}を削除">
+                  <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                </button>
+              </article>
+            `
+          )
+          .join("")
+      : '<p class="hint-text education-code-empty">Education Codeはまだ追加されていません。</p>';
   }
   syncSettingsEducationCodeSaveButton();
   syncSettingsEducationCodeScannerAvailability();
+}
+
+function getSavedEducationCodes() {
+  return normalizeEducationCodeList(state.settings.educationCodes, state.settings.educationCode);
+}
+
+function commitSettingsEducationCodes(codes) {
+  const normalizedCodes = normalizeEducationCodeList(codes);
+  state.settings.educationCodes = normalizedCodes;
+  state.settings.educationCode = normalizedCodes[0] || "";
+  saveState();
 }
 
 function getSettingsEducationCodeValue() {
@@ -5897,10 +5949,10 @@ function syncSettingsEducationCodeSaveButton() {
     return;
   }
   const value = getSettingsEducationCodeValue();
-  const savedCode = normalizeEducationCodeValue(state.settings.educationCode);
   const cachedState = settingsEducationCodeValidationState.value === value ? settingsEducationCodeValidationState : null;
-  const isKnownInvalid = Boolean(value && cachedState?.status === "invalid");
-  elements.settingsEducationCodeSaveBtn.disabled = value === savedCode || isKnownInvalid;
+  const isDuplicate = getSavedEducationCodes().includes(value);
+  const isKnownValid = Boolean(value && cachedState?.status === "valid" && cachedState?.isValid);
+  elements.settingsEducationCodeSaveBtn.disabled = !value || isDuplicate || !isKnownValid;
 }
 
 function resetSettingsEducationCodeValidationState() {
@@ -5912,21 +5964,38 @@ function resetSettingsEducationCodeValidationState() {
   };
 }
 
+function clearSettingsEducationCodeValidationTimer() {
+  if (settingsEducationCodeValidationTimerId) {
+    window.clearTimeout(settingsEducationCodeValidationTimerId);
+    settingsEducationCodeValidationTimerId = 0;
+  }
+}
+
 function handleSettingsEducationCodeInput() {
   if (!elements.settingsEducationCodeInput) {
     return;
   }
   elements.settingsEducationCodeInput.value = normalizeEducationCodeValue(elements.settingsEducationCodeInput.value);
-  if (settingsEducationCodeValidationTimerId) {
-    window.clearTimeout(settingsEducationCodeValidationTimerId);
-    settingsEducationCodeValidationTimerId = 0;
-  }
+  clearSettingsEducationCodeValidationTimer();
   settingsEducationCodeValidationRequestId += 1;
   resetSettingsEducationCodeValidationState();
   renderSettingsEducationCodeFeedback("", "");
   syncSettingsEducationCodeSaveButton();
 
-  if (getSettingsEducationCodeValue()) {
+  const value = getSettingsEducationCodeValue();
+  if (value && getSavedEducationCodes().includes(value)) {
+    settingsEducationCodeValidationState = {
+      value,
+      isValid: false,
+      message: EDUCATION_CODE_DUPLICATE_MESSAGE,
+      status: "invalid",
+    };
+    renderSettingsEducationCodeFeedback(EDUCATION_CODE_DUPLICATE_MESSAGE, "invalid");
+    syncSettingsEducationCodeSaveButton();
+    return;
+  }
+
+  if (value) {
     settingsEducationCodeValidationTimerId = window.setTimeout(() => {
       settingsEducationCodeValidationTimerId = 0;
       void validateSettingsEducationCodeInput();
@@ -5946,6 +6015,17 @@ async function validateSettingsEducationCodeInput() {
     renderSettingsEducationCodeFeedback("", "");
     syncSettingsEducationCodeSaveButton();
     return true;
+  }
+  if (getSavedEducationCodes().includes(value)) {
+    settingsEducationCodeValidationState = {
+      value,
+      isValid: false,
+      message: EDUCATION_CODE_DUPLICATE_MESSAGE,
+      status: "invalid",
+    };
+    renderSettingsEducationCodeFeedback(EDUCATION_CODE_DUPLICATE_MESSAGE, "invalid");
+    syncSettingsEducationCodeSaveButton();
+    return false;
   }
   if (settingsEducationCodeValidationState.value === value) {
     renderSettingsEducationCodeFeedback(
@@ -5975,13 +6055,60 @@ async function validateSettingsEducationCodeInput() {
 
 async function saveSettingsEducationCode() {
   const value = getSettingsEducationCodeValue();
+  if (!value) {
+    syncSettingsEducationCodeSaveButton();
+    return;
+  }
   if (!(await validateSettingsEducationCodeInput())) {
     return;
   }
-  state.settings.educationCode = value;
-  saveState();
+  commitSettingsEducationCodes([...getSavedEducationCodes(), value]);
   renderSettingsEducationCode();
-  renderSettingsEducationCodeFeedback(value ? "Education Codeを保存しました。" : "Education Codeを解除しました。", value ? "valid" : "");
+  renderSettingsEducationCodeFeedback("Education Codeを追加しました。", "valid");
+  closeSettingsEducationCodeDialog();
+}
+
+function removeSettingsEducationCode(code) {
+  const normalizedCode = normalizeEducationCodeValue(code);
+  if (!normalizedCode) {
+    return;
+  }
+  const nextCodes = getSavedEducationCodes().filter((savedCode) => savedCode !== normalizedCode);
+  commitSettingsEducationCodes(nextCodes);
+  renderSettingsEducationCode();
+}
+
+function openSettingsEducationCodeDialog() {
+  resetSettingsEducationCodeValidationState();
+  renderSettingsEducationCodeFeedback("", "");
+  if (elements.settingsEducationCodeInput) {
+    elements.settingsEducationCodeInput.value = "";
+  }
+  syncSettingsEducationCodeSaveButton();
+  syncSettingsEducationCodeScannerAvailability();
+  if (elements.settingsEducationCodeDialog && typeof elements.settingsEducationCodeDialog.showModal === "function") {
+    if (!elements.settingsEducationCodeDialog.open) {
+      elements.settingsEducationCodeDialog.showModal();
+    }
+    window.setTimeout(() => elements.settingsEducationCodeInput?.focus(), 0);
+    return;
+  }
+  elements.settingsEducationCodeInput?.focus();
+}
+
+function closeSettingsEducationCodeDialog() {
+  stopSettingsEducationCodeScanner();
+  clearSettingsEducationCodeValidationTimer();
+  settingsEducationCodeValidationRequestId += 1;
+  if (elements.settingsEducationCodeDialog?.open) {
+    elements.settingsEducationCodeDialog.close();
+  }
+}
+
+function handleSettingsEducationCodeDialogClose() {
+  stopSettingsEducationCodeScanner();
+  clearSettingsEducationCodeValidationTimer();
+  settingsEducationCodeValidationRequestId += 1;
 }
 
 function setSettingsEducationCodeScannerVisible(isVisible) {
@@ -7452,6 +7579,7 @@ function createDefaultState() {
       highContrast: false,
       monochrome: false,
       educationCode: "",
+      educationCodes: [],
       text: { ...DEFAULT_TEXT_SETTINGS },
       notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
       notificationTimeMinutes: DEFAULT_NOTIFICATION_TIME_MINUTES,
@@ -7571,13 +7699,15 @@ function normalizeSettingsState(value) {
   const unlockedThemes = normalizeThemeUnlockState(value?.unlockedThemes, { preservePremiumUnlocks });
   const theme = unlockedThemes[storedTheme] ? storedTheme : DEFAULT_THEME;
   unlockedThemes[theme] = true;
+  const educationCodes = normalizeEducationCodeList(value?.educationCodes, value?.educationCode ?? value?.schoolCode);
   return {
     theme,
     unlockedThemes,
     themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
     highContrast: normalizedMode.highContrast,
     monochrome: normalizedMode.monochrome,
-    educationCode: normalizeEducationCodeValue(value?.educationCode ?? value?.schoolCode),
+    educationCode: educationCodes[0] || "",
+    educationCodes,
     text: normalizeTextSettings(value?.text),
     notifications: normalizeNotificationSettings(value?.notifications),
     notificationTimeMinutes: normalizeNotificationTimeMinutes(
@@ -7789,6 +7919,26 @@ function normalizeEducationCodeValue(value) {
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, EDUCATION_CODE_MAX_LENGTH);
+}
+
+function normalizeEducationCodeList(value, legacyValue = "") {
+  const sourceValues = [];
+  if (Array.isArray(value)) {
+    sourceValues.push(...value);
+  } else if (typeof value === "string" || typeof value === "number") {
+    sourceValues.push(value);
+  }
+  if (legacyValue !== undefined && legacyValue !== null) {
+    sourceValues.push(legacyValue);
+  }
+  const codes = [];
+  sourceValues.forEach((item) => {
+    const code = normalizeEducationCodeValue(item);
+    if (code && !codes.includes(code)) {
+      codes.push(code);
+    }
+  });
+  return codes;
 }
 
 function extractEducationCodeFromQrText(rawValue) {
@@ -8174,8 +8324,12 @@ async function validateEducationCodeValue(value) {
   }
 
   function commitOnboardingEducationCode() {
-    state.settings.educationCode = getEducationCodeValue();
-    saveState();
+    const code = getEducationCodeValue();
+    if (code) {
+      commitSettingsEducationCodes([...getSavedEducationCodes(), code]);
+    } else {
+      saveState();
+    }
   }
 
   function getEducationCodeValue() {
@@ -8421,7 +8575,7 @@ async function validateEducationCodeValue(value) {
         ? initialDraft.educationCode
         : typeof initialDraft.schoolCode === "string"
           ? initialDraft.schoolCode
-          : state.settings.educationCode;
+          : getSavedEducationCodes()[0] || "";
     if (educationCodeInput && initialEducationCode) {
       educationCodeInput.value = normalizeEducationCodeValue(initialEducationCode);
     }
@@ -8462,8 +8616,9 @@ async function validateEducationCodeValue(value) {
     if (nicknameInput && state.auth?.nickname) {
       nicknameInput.value = normalizeNicknameText(state.auth.nickname);
     }
-    if (educationCodeInput && state.settings.educationCode) {
-      educationCodeInput.value = normalizeEducationCodeValue(state.settings.educationCode);
+    const savedEducationCode = getSavedEducationCodes()[0] || "";
+    if (educationCodeInput && savedEducationCode) {
+      educationCodeInput.value = normalizeEducationCodeValue(savedEducationCode);
     }
     applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
     applyOnboardingNotificationTimeMinutes(state.settings.notificationTimeMinutes);

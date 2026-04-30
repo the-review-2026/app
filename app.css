@@ -5199,6 +5199,64 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   gap: 0.64rem;
 }
 
+.education-code-list {
+  display: grid;
+  gap: 0.46rem;
+}
+
+.education-code-chip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.48rem;
+  border: 1px solid rgba(103, 132, 156, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.5rem 0.56rem;
+}
+
+.education-code-chip > .material-symbols-rounded {
+  color: var(--success);
+  font-size: 1.18rem;
+}
+
+.education-code-chip strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-main);
+  font-size: 0.92rem;
+}
+
+.education-code-chip button {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.education-code-chip button .material-symbols-rounded {
+  font-size: 1rem;
+}
+
+.education-code-empty {
+  margin-top: 0;
+}
+
+.education-code-add-btn {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.36rem;
+}
+
+.education-code-dialog {
+  width: min(420px, calc(100vw - 2rem));
+}
+
 .education-code-setting-field {
   display: grid;
   gap: 0.42rem;
