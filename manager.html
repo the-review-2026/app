@@ -1059,11 +1059,35 @@
 
       body.manager-page .manager-member-card {
         display: grid;
+        grid-template-columns: 4.4rem minmax(0, 1fr);
         gap: 0.64rem;
+        align-items: center;
         border: 1px solid rgba(0, 0, 0, 0.16);
         border-radius: 12px;
         background: #ffffff;
         padding: 0.84rem;
+      }
+
+      body.manager-page .manager-member-avatar {
+        width: 4.1rem;
+        aspect-ratio: 1 / 1.1;
+        align-self: start;
+        border-radius: 14px;
+        background:
+          radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.7), transparent 44%),
+          linear-gradient(135deg, rgba(75, 200, 225, 0.18), rgba(29, 29, 29, 0.06));
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      body.manager-page .manager-member-avatar .avater-base-image {
+        transform: scale(1.06);
+        transform-origin: center bottom;
+      }
+
+      body.manager-page .manager-member-main {
+        min-width: 0;
+        display: grid;
+        gap: 0.64rem;
       }
 
       body.manager-page .manager-member-meta {
@@ -1086,13 +1110,17 @@
 
       body.manager-page .manager-member-actions {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.55fr);
         gap: 0.52rem;
         align-items: center;
       }
 
       body.manager-page .manager-member-actions select {
         min-width: 0;
+      }
+
+      body.manager-page .manager-member-actions button {
+        width: 100%;
       }
 
       @media (max-width: 760px) {
@@ -2278,13 +2306,18 @@
 
               return `
                 <article class="manager-member-card" data-manager-member-id="${escapeHtml(id)}">
-                  <div class="manager-member-meta">
-                    <p class="manager-member-name">${escapeHtml(name)}</p>
-                    <p class="manager-member-sub">${escapeHtml(sub)}</p>
+                  <div class="manager-member-avatar avater-preview" aria-hidden="true">
+                    <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
                   </div>
-                  <div class="manager-member-actions">
-                    <select data-manager-member-role aria-label="役割">${roleOptions}</select>
-                    <button class="primary" type="button" data-manager-member-save>保存</button>
+                  <div class="manager-member-main">
+                    <div class="manager-member-meta">
+                      <p class="manager-member-name">${escapeHtml(name)}</p>
+                      <p class="manager-member-sub">${escapeHtml(sub)}</p>
+                    </div>
+                    <div class="manager-member-actions">
+                      <select data-manager-member-role aria-label="役割">${roleOptions}</select>
+                      <button class="primary" type="button" data-manager-member-save>保存</button>
+                    </div>
                   </div>
                 </article>
               `;
