@@ -85,6 +85,8 @@ const STORE_CONFIG_KEY = "the-review-store-config-v1";
 const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
 const INFO_NOTICE_READ_KEY = "the-review-info-notice-read-v1";
 const MANAGER_ACCESS_CACHE_KEY = "the-review-manager-access-v1";
+const REVIEW_ACCOUNT_SUPPORT_EMAIL = "support@the-review.net";
+const MANAGER_REVIEW_COIN_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const INFO_MENU_NOTICES = [
   {
     id: "20260429-review-account-update",
@@ -372,6 +374,9 @@ const elements = {
   authConfigHint: document.getElementById("authConfigHint"),
   accountEditBtn: document.getElementById("accountEditBtn"),
   accountEditDialog: document.getElementById("accountEditDialog"),
+  accountEditNicknameInput: document.getElementById("accountEditNicknameInput"),
+  accountEditNicknameFeedback: document.getElementById("accountEditNicknameFeedback"),
+  accountEditNicknameSaveBtn: document.getElementById("accountEditNicknameSaveBtn"),
   accountEditEmailText: document.getElementById("accountEditEmailText"),
   accountEditGoogleText: document.getElementById("accountEditGoogleText"),
   accountEditActionButtons: Array.from(document.querySelectorAll("[data-account-edit-action]")),
@@ -1362,11 +1367,11 @@ function bindEvents() {
     elements.accountEditBtn.addEventListener("click", openAccountEdit);
   }
 
+  elements.accountEditNicknameInput?.addEventListener("input", syncAccountEditNicknameSaveButton);
+
   elements.accountEditActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      if (button.dataset.accountEditAction === "close") {
-        closeAccountEditDialog();
-      }
+      void handleAccountEditAction(button.dataset.accountEditAction);
     });
   });
 
@@ -1896,6 +1901,11 @@ async function logoutAccount() {
 }
 
 function openAccountEdit() {
+  if (elements.accountEditNicknameInput) {
+    elements.accountEditNicknameInput.value = normalizeNicknameText(state.auth.nickname);
+  }
+  setAccountEditNicknameFeedback("", "");
+  syncAccountEditNicknameSaveButton();
   if (elements.accountEditEmailText) {
     elements.accountEditEmailText.textContent =
       state.auth.isLoggedIn && state.auth.provider !== "guest" ? state.auth.email ?? "未設定" : "Guest Modeでは未設定";
@@ -1911,6 +1921,152 @@ function openAccountEdit() {
       elements.accountEditDialog.showModal();
     }
   }
+}
+
+async function handleAccountEditAction(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "close") {
+    closeAccountEditDialog();
+    return;
+  }
+  if (normalizedAction === "nickname-save") {
+    await saveAccountEditNickname();
+    return;
+  }
+  if (normalizedAction === "password-reset") {
+    await requestReviewAccountPasswordReset();
+    return;
+  }
+  if (normalizedAction === "email-manage") {
+    openReviewAccountSupportMail("email");
+    return;
+  }
+  if (normalizedAction === "google-manage") {
+    openReviewAccountSupportMail("google");
+  }
+}
+
+function getAccountEditNicknameValue() {
+  return normalizeNicknameText(elements.accountEditNicknameInput?.value);
+}
+
+function syncAccountEditNicknameSaveButton() {
+  if (!elements.accountEditNicknameSaveBtn) {
+    return;
+  }
+  const nextNickname = getAccountEditNicknameValue();
+  const currentNickname = normalizeNicknameText(state.auth.nickname);
+  elements.accountEditNicknameSaveBtn.disabled =
+    !state.auth.isLoggedIn || state.auth.provider === "guest" || !nextNickname || nextNickname === currentNickname;
+}
+
+function setAccountEditNicknameFeedback(message, status = "") {
+  if (!elements.accountEditNicknameFeedback) {
+    return;
+  }
+  elements.accountEditNicknameFeedback.textContent = message;
+  elements.accountEditNicknameFeedback.classList.toggle("is-success", status === "success");
+  elements.accountEditNicknameFeedback.classList.toggle("is-error", status === "error");
+}
+
+async function saveAccountEditNickname() {
+  const nickname = getAccountEditNicknameValue();
+  if (!nickname) {
+    setAccountEditNicknameFeedback("Nicknameを入力してください。", "error");
+    syncAccountEditNicknameSaveButton();
+    return;
+  }
+  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+    setAccountEditNicknameFeedback("Review Accountでログインしてください。", "error");
+    syncAccountEditNicknameSaveButton();
+    return;
+  }
+
+  const previousAuth = { ...state.auth };
+  state.auth = normalizeAuthState({
+    ...state.auth,
+    nickname,
+  });
+  saveState();
+  renderMypageSettings();
+  syncAccountEditNicknameSaveButton();
+  setAccountEditNicknameFeedback("保存しています。", "");
+
+  const payload = await syncReviewAccountProfileToApi({ nickname });
+  if (!payload) {
+    state.auth = normalizeAuthState(previousAuth);
+    saveState();
+    renderMypageSettings();
+    syncAccountEditNicknameSaveButton();
+    setAccountEditNicknameFeedback("保存できませんでした。通信状態を確認してください。", "error");
+    return;
+  }
+
+  setAccountEditNicknameFeedback("Nicknameを保存しました。", "success");
+  syncAccountEditNicknameSaveButton();
+}
+
+async function requestReviewAccountPasswordReset() {
+  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+    openReviewAccountSupportMail("password");
+    return;
+  }
+  if (state.auth.provider === "google") {
+    openReviewAccountSupportMail("password");
+    return;
+  }
+
+  const email = typeof state.auth.email === "string" ? state.auth.email.trim() : "";
+  const connection = AUTH0_CONFIG.defaultConnection || "Username-Password-Authentication";
+  if (!email || !connection || !AUTH0_CONFIG.domain || !AUTH0_CONFIG.clientId) {
+    openReviewAccountSupportMail("password");
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://${AUTH0_CONFIG.domain}/dbconnections/change_password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_id: AUTH0_CONFIG.clientId,
+        email,
+        connection,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Password reset request failed: ${response.status}`);
+    }
+    window.alert("パスワード変更用のメールを送信しました。メールボックスを確認してください。");
+  } catch (error) {
+    console.warn("Failed to request Auth0 password reset:", error);
+    openReviewAccountSupportMail("password");
+  }
+}
+
+function openReviewAccountSupportMail(topic) {
+  const subjectByTopic = {
+    email: "Review Accountのメールアドレス変更",
+    password: "Review Accountのパスワード変更",
+    google: "Review AccountとGoogleアカウントの連携",
+  };
+  const subject = subjectByTopic[topic] || "Review Accountの設定変更";
+  const bodyLines = [
+    "The Review Production Teamへ",
+    "",
+    "次のReview Account設定を変更したいです。",
+    "",
+    `項目: ${subject}`,
+    `現在のメールアドレス: ${state.auth.email || "未設定"}`,
+    `Nickname: ${normalizeNicknameText(state.auth.nickname) || "未設定"}`,
+    "",
+    "対応をお願いします。",
+  ];
+  const url = `mailto:${REVIEW_ACCOUNT_SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+    bodyLines.join("\n")
+  )}`;
+  window.location.href = url;
 }
 
 function closeAccountEditDialog() {
@@ -2067,7 +2223,7 @@ async function getAuth0AccessTokenForApi() {
   }
 }
 
-async function syncReviewAccountProfileToApi() {
+async function syncReviewAccountProfileToApi(options = {}) {
   if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
     lastReviewAccountProfileSync = null;
     return null;
@@ -2084,6 +2240,10 @@ async function syncReviewAccountProfileToApi() {
     return null;
   }
 
+  const requestedNickname =
+    "nickname" in options ? normalizeNicknameText(options.nickname) : normalizeNicknameText(state.auth.nickname);
+  const body = requestedNickname ? { nickname: requestedNickname } : {};
+
   try {
     const response = await fetch(`${REVIEW_API_BASE_URL}/me`, {
       method: "POST",
@@ -2092,9 +2252,7 @@ async function syncReviewAccountProfileToApi() {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        nickname: normalizeNicknameText(state.auth.nickname),
-      }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       console.warn("Failed to sync Review Account profile:", response.status);
@@ -2103,6 +2261,7 @@ async function syncReviewAccountProfileToApi() {
     }
     const payload = await response.json().catch(() => null);
     lastReviewAccountProfileSync = payload;
+    applyReviewAccountProfilePayload(payload, { requestedNickname });
     if (payload?.managerMember) {
       const member = payload.managerMember;
       const role = typeof member?.role === "string" ? member.role : null;
@@ -2122,10 +2281,31 @@ async function syncReviewAccountProfileToApi() {
   }
 }
 
+function applyReviewAccountProfilePayload(payload, options = {}) {
+  if (!payload || !state.auth.isLoggedIn || state.auth.provider === "guest") {
+    return;
+  }
+  const requestedNickname = normalizeNicknameText(options.requestedNickname);
+  const serverNickname = normalizeNicknameText(payload?.user?.display_name || payload?.managerMember?.display_name);
+  const shouldUseServerNickname =
+    serverNickname && !looksLikeAuth0Subject(serverNickname) && (requestedNickname || payload.isNewReviewAccount === false);
+  const nextNickname = requestedNickname || (shouldUseServerNickname ? serverNickname : "");
+  if (!nextNickname || nextNickname === normalizeNicknameText(state.auth.nickname)) {
+    return;
+  }
+
+  state.auth = normalizeAuthState({
+    ...state.auth,
+    nickname: nextNickname,
+  });
+  saveState();
+  renderMypageSettings();
+}
+
 function updateManagerMenuVisibilityFromAccess(access) {
   const role = typeof access?.member?.role === "string" ? access.member.role : "";
   const status = access?.member?.status || access?.status;
-  const hasManagerRole = Boolean(access?.canAccess) && status === "approved" && Boolean(role);
+  const hasManagerRole = access?.canAccess !== false && status === "approved" && Boolean(role);
   managerAccessState = hasManagerRole ? access : null;
   if (hasManagerRole) {
     saveManagerAccessCache(access);
@@ -2168,11 +2348,13 @@ function loadManagerAccessCache() {
 }
 
 async function updateManagerMenuVisibility() {
-  if (!elements.managerMenuLink || !state.auth.isLoggedIn || state.auth.provider === "guest") {
+  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
     updateManagerMenuVisibilityFromAccess(null);
     return;
   }
-  elements.managerMenuLink.hidden = true;
+  if (elements.managerMenuLink) {
+    elements.managerMenuLink.hidden = !hasUnlimitedReviewCoins();
+  }
 
   const accessToken = await withTimeout(
     getAuth0AccessTokenForApi(),
@@ -2181,7 +2363,9 @@ async function updateManagerMenuVisibility() {
     "Manager menu access token"
   );
   if (!accessToken) {
-    updateManagerMenuVisibilityFromAccess(null);
+    if (!managerAccessState) {
+      updateManagerMenuVisibilityFromAccess(null);
+    }
     return;
   }
 
@@ -2193,13 +2377,18 @@ async function updateManagerMenuVisibility() {
       },
     });
     if (!response.ok) {
-      updateManagerMenuVisibilityFromAccess(null);
+      if (!managerAccessState) {
+        updateManagerMenuVisibilityFromAccess(null);
+      }
       return;
     }
     const access = await response.json();
     updateManagerMenuVisibilityFromAccess(access);
   } catch (error) {
     console.warn("Failed to check The Review Manager access:", error);
+    if (!managerAccessState) {
+      updateManagerMenuVisibilityFromAccess(null);
+    }
   }
 }
 
@@ -2280,6 +2469,17 @@ function detectAuthProviderFromUser(user) {
   return providerToken || "auth0";
 }
 
+function getStoredNicknameForAuth0User(user, value) {
+  const nickname = normalizeNicknameText(value);
+  if (!nickname) {
+    return "";
+  }
+  const authProfileValues = [user?.name, user?.nickname, user?.email, user?.sub]
+    .map((item) => normalizeNicknameText(item))
+    .filter(Boolean);
+  return authProfileValues.includes(nickname) ? "" : nickname;
+}
+
 function hasAuth0CallbackParams() {
   const params = new URLSearchParams(window.location.search);
   return params.has("state") && (params.has("code") || params.has("error"));
@@ -2320,7 +2520,7 @@ async function syncAuthStateFromAuth0(options = {}) {
       (typeof user?.name === "string" && user.name.trim()) ||
       (typeof user?.nickname === "string" && user.nickname.trim()) ||
       "Auth0 User",
-    nickname: state.auth?.nickname,
+    nickname: getStoredNicknameForAuth0User(user, state.auth?.nickname),
     email: typeof user?.email === "string" && user.email.trim() ? user.email : null,
   });
   saveState();
@@ -5164,11 +5364,7 @@ function hasUnlimitedReviewCoins() {
   }
   const role = typeof managerAccessState?.member?.role === "string" ? managerAccessState.member.role : "";
   const status = managerAccessState?.member?.status || managerAccessState?.status;
-  return (
-    managerAccessState.canAccess === true &&
-    status === "approved" &&
-    ["owner", "developer", "checker", "system_designer", "character_designer"].includes(role)
-  );
+  return managerAccessState.canAccess !== false && status === "approved" && MANAGER_REVIEW_COIN_ROLES.includes(role);
 }
 
 function loadStoreConfig() {
@@ -5647,6 +5843,9 @@ function renderMypageSettings() {
 
   if (elements.logoutBtn) {
     elements.logoutBtn.disabled = !state.auth.isLoggedIn;
+  }
+  if (elements.accountEditBtn) {
+    elements.accountEditBtn.disabled = !state.auth.isLoggedIn;
   }
   if (elements.deleteAccountBtn) {
     elements.deleteAccountBtn.disabled = !state.auth.isLoggedIn;
@@ -7472,12 +7671,7 @@ function normalizeAuthState(value) {
     isLoggedIn && typeof value?.displayName === "string" && value.displayName.trim()
       ? value.displayName.trim()
       : "Guest Mode";
-  const nickname =
-    isLoggedIn && normalizeNicknameText(value?.nickname)
-      ? normalizeNicknameText(value.nickname)
-      : isLoggedIn && displayName !== "Guest Mode"
-        ? normalizeNicknameText(displayName)
-        : "";
+  const nickname = isLoggedIn && normalizeNicknameText(value?.nickname) ? normalizeNicknameText(value.nickname) : "";
   const email = isLoggedIn && typeof value?.email === "string" && value.email.trim() ? value.email.trim() : null;
   return {
     isLoggedIn,
@@ -7490,6 +7684,10 @@ function normalizeAuthState(value) {
 
 function normalizeNicknameText(value) {
   return typeof value === "string" ? value.trim().slice(0, 24) : "";
+}
+
+function looksLikeAuth0Subject(value) {
+  return /^[a-z0-9_-]+\|/i.test(String(value || "").trim());
 }
 
 function normalizeAuth0Config(value) {
@@ -7962,8 +8160,7 @@ async function validateEducationCodeValue(value) {
     if (!nicknameInput) {
       return;
     }
-    const shouldLockNickname =
-      state.auth?.isLoggedIn && state.auth.provider !== "guest" && normalizeNicknameText(state.auth.nickname).length > 0;
+    const shouldLockNickname = false;
     nicknameInput.readOnly = shouldLockNickname;
     nicknameInput.setAttribute("aria-readonly", String(shouldLockNickname));
     nicknameInput.classList.toggle("is-readonly", shouldLockNickname);

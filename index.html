@@ -645,24 +645,39 @@
         <h3 id="accountEditDialogTitle">Review Accountを編集する</h3>
         <div class="account-edit-options">
           <article class="account-edit-option">
+            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">badge</span>
+            <div>
+              <h4>Nickname</h4>
+              <label class="account-edit-field" for="accountEditNicknameInput">
+                <span class="sr-only">Nickname</span>
+                <input id="accountEditNicknameInput" type="text" inputmode="text" autocomplete="nickname" maxlength="24" />
+              </label>
+              <p id="accountEditNicknameFeedback" class="account-edit-feedback" aria-live="polite"></p>
+              <button id="accountEditNicknameSaveBtn" class="primary" type="button" data-account-edit-action="nickname-save">保存する</button>
+            </div>
+          </article>
+          <article class="account-edit-option">
+            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">alternate_email</span>
             <div>
               <h4>メールアドレス</h4>
               <p id="accountEditEmailText">未設定</p>
-              <button class="secondary" type="button" disabled>変更する</button>
+              <button class="secondary" type="button" data-account-edit-action="email-manage">変更する</button>
             </div>
           </article>
           <article class="account-edit-option">
+            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">key</span>
             <div>
               <h4>パスワード</h4>
               <p>パスワードを変更する場合は変更用のメールを受けとる必要があります。</p>
-              <button class="secondary" type="button" disabled>メールを受けとって変更する</button>
+              <button class="secondary" type="button" data-account-edit-action="password-reset">メールを受けとって変更する</button>
             </div>
           </article>
           <article class="account-edit-option">
+            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">link</span>
             <div>
               <h4>Googleアカウントとの連携</h4>
               <p id="accountEditGoogleText">Googleアカウントとの連携状態を確認できます。</p>
-              <button class="secondary" type="button" disabled>連携を管理</button>
+              <button class="secondary" type="button" data-account-edit-action="google-manage">連携を管理</button>
             </div>
           </article>
         </div>

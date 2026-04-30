@@ -109,7 +109,17 @@ async function getManagerMe(request, env) {
     return json(context.body, context.status);
   }
 
-  const memberResult = await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
+  const auth0Sub = normalizeSupabaseText(context.claims?.sub);
+  const auth0MemberResult = auth0Sub
+    ? await getManagerMemberByAuth0Sub(context.supabase, auth0Sub)
+    : { ok: true, member: null };
+  if (!auth0MemberResult.ok) {
+    return json(auth0MemberResult.body, auth0MemberResult.status);
+  }
+
+  const memberResult = auth0MemberResult.member
+    ? auth0MemberResult
+    : await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
   if (!memberResult.ok) {
     return json(memberResult.body, memberResult.status);
   }
@@ -125,22 +135,12 @@ async function getManagerMe(request, env) {
 }
 
 async function getManagerAccess(request, env) {
-  const supabase = getSupabaseConfig(env);
-  if (!supabase) {
-    return json({ canAccess: false, status: "unconfigured", member: null, permissions: {} });
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
   }
 
-  const authResult = await authenticateRequest(request, env);
-  if (!authResult.ok) {
-    return json(authResult.body, authResult.status);
-  }
-
-  const auth0Sub = normalizeSupabaseText(authResult.claims?.sub);
-  if (!auth0Sub) {
-    return json({ canAccess: false, status: "unauthorized", member: null, permissions: {} }, 401);
-  }
-
-  const memberResult = await getManagerMemberByAuth0Sub(supabase, auth0Sub);
+  const memberResult = await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
   if (!memberResult.ok) {
     return json(memberResult.body, memberResult.status);
   }
@@ -294,12 +294,14 @@ async function upsertCurrentReviewAccount(request, env) {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  const nickname = normalizeSupabaseText(body?.value?.nickname);
-  const displayName = nickname || getDisplayNameFromClaims(context.claims);
+  const payload = body?.value && typeof body.value === "object" ? body.value : {};
+  const hasNicknamePatch = request.method !== "GET" && Object.prototype.hasOwnProperty.call(payload, "nickname");
+  const nickname = normalizeSupabaseText(payload.nickname);
+  const displayName = hasNicknamePatch && nickname ? nickname : normalizeSupabaseText(context.user?.display_name);
   let user = context.user;
-  if (user?.id && displayName && displayName !== user.display_name) {
+  if (user?.id && hasNicknamePatch && nickname && nickname !== user.display_name) {
     const updatedUser = await updateUserById(context.supabase, user.id, {
-      display_name: displayName,
+      display_name: nickname,
     });
     if (updatedUser.ok && updatedUser.user) {
       user = updatedUser.user;
@@ -308,6 +310,7 @@ async function upsertCurrentReviewAccount(request, env) {
 
   const memberResult = await getOrCreateManagerMember(context.supabase, user, context.claims, env, {
     displayName,
+    updateDisplayName: hasNicknamePatch && Boolean(nickname),
   });
   if (!memberResult.ok) {
     return json(memberResult.body, memberResult.status);
@@ -644,17 +647,36 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
     };
   }
 
-  const existing = await getManagerMemberByUserId(supabase, user.id);
+  const auth0Sub = normalizeSupabaseText(claims?.sub);
+  let existing = await getManagerMemberByUserId(supabase, user.id);
   if (!existing.ok) {
     return existing;
   }
+  if (!existing.member && auth0Sub) {
+    existing = await getManagerMemberByAuth0Sub(supabase, auth0Sub);
+    if (!existing.ok) {
+      return existing;
+    }
+  }
 
   const shouldBootstrapOwner = isBootstrapManagerOwner(claims, env);
-  const displayName = normalizeSupabaseText(profile?.displayName) || getDisplayNameFromClaims(claims);
+  const profileDisplayName = normalizeSupabaseText(profile?.displayName);
+  const shouldUpdateDisplayName = Boolean(profile?.updateDisplayName && profileDisplayName);
+  const displayName =
+    profileDisplayName || normalizeSupabaseText(user?.display_name) || getDisplayNameFromClaims(claims);
   const email = normalizeSupabaseText(profile?.email) || normalizeSupabaseText(claims?.email) || null;
   if (existing.member) {
     const patch = {};
-    if (displayName && displayName !== existing.member.display_name) {
+    if (existing.member.user_id !== user.id) {
+      patch.user_id = user.id;
+    }
+    if (auth0Sub && existing.member.auth0_sub !== auth0Sub) {
+      patch.auth0_sub = auth0Sub;
+    }
+    if (
+      displayName &&
+      (!existing.member.display_name || (shouldUpdateDisplayName && displayName !== existing.member.display_name))
+    ) {
       patch.display_name = displayName;
     }
     if (email !== (existing.member.email ?? null)) {
@@ -676,7 +698,7 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
 
   return createManagerMember(supabase, {
     user_id: user.id,
-    auth0_sub: normalizeSupabaseText(claims?.sub),
+    auth0_sub: auth0Sub,
     display_name: displayName,
     email,
     role: shouldBootstrapOwner ? "owner" : null,
