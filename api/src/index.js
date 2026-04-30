@@ -647,16 +647,21 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
   }
 
   const auth0Sub = normalizeSupabaseText(claims?.sub);
-  let existing = await getManagerMemberByUserId(supabase, user.id);
-  if (!existing.ok) {
-    return existing;
+  const existingByAuth0Sub = auth0Sub
+    ? await getManagerMemberByAuth0Sub(supabase, auth0Sub)
+    : { ok: true, member: null };
+  if (!existingByAuth0Sub.ok) {
+    return existingByAuth0Sub;
   }
-  if (!existing.member && auth0Sub) {
-    existing = await getManagerMemberByAuth0Sub(supabase, auth0Sub);
-    if (!existing.ok) {
-      return existing;
-    }
+
+  const existingByUserId = await getManagerMemberByUserId(supabase, user.id);
+  if (!existingByUserId.ok) {
+    return existingByUserId;
   }
+  const hasSeparateUserMember =
+    Boolean(existingByAuth0Sub.member && existingByUserId.member) &&
+    existingByAuth0Sub.member.id !== existingByUserId.member.id;
+  const existing = existingByAuth0Sub.member ? existingByAuth0Sub : existingByUserId;
 
   const shouldBootstrapOwner = isBootstrapManagerOwner(claims, env);
   const profileDisplayName = normalizeSupabaseText(profile?.displayName);
@@ -666,7 +671,7 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
   const email = normalizeSupabaseText(profile?.email) || normalizeSupabaseText(claims?.email) || null;
   if (existing.member) {
     const patch = {};
-    if (existing.member.user_id !== user.id) {
+    if (!hasSeparateUserMember && existing.member.user_id !== user.id) {
       patch.user_id = user.id;
     }
     if (auth0Sub && existing.member.auth0_sub !== auth0Sub) {

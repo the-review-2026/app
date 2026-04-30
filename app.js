@@ -85,6 +85,7 @@ const STORE_CONFIG_KEY = "the-review-store-config-v1";
 const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
 const INFO_NOTICE_READ_KEY = "the-review-info-notice-read-v1";
 const MANAGER_ACCESS_CACHE_KEY = "the-review-manager-access-v1";
+const MANAGER_ACCESS_TOKEN_TIMEOUT_MS = 7000;
 const REVIEW_ACCOUNT_SUPPORT_EMAIL = "support@the-review.net";
 const MANAGER_REVIEW_COIN_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const INFO_MENU_NOTICES = [
@@ -2231,7 +2232,7 @@ async function syncReviewAccountProfileToApi(options = {}) {
 
   const accessToken = await withTimeout(
     getAuth0AccessTokenForApi(),
-    2400,
+    MANAGER_ACCESS_TOKEN_TIMEOUT_MS,
     null,
     "Review Account profile sync token"
   );
@@ -2264,7 +2265,7 @@ async function syncReviewAccountProfileToApi(options = {}) {
     applyReviewAccountProfilePayload(payload, { requestedNickname });
     if (payload?.managerMember) {
       const member = payload.managerMember;
-      const role = typeof member?.role === "string" ? member.role : null;
+      const role = getManagerAccessRole({ member });
       const access = {
         canAccess: Boolean(role),
         status: role ? "member" : "user",
@@ -2303,7 +2304,7 @@ function applyReviewAccountProfilePayload(payload, options = {}) {
 }
 
 function updateManagerMenuVisibilityFromAccess(access) {
-  const role = typeof access?.member?.role === "string" ? access.member.role : "";
+  const role = getManagerAccessRole(access);
   const hasManagerRole = access?.canAccess !== false && Boolean(role);
   managerAccessState = hasManagerRole ? access : null;
   if (hasManagerRole) {
@@ -2329,21 +2330,11 @@ function clearManagerAccessCache() {
 }
 
 function saveManagerAccessCache(access) {
-  try {
-    window.sessionStorage.setItem(MANAGER_ACCESS_CACHE_KEY, JSON.stringify(access));
-  } catch {
-    // noop
-  }
+  // Manager権限はオーナー側でいつでも外せるため、古いキャッシュで表示しない。
 }
 
 function loadManagerAccessCache() {
-  try {
-    const raw = window.sessionStorage.getItem(MANAGER_ACCESS_CACHE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 async function updateManagerMenuVisibility() {
@@ -2357,7 +2348,7 @@ async function updateManagerMenuVisibility() {
 
   const accessToken = await withTimeout(
     getAuth0AccessTokenForApi(),
-    2200,
+    MANAGER_ACCESS_TOKEN_TIMEOUT_MS,
     null,
     "Manager menu access token"
   );
@@ -5361,8 +5352,13 @@ function hasUnlimitedReviewCoins() {
   if (!state.auth.isLoggedIn || !managerAccessState) {
     return false;
   }
-  const role = typeof managerAccessState?.member?.role === "string" ? managerAccessState.member.role : "";
+  const role = getManagerAccessRole(managerAccessState);
   return managerAccessState.canAccess !== false && MANAGER_REVIEW_COIN_ROLES.includes(role);
+}
+
+function getManagerAccessRole(access) {
+  const role = typeof access?.member?.role === "string" ? access.member.role.trim() : "";
+  return MANAGER_REVIEW_COIN_ROLES.includes(role) ? role : "";
 }
 
 function loadStoreConfig() {
