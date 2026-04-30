@@ -2266,8 +2266,8 @@ async function syncReviewAccountProfileToApi(options = {}) {
       const member = payload.managerMember;
       const role = typeof member?.role === "string" ? member.role : null;
       const access = {
-        canAccess: member?.status === "approved" && Boolean(role),
-        status: member?.status ?? "pending",
+        canAccess: Boolean(role),
+        status: role ? "member" : "user",
         member,
         permissions: managerAccessState?.permissions ?? {},
       };
@@ -2304,8 +2304,7 @@ function applyReviewAccountProfilePayload(payload, options = {}) {
 
 function updateManagerMenuVisibilityFromAccess(access) {
   const role = typeof access?.member?.role === "string" ? access.member.role : "";
-  const status = access?.member?.status || access?.status;
-  const hasManagerRole = access?.canAccess !== false && status === "approved" && Boolean(role);
+  const hasManagerRole = access?.canAccess !== false && Boolean(role);
   managerAccessState = hasManagerRole ? access : null;
   if (hasManagerRole) {
     saveManagerAccessCache(access);
@@ -5363,8 +5362,7 @@ function hasUnlimitedReviewCoins() {
     return false;
   }
   const role = typeof managerAccessState?.member?.role === "string" ? managerAccessState.member.role : "";
-  const status = managerAccessState?.member?.status || managerAccessState?.status;
-  return managerAccessState.canAccess !== false && status === "approved" && MANAGER_REVIEW_COIN_ROLES.includes(role);
+  return managerAccessState.canAccess !== false && MANAGER_REVIEW_COIN_ROLES.includes(role);
 }
 
 function loadStoreConfig() {

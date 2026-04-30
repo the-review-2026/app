@@ -1641,11 +1641,6 @@
           system_designer: "システムデザイナー",
           character_designer: "キャラクターデザイナー",
         };
-        const MANAGER_STATUS_LABELS = {
-          pending: "承認待ち",
-          approved: "承認済み",
-          suspended: "停止",
-        };
         const MANAGER_AVATER_CATEGORY_LABELS = {
           clothes: "うわぎ",
           glasses: "めがね",
@@ -2027,9 +2022,7 @@
               ? "確認中"
               : role
                 ? MANAGER_ROLE_LABELS[role] || role
-                : access.status === "pending"
-                  ? "承認待ち"
-                  : "未承認";
+                : MANAGER_ROLE_LABELS.user;
           }
 
           if (elements.managerMembersPanel) {
@@ -2057,7 +2050,7 @@
             const note = document.createElement("p");
             note.className = "hint-text manager-access-note";
             note.textContent =
-              "The Review Managerはチーム承認後に利用できます。承認されるまで、プロフィールでログイン情報を確認してください。";
+              "The Review Managerはユーザー以外の役割が付与されると利用できます。プロフィールでログイン情報を確認してください。";
             panel.append(note);
           }
         }
@@ -2246,7 +2239,7 @@
             state.managerMembers = Array.isArray(members) ? members : [];
             renderManagerMembers();
           } catch {
-            elements.managerMembersStatus.textContent = "チーム承認データを取得できませんでした。";
+            elements.managerMembersStatus.textContent = "ユーザー一覧を取得できませんでした。";
           }
         }
 
@@ -2265,26 +2258,22 @@
             : state.managerMembers;
 
           if (state.managerMembers.length === 0) {
-            elements.managerMembersStatus.textContent = "承認待ちのメンバーはいません。";
+            elements.managerMembersStatus.textContent = "表示できるユーザーはいません。";
             elements.managerMembersList.innerHTML = "";
             return;
           }
 
           elements.managerMembersStatus.textContent = visibleMembers.length
-            ? "付与させるステータスを選んでください。"
+            ? "付与する役割を選んでください。"
             : "一致するユーザーはいません。";
           elements.managerMembersList.innerHTML = visibleMembers
             .map((member) => {
               const id = member?.id || "";
               const roleValue = member?.role || "user";
-              const statusValue = member?.status || "pending";
               const name = getManagerMemberNickname(member);
               const sub = member?.email || member?.auth0_sub || "";
               const roleOptions = Object.entries(MANAGER_ROLE_LABELS)
                 .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === roleValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
-                .join("");
-              const statusOptions = Object.entries(MANAGER_STATUS_LABELS)
-                .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === statusValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
                 .join("");
 
               return `
@@ -2295,7 +2284,6 @@
                   </div>
                   <div class="manager-member-actions">
                     <select data-manager-member-role aria-label="役割">${roleOptions}</select>
-                    <select data-manager-member-status aria-label="承認状態">${statusOptions}</select>
                     <button class="primary" type="button" data-manager-member-save>保存</button>
                   </div>
                 </article>
@@ -2331,7 +2319,6 @@
             (item) => item.dataset.managerMemberId === memberId
           );
           const role = card?.querySelector("[data-manager-member-role]")?.value || "user";
-          const status = card?.querySelector("[data-manager-member-status]")?.value || "pending";
           const saveButton = card?.querySelector("[data-manager-member-save]");
           if (saveButton) {
             saveButton.disabled = true;
@@ -2355,7 +2342,7 @@
                 "Content-Type": "application/json",
                 Accept: "application/json",
               },
-              body: JSON.stringify({ role, status }),
+              body: JSON.stringify({ role }),
             });
             if (!response.ok) {
               throw new Error(`API ${response.status}`);

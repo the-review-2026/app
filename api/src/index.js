@@ -64,7 +64,6 @@ const AUTH0_JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const auth0JwksCache = new Map();
 const MANAGER_USER_ROLE = "user";
 const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
-const MANAGER_STATUSES = ["pending", "approved", "suspended"];
 const MANAGER_ROLE_PERMISSIONS = {
   owner: {
     manageSettings: true,
@@ -128,8 +127,8 @@ async function getManagerMe(request, env) {
   const member = memberResult.member;
   const role = normalizeManagerRole(member?.role);
   return json({
-    canAccess: member?.status === "approved" && Boolean(role),
-    status: member?.status ?? "pending",
+    canAccess: Boolean(role),
+    status: role ? "member" : "user",
     member,
     permissions: getManagerPermissions(role),
   });
@@ -149,8 +148,8 @@ async function getManagerAccess(request, env) {
   const member = memberResult.member;
   const role = normalizeManagerRole(member?.role);
   return json({
-    canAccess: member?.status === "approved" && Boolean(role),
-    status: member?.status ?? "none",
+    canAccess: Boolean(role),
+    status: role ? "member" : "user",
     member,
     permissions: getManagerPermissions(role),
   });
@@ -190,7 +189,6 @@ async function updateManagerMember(request, env, memberId) {
   const roleText = normalizeSupabaseText(body?.role);
   const role = normalizeManagerRole(body?.role);
   const isUserRole = roleText === MANAGER_USER_ROLE;
-  const status = normalizeManagerStatus(body?.status);
   const patch = {
     updated_at: new Date().toISOString(),
   };
@@ -201,19 +199,12 @@ async function updateManagerMember(request, env, memberId) {
     patch.approved_by = null;
   } else if (role) {
     patch.role = role;
+    patch.status = "approved";
+    patch.approved_at = new Date().toISOString();
+    patch.approved_by = access.member?.id ?? null;
   }
-  if (!isUserRole && status) {
-    patch.status = status;
-    if (status === "approved") {
-      patch.approved_at = new Date().toISOString();
-      patch.approved_by = access.member?.id ?? null;
-    } else {
-      patch.approved_at = null;
-      patch.approved_by = null;
-    }
-  }
-  if (!role && !status && !isUserRole) {
-    return json({ error: "role or status is required" }, 400);
+  if (!role && !isUserRole) {
+    return json({ error: "role is required" }, 400);
   }
 
   const response = await supabaseRequest(access.supabase, `/manager_members?id=eq.${encodeURIComponent(memberId)}`, {
@@ -243,12 +234,12 @@ async function requireManagerOwner(request, env) {
     return memberResult;
   }
 
-  if (memberResult.member?.status !== "approved" || memberResult.member?.role !== "owner") {
+  if (memberResult.member?.role !== "owner") {
     return {
       ok: false,
       status: 403,
       body: {
-        error: "Only approved owners can manage The Review Manager members.",
+        error: "Only owners can manage The Review Manager members.",
       },
     };
   }
@@ -802,11 +793,6 @@ function isBootstrapManagerOwner(claims, env) {
 function normalizeManagerRole(value) {
   const role = normalizeSupabaseText(value);
   return MANAGER_ROLES.includes(role) ? role : null;
-}
-
-function normalizeManagerStatus(value) {
-  const status = normalizeSupabaseText(value);
-  return MANAGER_STATUSES.includes(status) ? status : null;
 }
 
 function getManagerPermissions(role) {
