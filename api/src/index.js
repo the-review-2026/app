@@ -326,7 +326,8 @@ async function validateEducationCode(request, env) {
     return json({ valid: false, message: "Invalid JSON body" }, 400);
   }
 
-  const code = normalizeEducationCode(body?.value?.code);
+  const payload = body?.value && typeof body.value === "object" ? body.value : body && typeof body === "object" ? body : {};
+  const code = normalizeEducationCode(payload.code ?? payload.educationCode ?? payload.schoolCode);
   if (!code) {
     return json({ valid: true, message: "" });
   }
@@ -811,12 +812,33 @@ function parseEducationCodes(env) {
     const parsed = JSON.parse(rawConfig);
     if (Array.isArray(parsed)) {
       parsed.forEach((entry) => {
+        if (typeof entry === "string") {
+          addEducationCodeEntry(map, entry, "", "");
+          return;
+        }
         addEducationCodeEntry(map, entry?.code, entry?.schoolName ?? entry?.school_name, entry?.message);
       });
       return map;
     }
     if (parsed && typeof parsed === "object") {
+      const codeList = Array.isArray(parsed.codes)
+        ? parsed.codes
+        : Array.isArray(parsed.educationCodes)
+          ? parsed.educationCodes
+          : null;
+      if (codeList) {
+        codeList.forEach((entry) => {
+          if (typeof entry === "string") {
+            addEducationCodeEntry(map, entry, "", "");
+            return;
+          }
+          addEducationCodeEntry(map, entry?.code, entry?.schoolName ?? entry?.school_name, entry?.message);
+        });
+      }
       Object.entries(parsed).forEach(([code, entry]) => {
+        if (code === "codes" || code === "educationCodes") {
+          return;
+        }
         if (typeof entry === "string") {
           addEducationCodeEntry(map, code, entry, "");
           return;
@@ -826,7 +848,8 @@ function parseEducationCodes(env) {
       return map;
     }
   } catch {
-    rawConfig.split(/[;\n]/).forEach((entry) => {
+    const entries = rawConfig.includes("|") ? rawConfig.split(/[;\n]/) : rawConfig.split(/[,\s;\n]+/);
+    entries.forEach((entry) => {
       const [code, schoolName = "", message = ""] = entry.split("|").map((part) => part.trim());
       addEducationCodeEntry(map, code, schoolName, message);
     });

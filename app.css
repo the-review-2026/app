@@ -5156,8 +5156,54 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 }
 
 .settings-line-list .account-edit-row,
-.settings-line-list .account-action-row {
+.settings-line-list .account-action-row,
+.settings-line-list .education-code-setting-row {
   align-items: stretch;
+}
+
+.education-code-setting-row {
+  display: grid;
+  gap: 0.64rem;
+}
+
+.education-code-setting-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.education-code-setting-field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.education-code-setting-field label {
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.education-code-setting-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.education-code-save-btn,
+.education-code-action-btn {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.36rem;
+  white-space: normal;
+}
+
+.education-code-action-btn .material-symbols-rounded,
+.education-code-save-btn .material-symbols-rounded {
+  font-size: 1.14rem;
+  line-height: 1;
 }
 
 .account-edit-row {

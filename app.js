@@ -129,6 +129,8 @@ const REVIEW_API_AUDIENCE = "https://api.the-review.net";
 const FLASHCARD_QUESTIONS_API_URL = "https://api.the-review.net/questions";
 const FLASHCARD_REMOTE_DEFAULT_DECK_ID = "ec1";
 const FLASHCARD_REMOTE_DEFAULT_UNIT = "Questions";
+const EDUCATION_CODE_MAX_LENGTH = 32;
+const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
 const FLASHCARD_REMOTE_SUBJECT_ALIASES = {
   english: "ec1",
   "english-communication-i": "ec1",
@@ -358,6 +360,14 @@ const elements = {
   avaterScrollLockBtn: document.getElementById("avaterScrollLockBtn"),
   authNicknameText: document.getElementById("authNicknameText"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
+  settingsEducationCodeStatusText: document.getElementById("settingsEducationCodeStatusText"),
+  settingsEducationCodeInput: document.getElementById("settingsEducationCodeInput"),
+  settingsEducationCodeFeedback: document.getElementById("settingsEducationCodeFeedback"),
+  settingsEducationCodeSaveBtn: document.getElementById("settingsEducationCodeSaveBtn"),
+  settingsEducationCodeStartScanBtn: document.getElementById("settingsEducationCodeStartScanBtn"),
+  settingsEducationCodeStopScanBtn: document.getElementById("settingsEducationCodeStopScanBtn"),
+  settingsEducationCodeScanner: document.getElementById("settingsEducationCodeScanner"),
+  settingsEducationCodeVideo: document.getElementById("settingsEducationCodeVideo"),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
   accountEditBtn: document.getElementById("accountEditBtn"),
@@ -481,6 +491,18 @@ let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
 let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
+let settingsEducationCodeScanStream = null;
+let settingsEducationCodeScanFrameId = 0;
+let settingsEducationCodeScanActive = false;
+let settingsEducationCodeDetector = null;
+let settingsEducationCodeValidationTimerId = 0;
+let settingsEducationCodeValidationRequestId = 0;
+let settingsEducationCodeValidationState = {
+  value: "",
+  isValid: true,
+  message: "",
+  status: "",
+};
 let managerAccessState = loadManagerAccessCache();
 let lastReviewAccountProfileSync = null;
 let activeAvaterCategory = "clothes";
@@ -1144,6 +1166,16 @@ function bindEvents() {
     button.addEventListener("keydown", handleSettingsTabKeydown);
   });
 
+  elements.settingsEducationCodeInput?.addEventListener("input", handleSettingsEducationCodeInput);
+  elements.settingsEducationCodeSaveBtn?.addEventListener("click", () => {
+    void saveSettingsEducationCode();
+  });
+  elements.settingsEducationCodeStartScanBtn?.addEventListener("click", () => {
+    void startSettingsEducationCodeScanner();
+  });
+  elements.settingsEducationCodeStopScanBtn?.addEventListener("click", stopSettingsEducationCodeScanner);
+  window.addEventListener("beforeunload", stopSettingsEducationCodeScanner);
+
   elements.authLoginButtons.forEach((button) => {
     button.addEventListener("click", async () => {
       const provider = normalizeAuthLoginProvider(button.dataset.authProvider);
@@ -1567,6 +1599,9 @@ function activateScreen(screen) {
   if (normalizedScreen !== "learn") {
     closeLearnPopover();
     document.body.classList.remove("learn-timer-page-open");
+  }
+  if (normalizedScreen !== "settings") {
+    stopSettingsEducationCodeScanner();
   }
   activeScreen = normalizedScreen;
   elements.screens.forEach((element) => {
@@ -5633,6 +5668,222 @@ function renderMypageSettings() {
   }
 
   renderTextSettingIndicators();
+  renderSettingsEducationCode();
+}
+
+function renderSettingsEducationCode() {
+  const savedCode = normalizeEducationCodeValue(state.settings.educationCode);
+  if (elements.settingsEducationCodeStatusText) {
+    elements.settingsEducationCodeStatusText.textContent = savedCode ? "設定済み" : "未設定";
+  }
+  if (elements.settingsEducationCodeInput && document.activeElement !== elements.settingsEducationCodeInput) {
+    elements.settingsEducationCodeInput.value = savedCode;
+  }
+  syncSettingsEducationCodeSaveButton();
+  syncSettingsEducationCodeScannerAvailability();
+}
+
+function getSettingsEducationCodeValue() {
+  return normalizeEducationCodeValue(elements.settingsEducationCodeInput?.value);
+}
+
+function renderSettingsEducationCodeFeedback(message, status) {
+  if (!elements.settingsEducationCodeFeedback) {
+    return;
+  }
+  elements.settingsEducationCodeFeedback.textContent = message;
+  elements.settingsEducationCodeFeedback.classList.toggle("is-valid", status === "valid");
+  elements.settingsEducationCodeFeedback.classList.toggle("is-invalid", status === "invalid");
+}
+
+function syncSettingsEducationCodeSaveButton() {
+  if (!elements.settingsEducationCodeSaveBtn) {
+    return;
+  }
+  const value = getSettingsEducationCodeValue();
+  const savedCode = normalizeEducationCodeValue(state.settings.educationCode);
+  const cachedState = settingsEducationCodeValidationState.value === value ? settingsEducationCodeValidationState : null;
+  const isKnownInvalid = Boolean(value && cachedState?.status === "invalid");
+  elements.settingsEducationCodeSaveBtn.disabled = value === savedCode || isKnownInvalid;
+}
+
+function resetSettingsEducationCodeValidationState() {
+  settingsEducationCodeValidationState = {
+    value: "",
+    isValid: false,
+    message: "",
+    status: "",
+  };
+}
+
+function handleSettingsEducationCodeInput() {
+  if (!elements.settingsEducationCodeInput) {
+    return;
+  }
+  elements.settingsEducationCodeInput.value = normalizeEducationCodeValue(elements.settingsEducationCodeInput.value);
+  if (settingsEducationCodeValidationTimerId) {
+    window.clearTimeout(settingsEducationCodeValidationTimerId);
+    settingsEducationCodeValidationTimerId = 0;
+  }
+  settingsEducationCodeValidationRequestId += 1;
+  resetSettingsEducationCodeValidationState();
+  renderSettingsEducationCodeFeedback("", "");
+  syncSettingsEducationCodeSaveButton();
+
+  if (getSettingsEducationCodeValue()) {
+    settingsEducationCodeValidationTimerId = window.setTimeout(() => {
+      settingsEducationCodeValidationTimerId = 0;
+      void validateSettingsEducationCodeInput();
+    }, 360);
+  }
+}
+
+async function validateSettingsEducationCodeInput() {
+  const value = getSettingsEducationCodeValue();
+  if (!value) {
+    settingsEducationCodeValidationState = {
+      value: "",
+      isValid: true,
+      message: "",
+      status: "",
+    };
+    renderSettingsEducationCodeFeedback("", "");
+    syncSettingsEducationCodeSaveButton();
+    return true;
+  }
+  if (settingsEducationCodeValidationState.value === value) {
+    renderSettingsEducationCodeFeedback(
+      settingsEducationCodeValidationState.message,
+      settingsEducationCodeValidationState.status
+    );
+    syncSettingsEducationCodeSaveButton();
+    return settingsEducationCodeValidationState.isValid;
+  }
+
+  const requestId = ++settingsEducationCodeValidationRequestId;
+  renderSettingsEducationCodeFeedback("Education Codeを確認しています。", "");
+  const result = await validateEducationCodeValue(value);
+  if (requestId !== settingsEducationCodeValidationRequestId) {
+    return false;
+  }
+  settingsEducationCodeValidationState = {
+    value,
+    isValid: result.isValid,
+    message: result.message,
+    status: result.status,
+  };
+  renderSettingsEducationCodeFeedback(result.message, result.status);
+  syncSettingsEducationCodeSaveButton();
+  return result.isValid;
+}
+
+async function saveSettingsEducationCode() {
+  const value = getSettingsEducationCodeValue();
+  if (!(await validateSettingsEducationCodeInput())) {
+    return;
+  }
+  state.settings.educationCode = value;
+  saveState();
+  renderSettingsEducationCode();
+  renderSettingsEducationCodeFeedback(value ? "Education Codeを保存しました。" : "Education Codeを解除しました。", value ? "valid" : "");
+}
+
+function setSettingsEducationCodeScannerVisible(isVisible) {
+  if (elements.settingsEducationCodeScanner) {
+    elements.settingsEducationCodeScanner.hidden = !isVisible;
+  }
+  if (elements.settingsEducationCodeStartScanBtn) {
+    elements.settingsEducationCodeStartScanBtn.hidden = Boolean(isVisible);
+  }
+  if (elements.settingsEducationCodeStopScanBtn) {
+    elements.settingsEducationCodeStopScanBtn.hidden = !Boolean(isVisible);
+  }
+}
+
+function stopSettingsEducationCodeScanner() {
+  settingsEducationCodeScanActive = false;
+  if (settingsEducationCodeScanFrameId) {
+    window.cancelAnimationFrame(settingsEducationCodeScanFrameId);
+    settingsEducationCodeScanFrameId = 0;
+  }
+  if (settingsEducationCodeScanStream) {
+    settingsEducationCodeScanStream.getTracks().forEach((track) => track.stop());
+    settingsEducationCodeScanStream = null;
+  }
+  if (elements.settingsEducationCodeVideo) {
+    elements.settingsEducationCodeVideo.pause();
+    elements.settingsEducationCodeVideo.srcObject = null;
+  }
+  setSettingsEducationCodeScannerVisible(false);
+}
+
+function applySettingsEducationCodeValue(nextValue) {
+  if (!elements.settingsEducationCodeInput) {
+    return;
+  }
+  elements.settingsEducationCodeInput.value = normalizeEducationCodeValue(nextValue);
+  handleSettingsEducationCodeInput();
+}
+
+async function scanSettingsEducationCodeFrame() {
+  if (!settingsEducationCodeScanActive || !settingsEducationCodeDetector || !elements.settingsEducationCodeVideo) {
+    return;
+  }
+
+  try {
+    if (elements.settingsEducationCodeVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      const detections = await settingsEducationCodeDetector.detect(elements.settingsEducationCodeVideo);
+      const detectedCode = extractEducationCodeFromQrText(detections?.[0]?.rawValue);
+      if (detectedCode) {
+        applySettingsEducationCodeValue(detectedCode);
+        stopSettingsEducationCodeScanner();
+        return;
+      }
+    }
+  } catch {
+    stopSettingsEducationCodeScanner();
+    return;
+  }
+
+  settingsEducationCodeScanFrameId = window.requestAnimationFrame(() => {
+    void scanSettingsEducationCodeFrame();
+  });
+}
+
+async function startSettingsEducationCodeScanner() {
+  const canUseQrScan = "BarcodeDetector" in window && Boolean(navigator.mediaDevices?.getUserMedia);
+  if (!canUseQrScan) {
+    return;
+  }
+
+  stopSettingsEducationCodeScanner();
+  setSettingsEducationCodeScannerVisible(true);
+
+  try {
+    if (!settingsEducationCodeDetector) {
+      settingsEducationCodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
+    }
+    settingsEducationCodeScanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+    if (!elements.settingsEducationCodeVideo) {
+      throw new Error("Video element is unavailable.");
+    }
+    elements.settingsEducationCodeVideo.srcObject = settingsEducationCodeScanStream;
+    await elements.settingsEducationCodeVideo.play();
+    settingsEducationCodeScanActive = true;
+    void scanSettingsEducationCodeFrame();
+  } catch {
+    stopSettingsEducationCodeScanner();
+  }
+}
+
+function syncSettingsEducationCodeScannerAvailability() {
+  const canUseQrScan = "BarcodeDetector" in window && Boolean(navigator.mediaDevices?.getUserMedia);
+  if (elements.settingsEducationCodeStartScanBtn) {
+    elements.settingsEducationCodeStartScanBtn.disabled = !canUseQrScan;
+  }
 }
 
 function renderAuthPanel() {
@@ -7004,6 +7255,7 @@ function createDefaultState() {
       themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
       highContrast: false,
       monochrome: false,
+      educationCode: "",
       text: { ...DEFAULT_TEXT_SETTINGS },
       notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
       notificationTimeMinutes: DEFAULT_NOTIFICATION_TIME_MINUTES,
@@ -7129,6 +7381,7 @@ function normalizeSettingsState(value) {
     themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
     highContrast: normalizedMode.highContrast,
     monochrome: normalizedMode.monochrome,
+    educationCode: normalizeEducationCodeValue(value?.educationCode ?? value?.schoolCode),
     text: normalizeTextSettings(value?.text),
     notifications: normalizeNotificationSettings(value?.notifications),
     notificationTimeMinutes: normalizeNotificationTimeMinutes(
@@ -7334,6 +7587,90 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
+function normalizeEducationCodeValue(value) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, EDUCATION_CODE_MAX_LENGTH);
+}
+
+function extractEducationCodeFromQrText(rawValue) {
+  const text = String(rawValue ?? "").trim();
+  if (!text) {
+    return "";
+  }
+
+  try {
+    const parsedUrl = new URL(text, window.location.origin);
+    const byQuery =
+      parsedUrl.searchParams.get("educationCode") ||
+      parsedUrl.searchParams.get("schoolCode") ||
+      parsedUrl.searchParams.get("code");
+    if (byQuery) {
+      return normalizeEducationCodeValue(byQuery);
+    }
+  } catch {
+    // URLでない場合はそのまま次の判定へ進む
+  }
+
+  const keyValueMatch = text.match(/(?:educationCode|schoolCode|code)\s*[:=]\s*([A-Za-z0-9_-]+)/i);
+  if (keyValueMatch?.[1]) {
+    return normalizeEducationCodeValue(keyValueMatch[1]);
+  }
+
+  return normalizeEducationCodeValue(text);
+}
+
+function getEducationCodeValidationMessage(isValid, json = {}) {
+  if (!isValid) {
+    return EDUCATION_CODE_INVALID_MESSAGE;
+  }
+  const schoolName = typeof json.schoolName === "string" ? json.schoolName.trim() : "";
+  const serverMessage = typeof json.message === "string" ? json.message.trim() : "";
+  return serverMessage || (schoolName ? `これは${schoolName}のEducation Codeです。` : "Education Codeを確認しました。");
+}
+
+async function validateEducationCodeValue(value) {
+  const code = normalizeEducationCodeValue(value);
+  if (!code) {
+    return {
+      code,
+      isValid: true,
+      message: "",
+      status: "",
+    };
+  }
+
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/education-codes/validate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ code }),
+    });
+    const json = await response.json().catch(() => ({}));
+    const isValid = response.ok && Boolean(json?.valid ?? json?.isValid ?? json?.ok);
+    return {
+      code,
+      isValid,
+      message: getEducationCodeValidationMessage(isValid, json),
+      schoolName: typeof json?.schoolName === "string" ? json.schoolName.trim() : "",
+      status: isValid ? "valid" : "invalid",
+    };
+  } catch {
+    return {
+      code,
+      isValid: false,
+      message: EDUCATION_CODE_INVALID_MESSAGE,
+      schoolName: "",
+      status: "invalid",
+    };
+  }
+}
+
 // Login page onboarding script (moved from login.html)
 (() => {
   const DRAFT_STORAGE_KEY = "the-review-login-onboarding-v1";
@@ -7366,7 +7703,6 @@ function escapeHtml(text) {
   const onboardingFixedStepLabel = document.getElementById("onboardingFixedStepLabel");
   const onboardingFixedStepNumber = document.getElementById("onboardingFixedStepNumber");
   const onboardingFixedStepCurrent = document.getElementById("onboardingFixedStepCurrent");
-  const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
   const ONBOARDING_PROGRESS_TOTAL = 5;
   const ONBOARDING_PROGRESS_BY_STEP = {
     terms: 1,
@@ -7634,8 +7970,13 @@ function escapeHtml(text) {
     void syncReviewAccountProfileToApi();
   }
 
+  function commitOnboardingEducationCode() {
+    state.settings.educationCode = getEducationCodeValue();
+    saveState();
+  }
+
   function getEducationCodeValue() {
-    return String(educationCodeInput?.value ?? "").trim().toUpperCase();
+    return normalizeEducationCodeValue(educationCodeInput?.value);
   }
 
   function renderEducationCodeFeedback(message, status) {
@@ -7685,21 +8026,9 @@ function escapeHtml(text) {
 
     const requestId = ++educationCodeValidationRequestId;
     try {
-      const response = await fetch(`${REVIEW_API_BASE_URL}/education-codes/validate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ code: value }),
-      });
-      const json = await response.json().catch(() => null);
-      const isValid = response.ok && Boolean(json?.valid ?? json?.isValid ?? json?.ok);
-      const schoolName = typeof json?.schoolName === "string" ? json.schoolName.trim() : "";
-      const serverMessage = typeof json?.message === "string" ? json.message.trim() : "";
-      const message = isValid
-        ? serverMessage || (schoolName ? `これは${schoolName}のEducation Codeです。` : "Education Codeを確認しました。")
-        : EDUCATION_CODE_INVALID_MESSAGE;
+      const result = await validateEducationCodeValue(value);
+      const isValid = result.isValid;
+      const message = result.message;
       if (requestId !== educationCodeValidationRequestId) {
         return false;
       }
@@ -7756,37 +8085,14 @@ function escapeHtml(text) {
   }
 
   function extractEducationCodeFromQr(rawValue) {
-    const text = String(rawValue ?? "").trim();
-    if (!text) {
-      return "";
-    }
-
-    try {
-      const parsedUrl = new URL(text);
-      const byQuery =
-        parsedUrl.searchParams.get("educationCode") ||
-        parsedUrl.searchParams.get("schoolCode") ||
-        parsedUrl.searchParams.get("code");
-      if (byQuery) {
-        return byQuery.trim().toUpperCase().slice(0, 20);
-      }
-    } catch {
-      // URLでない場合はそのまま次の判定へ進む
-    }
-
-    const keyValueMatch = text.match(/(?:educationCode|schoolCode|code)\s*[:=]\s*([A-Za-z0-9_-]+)/i);
-    if (keyValueMatch?.[1]) {
-      return keyValueMatch[1].trim().toUpperCase().slice(0, 20);
-    }
-
-    return text.toUpperCase().slice(0, 20);
+    return extractEducationCodeFromQrText(rawValue);
   }
 
   function applyEducationCodeValue(nextValue) {
     if (!educationCodeInput) {
       return;
     }
-    educationCodeInput.value = String(nextValue ?? "").trim().toUpperCase().slice(0, 20);
+    educationCodeInput.value = normalizeEducationCodeValue(nextValue);
     syncEducationCodeStep();
     saveDraft();
   }
@@ -7912,9 +8218,9 @@ function escapeHtml(text) {
         ? initialDraft.educationCode
         : typeof initialDraft.schoolCode === "string"
           ? initialDraft.schoolCode
-          : "";
+          : state.settings.educationCode;
     if (educationCodeInput && initialEducationCode) {
-      educationCodeInput.value = initialEducationCode.trim().toUpperCase().slice(0, 20);
+      educationCodeInput.value = normalizeEducationCodeValue(initialEducationCode);
     }
     if (typeof initialDraft.avatarPreset === "string" && initialDraft.avatarPreset.trim()) {
       const avatarInput = avatarInputs.find((input) => input.value === initialDraft.avatarPreset);
@@ -7953,6 +8259,9 @@ function escapeHtml(text) {
     if (nicknameInput && state.auth?.nickname) {
       nicknameInput.value = normalizeNicknameText(state.auth.nickname);
     }
+    if (educationCodeInput && state.settings.educationCode) {
+      educationCodeInput.value = normalizeEducationCodeValue(state.settings.educationCode);
+    }
     applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
     applyOnboardingNotificationTimeMinutes(state.settings.notificationTimeMinutes);
   }
@@ -7969,7 +8278,7 @@ function escapeHtml(text) {
   });
 
   educationCodeInput?.addEventListener("input", () => {
-    educationCodeInput.value = educationCodeInput.value.toUpperCase().slice(0, 20);
+    educationCodeInput.value = normalizeEducationCodeValue(educationCodeInput.value);
     if (educationCodeValidationTimerId) {
       window.clearTimeout(educationCodeValidationTimerId);
       educationCodeValidationTimerId = 0;
@@ -8041,8 +8350,11 @@ function escapeHtml(text) {
         }
         commitOnboardingNickname();
       }
-      if (activeStepName === "educationCode" && !(await validateEducationCodeInput())) {
-        return;
+      if (activeStepName === "educationCode") {
+        if (!(await validateEducationCodeInput())) {
+          return;
+        }
+        commitOnboardingEducationCode();
       }
       setActiveStep(activeStepIndex + 1);
       return;
