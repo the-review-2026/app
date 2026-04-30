@@ -7134,7 +7134,7 @@ function renderDailyTryPanel() {
   updateDailyTryNudgeState();
   if (elements.dailyTryPrompt) {
     elements.dailyTryPrompt.innerHTML =
-      "まずは問題を解いてみましょう。<br />この問題にTRY!は今まで解いた問題から出題されます。";
+      '<span class="daily-try-placeholder-lead">まずは問題を解いてみましょう。</span><span class="daily-try-placeholder-note">この問題にTRY!は今まで解いた問題から出題されます。</span>';
   }
   if (elements.dailyTryChoiceList) {
     elements.dailyTryChoiceList.innerHTML = "";

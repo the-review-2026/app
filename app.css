@@ -2538,7 +2538,25 @@ body[data-theme="sea"] .daily-login-card-head::before {
 }
 
 .daily-try-placeholder {
+  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
+  font-weight: 500;
   line-height: 1.75;
+}
+
+.daily-try-placeholder-lead,
+.daily-try-placeholder-note {
+  display: block;
+}
+
+.daily-try-placeholder-lead {
+  font-size: clamp(1.12rem, 4.2vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.daily-try-placeholder-note {
+  margin-top: 0.42rem;
+  font-weight: 500;
 }
 
 .tab-script-panel {
@@ -2638,7 +2656,7 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 
 .mypage-coin-number {
   font-size: clamp(3.4rem, 9.8vw, 5.7rem);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .mypage-coin-unit {
@@ -4514,7 +4532,8 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 }
 
 #dailyTryPrompt {
-  font-family: "cinecaption226", "Noto Sans JP", sans-serif;
+  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
+  font-weight: 500;
   font-size: 1.15rem;
 }
 
@@ -8715,12 +8734,6 @@ body.manager-page .screen > .page-title-row .page-script-title {
   color: #ffffff;
   font-size: clamp(2.65rem, 9vw, 4.15rem);
   line-height: 0.86;
-}
-
-.daily-try-placeholder::first-line {
-  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
-  font-size: clamp(1.12rem, 4.2vw, 1.55rem);
-  font-weight: 800;
 }
 
 .top-nav {
