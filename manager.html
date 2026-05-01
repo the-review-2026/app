@@ -1737,6 +1737,7 @@
           activeProblemTab: "create",
           selectedPendingQuestionId: "",
           activeStoreItemId: "",
+          reviewDataSnapshot: null,
         };
 
         const elements = {
@@ -2039,6 +2040,8 @@
               role: null,
             };
           }
+          applyManagerProfileFromAccess(state.managerAccess);
+          await loadReviewDataSnapshotFromApi(token);
           renderManagerAccess();
         }
 
@@ -3405,8 +3408,51 @@
           renderManagerAvaterPreview();
         }
 
+        function applyManagerProfileFromAccess(access) {
+          const member = access?.member;
+          const displayName = typeof member?.display_name === "string" ? member.display_name.trim() : "";
+          const email = typeof member?.email === "string" ? member.email.trim() : "";
+          if (!displayName && !email) {
+            return;
+          }
+          state.auth = {
+            ...state.auth,
+            displayName: displayName || state.auth.displayName,
+            nickname: displayName || state.auth.nickname,
+            email: email || state.auth.email,
+          };
+          renderProfile();
+        }
+
+        async function loadReviewDataSnapshotFromApi(token) {
+          if (!token) {
+            return;
+          }
+          try {
+            const response = await fetch(`${resolveApiBase()}/me/review-data`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
+            if (!response.ok) {
+              return;
+            }
+            const json = await response.json().catch(() => null);
+            const data = json?.reviewData?.data;
+            if (!data || typeof data !== "object" || Array.isArray(data)) {
+              return;
+            }
+            state.reviewDataSnapshot = data;
+            state.auth = createAuthSummaryFromAppState(data, state.auth);
+            renderProfile();
+          } catch {
+            // The Manager can continue with locally cached profile data.
+          }
+        }
+
         function renderManagerAvaterPreview() {
-          const appState = loadJson(APP_STATE_KEY, {});
+          const appState = state.reviewDataSnapshot || loadJson(APP_STATE_KEY, {});
           const avater = appState?.avater || {};
           const equipped = avater?.equipped && typeof avater.equipped === "object" ? avater.equipped : {};
           const itemOffsets = avater?.itemOffsets && typeof avater.itemOffsets === "object" ? avater.itemOffsets : {};
@@ -3464,6 +3510,28 @@
           } catch {
             return fallback;
           }
+        }
+
+        function createAuthSummaryFromAppState(appState, fallback = {}) {
+          const auth = appState?.auth ?? {};
+          const displayName = typeof auth.displayName === "string" && auth.displayName.trim() ? auth.displayName.trim() : "";
+          const provider =
+            typeof auth.provider === "string" && auth.provider.trim()
+              ? auth.provider.trim()
+              : fallback.provider || "未設定";
+          const nickname =
+            (typeof auth.nickname === "string" && auth.nickname.trim()) ||
+            (provider === "guest"
+              ? "Guest Mode"
+              : displayName && displayName !== "Guest Mode"
+                ? displayName
+                : fallback.nickname || "未設定");
+          return {
+            displayName: displayName || fallback.displayName || "未設定",
+            nickname,
+            email: auth.email || fallback.email || "未設定",
+            provider,
+          };
         }
 
         function insertTextAtCursor(text) {
@@ -3591,6 +3659,6 @@
         }
       })();
     </script>
-    <script src="./pwa.js?v=20260430-2" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260501-2" charset="UTF-8"></script>
   </body>
 </html>

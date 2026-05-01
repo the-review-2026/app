@@ -31,6 +31,18 @@ export default {
       return upsertCurrentReviewAccount(request, env);
     }
 
+    if (pathname === "/me/review-data" && request.method === "GET") {
+      return getCurrentReviewData(request, env);
+    }
+
+    if (pathname === "/me/review-data" && ["POST", "PUT", "PATCH"].includes(request.method)) {
+      return saveCurrentReviewData(request, env);
+    }
+
+    if (pathname === "/me/review-data" && request.method === "DELETE") {
+      return deleteCurrentReviewData(request, env);
+    }
+
     if (pathname === "/education-codes/validate" && request.method === "POST") {
       return validateEducationCode(request, env);
     }
@@ -62,6 +74,8 @@ export default {
 
 const AUTH0_JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const auth0JwksCache = new Map();
+const REVIEW_DATA_STORAGE_KEY = "the-review-quest-v1";
+const REVIEW_DATA_MAX_PAYLOAD_BYTES = 750 * 1024;
 const MANAGER_USER_ROLE = "user";
 const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const MANAGER_ROLE_PERMISSIONS = {
@@ -322,6 +336,92 @@ async function upsertCurrentReviewAccount(request, env) {
   });
 }
 
+async function getCurrentReviewData(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const reviewDataResult = await getReviewDataByUserId(context.supabase, context.user?.id);
+  if (!reviewDataResult.ok) {
+    return json(reviewDataResult.body, reviewDataResult.status);
+  }
+
+  return json({
+    reviewData: reviewDataResult.reviewData ? serializeReviewDataRow(reviewDataResult.reviewData) : null,
+  });
+}
+
+async function saveCurrentReviewData(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const bodyResult = await readJsonBody(request);
+  if (!bodyResult.ok) {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const payloadResult = normalizeReviewDataPayload(bodyResult.value);
+  if (!payloadResult.ok) {
+    return json(
+      {
+        error: "Invalid Review Data payload",
+        details: payloadResult.errors,
+      },
+      400
+    );
+  }
+
+  const existingResult = await getReviewDataByUserId(context.supabase, context.user?.id);
+  if (!existingResult.ok) {
+    return json(existingResult.body, existingResult.status);
+  }
+  if (existingResult.reviewData) {
+    const existingUpdatedAt = Date.parse(existingResult.reviewData.client_updated_at || existingResult.reviewData.updated_at || "");
+    const incomingUpdatedAt = Date.parse(payloadResult.value.client_updated_at);
+    if (Number.isFinite(existingUpdatedAt) && Number.isFinite(incomingUpdatedAt) && existingUpdatedAt > incomingUpdatedAt) {
+      return json(
+        {
+          error: "A newer Review Data snapshot already exists.",
+          conflict: true,
+          reviewData: serializeReviewDataRow(existingResult.reviewData),
+        },
+        409
+      );
+    }
+  }
+
+  const savedResult = await upsertReviewData(context.supabase, {
+    user_id: context.user.id,
+    storage_key: payloadResult.value.storage_key,
+    payload: payloadResult.value.payload,
+    client_updated_at: payloadResult.value.client_updated_at,
+  });
+  if (!savedResult.ok) {
+    return json(savedResult.body, savedResult.status);
+  }
+
+  return json({
+    reviewData: serializeReviewDataRow(savedResult.reviewData),
+  });
+}
+
+async function deleteCurrentReviewData(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const deleteResult = await deleteReviewDataByUserId(context.supabase, context.user?.id);
+  if (!deleteResult.ok) {
+    return json(deleteResult.body, deleteResult.status);
+  }
+
+  return json({ ok: true });
+}
+
 async function validateEducationCode(request, env) {
   const body = await readJsonBody(request);
   if (body?.ok === false) {
@@ -511,6 +611,41 @@ function normalizeAnswerPayload(body) {
   };
 }
 
+function normalizeReviewDataPayload(body) {
+  const errors = [];
+  const storageKey = normalizeSupabaseText(body?.storageKey ?? body?.storage_key) || REVIEW_DATA_STORAGE_KEY;
+  const payload = body?.data ?? body?.payload;
+  const clientUpdatedAt = normalizeIsoTimestamp(body?.clientUpdatedAt ?? body?.client_updated_at) || new Date().toISOString();
+
+  if (storageKey !== REVIEW_DATA_STORAGE_KEY) {
+    errors.push("storageKey is invalid");
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    errors.push("data must be an object");
+  } else {
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(payload)).length;
+    if (payloadBytes > REVIEW_DATA_MAX_PAYLOAD_BYTES) {
+      errors.push("data is too large");
+    }
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errors,
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      storage_key: storageKey,
+      payload,
+      client_updated_at: clientUpdatedAt,
+    },
+  };
+}
+
 async function getOrCreateUserByAuth0Sub(supabase, claims) {
   const auth0Sub = normalizeSupabaseText(claims?.sub);
   if (!auth0Sub) {
@@ -612,6 +747,96 @@ async function updateUserById(supabase, userId, patch) {
   return {
     ok: true,
     user: Array.isArray(users) ? users[0] ?? null : users,
+  };
+}
+
+async function getReviewDataByUserId(supabase, userId) {
+  const normalizedUserId = normalizeSupabaseText(userId);
+  if (!normalizedUserId) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Review Data could not be resolved because the user record has no id.",
+      },
+    };
+  }
+
+  const response = await supabaseRequest(
+    supabase,
+    `/review_data?user_id=eq.${encodeURIComponent(
+      normalizedUserId
+    )}&select=user_id,storage_key,payload,client_updated_at,created_at,updated_at&limit=1`
+  );
+  if (!response.ok) {
+    return supabaseError(response, "Failed to look up Review Data in Supabase");
+  }
+
+  const rows = await response.json();
+  return {
+    ok: true,
+    reviewData: Array.isArray(rows) ? rows[0] ?? null : null,
+  };
+}
+
+async function upsertReviewData(supabase, reviewData) {
+  const now = new Date().toISOString();
+  const response = await supabaseRequest(supabase, "/review_data?on_conflict=user_id", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify({
+      ...reviewData,
+      updated_at: now,
+    }),
+  });
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to save Review Data in Supabase");
+  }
+
+  const rows = await response.json();
+  return {
+    ok: true,
+    reviewData: Array.isArray(rows) ? rows[0] ?? null : rows,
+  };
+}
+
+async function deleteReviewDataByUserId(supabase, userId) {
+  const normalizedUserId = normalizeSupabaseText(userId);
+  if (!normalizedUserId) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Review Data could not be deleted because the user record has no id.",
+      },
+    };
+  }
+
+  const response = await supabaseRequest(supabase, `/review_data?user_id=eq.${encodeURIComponent(normalizedUserId)}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to delete Review Data in Supabase");
+  }
+
+  return {
+    ok: true,
+  };
+}
+
+function serializeReviewDataRow(row) {
+  if (!row) {
+    return null;
+  }
+  return {
+    storageKey: row.storage_key || REVIEW_DATA_STORAGE_KEY,
+    data: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
+    clientUpdatedAt: row.client_updated_at || null,
+    updatedAt: row.updated_at || null,
   };
 }
 
@@ -816,6 +1041,15 @@ function getDisplayNameFromClaims(claims) {
 
 function normalizeSupabaseText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeIsoTimestamp(value) {
+  const text = normalizeSupabaseText(value);
+  if (!text) {
+    return "";
+  }
+  const time = Date.parse(text);
+  return Number.isFinite(time) ? new Date(time).toISOString() : "";
 }
 
 function normalizeEducationCode(value) {
@@ -1110,7 +1344,7 @@ function json(data, status = 200) {
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 }

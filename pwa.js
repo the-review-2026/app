@@ -1,5 +1,5 @@
 (() => {
-  const SERVICE_WORKER_URL = "./sw.js?v=20260430-3";
+  const SERVICE_WORKER_URL = "./sw.js?v=20260501-2";
   let refreshingForUpdate = false;
   let waitingWorker = null;
 

@@ -81,6 +81,9 @@ const COIN_COUNT_DURATION_PER_STEP_MS = 0.22;
 const REVIEW_COIN_FORMATTER = new Intl.NumberFormat("ja-JP");
 const REVIEW_DATA_EXPORT_FORMAT = "the-review-obfuscated-v1";
 const REVIEW_DATA_EXPORT_KEY = "TheReview::DataExport::v1";
+const REVIEW_DATA_SYNC_VERSION = 1;
+const REVIEW_DATA_SYNC_DEBOUNCE_MS = 1200;
+const REVIEW_DATA_SYNC_REFRESH_MIN_MS = 15 * 1000;
 const STORE_CONFIG_KEY = "the-review-store-config-v1";
 const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
 const INFO_NOTICE_READ_KEY = "the-review-info-notice-read-v1";
@@ -517,6 +520,11 @@ let settingsEducationCodeValidationState = {
 };
 let managerAccessState = loadManagerAccessCache();
 let lastReviewAccountProfileSync = null;
+let reviewDataSyncTimerId = 0;
+let reviewDataSyncInFlight = null;
+let reviewDataSyncQueued = false;
+let isApplyingRemoteReviewData = false;
+let lastReviewDataCloudRefreshAt = 0;
 let activeAvaterCategory = "clothes";
 let isAvaterScrollLocked = false;
 let draggingAvaterItemId = "";
@@ -637,6 +645,7 @@ async function init() {
     return;
   }
   bindSharedDataAndGuestDialogEvents();
+  bindReviewDataCloudRefreshEvents();
   applyTheme(state.settings.theme);
   applyAccessibilityModes();
   applyTypographySettings();
@@ -663,6 +672,7 @@ async function initLoginPage() {
   }
 
   bindSharedDataAndGuestDialogEvents();
+  bindReviewDataCloudRefreshEvents();
   bindLoginPageAuthEvents();
   let authRedirectAppState = null;
   if (explicitLogout && !isAuthCallback) {
@@ -936,6 +946,28 @@ function bindSharedDataAndGuestDialogEvents() {
   elements.accountActionDialog?.addEventListener("close", () => {
     clearAccountDeleteCountdown();
   });
+}
+
+function bindReviewDataCloudRefreshEvents() {
+  window.addEventListener("focus", requestReviewDataCloudRefresh);
+  window.addEventListener("online", requestReviewDataCloudRefresh);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      requestReviewDataCloudRefresh();
+    }
+  });
+}
+
+function requestReviewDataCloudRefresh() {
+  if (!canSyncReviewDataToCloud() || document.visibilityState === "hidden") {
+    return;
+  }
+  const now = Date.now();
+  if (now - lastReviewDataCloudRefreshAt < REVIEW_DATA_SYNC_REFRESH_MIN_MS) {
+    return;
+  }
+  lastReviewDataCloudRefreshAt = now;
+  void syncReviewDataWithCloud({ reason: "refresh" });
 }
 
 function bindHomeCardCarouselEvents() {
@@ -1880,7 +1912,7 @@ function performConfirmedAccountAction(action) {
     return;
   }
   if (action === "delete") {
-    performDeleteAccountAndResetProgress();
+    void performDeleteAccountAndResetProgress();
   }
 }
 
@@ -2542,6 +2574,7 @@ async function syncAuthStateFromAuth0(options = {}) {
   });
   saveState();
   await syncReviewAccountProfileToApi();
+  await syncReviewDataWithCloud({ reason: "auth" });
 }
 
 function applyAuthRedirectState(appState) {
@@ -2582,12 +2615,14 @@ async function deleteAccountAndResetProgress() {
   requestAccountAction("delete");
 }
 
-function performDeleteAccountAndResetProgress() {
+async function performDeleteAccountAndResetProgress() {
   if (!state.auth.isLoggedIn) {
     return;
   }
 
   const shouldClearAuth0Session = state.auth.provider !== "guest";
+  clearReviewDataSyncTimer();
+  await deleteReviewDataFromCloud();
   markExplicitLogoutIntent();
   if (shouldClearAuth0Session) {
     requestAuth0LocalLogout();
@@ -7592,6 +7627,7 @@ function createDefaultState() {
       email: null,
     },
     avater: createDefaultAvaterState(),
+    sync: createDefaultReviewDataSyncState(),
   };
 }
 
@@ -7611,6 +7647,29 @@ function normalizePersistedState(parsed) {
     settings: normalizeSettingsState(parsed?.settings),
     auth: normalizeAuthState(parsed?.auth),
     avater: normalizeAvaterState(parsed?.avater || parsed?.avatar),
+    sync: normalizeReviewDataSyncState(parsed?.sync),
+  };
+}
+
+function createDefaultReviewDataSyncState() {
+  return {
+    version: REVIEW_DATA_SYNC_VERSION,
+    updatedAt: "",
+    syncedAt: "",
+    lastRemoteUpdatedAt: "",
+  };
+}
+
+function normalizeReviewDataSyncState(value) {
+  const fallback = createDefaultReviewDataSyncState();
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return fallback;
+  }
+  return {
+    version: REVIEW_DATA_SYNC_VERSION,
+    updatedAt: normalizeIsoDateString(value.updatedAt),
+    syncedAt: normalizeIsoDateString(value.syncedAt),
+    lastRemoteUpdatedAt: normalizeIsoDateString(value.lastRemoteUpdatedAt),
   };
 }
 
@@ -7810,6 +7869,15 @@ function normalizeNicknameText(value) {
   return typeof value === "string" ? value.trim().slice(0, 24) : "";
 }
 
+function normalizeIsoDateString(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) {
+    return "";
+  }
+  const time = Date.parse(text);
+  return Number.isFinite(time) ? new Date(time).toISOString() : "";
+}
+
 function looksLikeAuth0Subject(value) {
   return /^[a-z0-9_-]+\|/i.test(String(value || "").trim());
 }
@@ -7854,8 +7922,499 @@ function clampNumber(value, min, max, fallbackValue) {
   return Math.max(min, Math.min(max, number));
 }
 
-function saveState() {
+function saveState(options = {}) {
+  if (!options.skipTouch) {
+    touchReviewDataSyncMetadata();
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (!options.skipRemoteSync) {
+    scheduleReviewDataCloudPush();
+  }
+}
+
+function touchReviewDataSyncMetadata(timestamp = new Date().toISOString()) {
+  state.sync = normalizeReviewDataSyncState(state.sync);
+  state.sync.updatedAt = normalizeIsoDateString(timestamp) || new Date().toISOString();
+}
+
+function ensureReviewDataSyncMetadata() {
+  state.sync = normalizeReviewDataSyncState(state.sync);
+  if (!state.sync.updatedAt) {
+    state.sync.updatedAt = new Date().toISOString();
+  }
+  return state.sync;
+}
+
+function canSyncReviewDataToCloud() {
+  return Boolean(state.auth?.isLoggedIn && state.auth.provider !== "guest");
+}
+
+function scheduleReviewDataCloudPush() {
+  if (isApplyingRemoteReviewData || !canSyncReviewDataToCloud()) {
+    return;
+  }
+  if (reviewDataSyncTimerId) {
+    window.clearTimeout(reviewDataSyncTimerId);
+  }
+  reviewDataSyncTimerId = window.setTimeout(() => {
+    reviewDataSyncTimerId = 0;
+    void pushReviewDataToCloud();
+  }, REVIEW_DATA_SYNC_DEBOUNCE_MS);
+}
+
+function clearReviewDataSyncTimer() {
+  if (reviewDataSyncTimerId) {
+    window.clearTimeout(reviewDataSyncTimerId);
+    reviewDataSyncTimerId = 0;
+  }
+}
+
+async function syncReviewDataWithCloud(options = {}) {
+  if (!canSyncReviewDataToCloud()) {
+    return null;
+  }
+  clearReviewDataSyncTimer();
+  if (reviewDataSyncInFlight) {
+    reviewDataSyncQueued = true;
+    return reviewDataSyncInFlight;
+  }
+
+  reviewDataSyncInFlight = (async () => {
+    const token = await withTimeout(
+      getAuth0AccessTokenForApi(),
+      MANAGER_ACCESS_TOKEN_TIMEOUT_MS,
+      null,
+      "Review Data sync token"
+    );
+    if (!token) {
+      return null;
+    }
+
+    const remoteRecord = await fetchReviewDataFromCloud(token);
+    if (remoteRecord) {
+      return handleRemoteReviewDataRecord(token, remoteRecord, options);
+    }
+
+    ensureReviewDataSyncMetadata();
+    const saved = await saveReviewDataSnapshotToCloud(token, serializeReviewDataForCloud());
+    if (saved?.reviewData) {
+      applyReviewDataRemoteMetadata(saved.reviewData);
+    }
+    return saved;
+  })();
+
+  try {
+    return await reviewDataSyncInFlight;
+  } finally {
+    reviewDataSyncInFlight = null;
+    if (reviewDataSyncQueued) {
+      reviewDataSyncQueued = false;
+      scheduleReviewDataCloudPush();
+    }
+  }
+}
+
+async function pushReviewDataToCloud() {
+  if (!canSyncReviewDataToCloud()) {
+    return null;
+  }
+  if (reviewDataSyncInFlight) {
+    reviewDataSyncQueued = true;
+    return reviewDataSyncInFlight;
+  }
+
+  reviewDataSyncInFlight = (async () => {
+    const token = await withTimeout(
+      getAuth0AccessTokenForApi(),
+      MANAGER_ACCESS_TOKEN_TIMEOUT_MS,
+      null,
+      "Review Data save token"
+    );
+    if (!token) {
+      return null;
+    }
+
+    ensureReviewDataSyncMetadata();
+    const saved = await saveReviewDataSnapshotToCloud(token, serializeReviewDataForCloud());
+    if (saved?.conflict && saved.reviewData) {
+      return handleRemoteReviewDataRecord(token, saved.reviewData, { reason: "conflict" });
+    }
+    if (saved?.reviewData) {
+      applyReviewDataRemoteMetadata(saved.reviewData);
+    }
+    return saved;
+  })();
+
+  try {
+    return await reviewDataSyncInFlight;
+  } finally {
+    reviewDataSyncInFlight = null;
+    if (reviewDataSyncQueued) {
+      reviewDataSyncQueued = false;
+      scheduleReviewDataCloudPush();
+    }
+  }
+}
+
+async function handleRemoteReviewDataRecord(token, remoteRecord, options = {}) {
+  const remoteState = normalizePersistedState(remoteRecord.data);
+  const localState = normalizePersistedState(state);
+  const mergedState = mergeReviewStates(localState, remoteState, remoteRecord);
+  const localChanged = !reviewStateContentEquals(localState, mergedState);
+  const remoteChanged = !reviewStateContentEquals(remoteState, mergedState);
+
+  if (localChanged) {
+    applyReviewDataState(mergedState, { render: options.render !== false });
+  }
+
+  if (remoteChanged) {
+    const saved = await saveReviewDataSnapshotToCloud(token, {
+      storageKey: STORAGE_KEY,
+      clientUpdatedAt: mergedState.sync.updatedAt,
+      data: mergedState,
+    });
+    if (saved?.reviewData) {
+      applyReviewDataRemoteMetadata(saved.reviewData);
+    }
+    return saved;
+  }
+
+  applyReviewDataRemoteMetadata(remoteRecord);
+  return {
+    reviewData: remoteRecord,
+  };
+}
+
+async function fetchReviewDataFromCloud(token) {
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/me/review-data`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      console.warn("Failed to fetch Review Data:", response.status);
+      return null;
+    }
+    const payload = await response.json().catch(() => null);
+    return normalizeRemoteReviewDataRecord(payload?.reviewData);
+  } catch (error) {
+    console.warn("Failed to fetch Review Data:", error);
+    return null;
+  }
+}
+
+async function saveReviewDataSnapshotToCloud(token, snapshot) {
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/me/review-data`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(snapshot),
+    });
+    const payload = await response.json().catch(() => null);
+    if (response.status === 409 && payload?.conflict) {
+      return {
+        conflict: true,
+        reviewData: normalizeRemoteReviewDataRecord(payload.reviewData),
+      };
+    }
+    if (!response.ok) {
+      console.warn("Failed to save Review Data:", response.status);
+      return null;
+    }
+    return {
+      reviewData: normalizeRemoteReviewDataRecord(payload?.reviewData),
+    };
+  } catch (error) {
+    console.warn("Failed to save Review Data:", error);
+    return null;
+  }
+}
+
+async function deleteReviewDataFromCloud() {
+  if (!canSyncReviewDataToCloud()) {
+    return;
+  }
+  const token = await withTimeout(
+    getAuth0AccessTokenForApi(),
+    MANAGER_ACCESS_TOKEN_TIMEOUT_MS,
+    null,
+    "Review Data delete token"
+  );
+  if (!token) {
+    return;
+  }
+  try {
+    await fetch(`${REVIEW_API_BASE_URL}/me/review-data`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to delete Review Data:", error);
+  }
+}
+
+function serializeReviewDataForCloud() {
+  const snapshot = normalizePersistedState(JSON.parse(JSON.stringify(state)));
+  snapshot.sync = normalizeReviewDataSyncState(snapshot.sync);
+  if (!snapshot.sync.updatedAt) {
+    snapshot.sync.updatedAt = new Date().toISOString();
+  }
+  return {
+    storageKey: STORAGE_KEY,
+    clientUpdatedAt: snapshot.sync.updatedAt,
+    data: snapshot,
+  };
+}
+
+function normalizeRemoteReviewDataRecord(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    return null;
+  }
+  const storageKey =
+    typeof record.storageKey === "string" && record.storageKey.trim() ? record.storageKey.trim() : STORAGE_KEY;
+  if (storageKey !== STORAGE_KEY) {
+    return null;
+  }
+  const data = record.data && typeof record.data === "object" && !Array.isArray(record.data) ? record.data : null;
+  if (!data) {
+    return null;
+  }
+  return {
+    storageKey,
+    data,
+    clientUpdatedAt: normalizeIsoDateString(record.clientUpdatedAt),
+    updatedAt: normalizeIsoDateString(record.updatedAt),
+  };
+}
+
+function applyReviewDataRemoteMetadata(remoteRecord) {
+  const normalizedRecord = normalizeRemoteReviewDataRecord(remoteRecord);
+  if (!normalizedRecord) {
+    return;
+  }
+  state.sync = normalizeReviewDataSyncState(state.sync);
+  state.sync.syncedAt = new Date().toISOString();
+  state.sync.lastRemoteUpdatedAt = normalizedRecord.updatedAt || normalizedRecord.clientUpdatedAt || "";
+  saveState({ skipTouch: true, skipRemoteSync: true });
+}
+
+function applyReviewDataState(nextState, options = {}) {
+  const previousAuth = normalizeAuthState(state.auth);
+  const normalizedNextState = normalizePersistedState(nextState);
+  if (previousAuth.isLoggedIn && previousAuth.provider !== "guest") {
+    normalizedNextState.auth = previousAuth;
+  }
+  isApplyingRemoteReviewData = true;
+  try {
+    replaceState(normalizedNextState);
+    saveState({ skipTouch: true, skipRemoteSync: true });
+  } finally {
+    isApplyingRemoteReviewData = false;
+  }
+  if (options.render !== false) {
+    renderAfterReviewDataSync();
+  }
+}
+
+function renderAfterReviewDataSync() {
+  if (IS_LOGIN_PAGE) {
+    renderAuthPanel();
+    renderAvater();
+    return;
+  }
+  applyTheme(state.settings.theme);
+  applyAccessibilityModes();
+  applyTypographySettings();
+  dailyTryRun = createDailyTryRun();
+  renderAll();
+  activateScreen(activeScreen);
+}
+
+function mergeReviewStates(localState, remoteState, remoteRecord = {}) {
+  const local = normalizePersistedState(localState);
+  const remote = normalizePersistedState(remoteState);
+  const localUpdatedAt = getReviewStateUpdatedTime(local);
+  const remoteUpdatedAt =
+    getReviewStateUpdatedTime(remote) ||
+    Date.parse(remoteRecord.clientUpdatedAt || "") ||
+    Date.parse(remoteRecord.updatedAt || "") ||
+    0;
+  const preferRemote = remoteUpdatedAt > localUpdatedAt;
+  const preferred = preferRemote ? remote : local;
+  const merged = normalizePersistedState(preferred);
+  const bothStatesHaveSyncTimestamps = Boolean(local.sync?.updatedAt && remote.sync?.updatedAt);
+
+  merged.reviewCoin = bothStatesHaveSyncTimestamps
+    ? normalizeCoinAmount(preferred.reviewCoin)
+    : Math.max(normalizeCoinAmount(local.reviewCoin), normalizeCoinAmount(remote.reviewCoin));
+  merged.coinGrant5000Applied = Boolean(local.coinGrant5000Applied || remote.coinGrant5000Applied);
+  merged.loginDays = mergeBooleanRecord(local.loginDays, remote.loginDays);
+  merged.dailyLoginRewardDays = mergeNumberRecord(local.dailyLoginRewardDays, remote.dailyLoginRewardDays);
+  merged.dailyTryRecords = mergeDailyTryRecordMap(local.dailyTryRecords, remote.dailyTryRecords, preferRemote);
+  merged.settings = mergeReviewSettings(local.settings, remote.settings, preferRemote);
+  merged.auth = mergeReviewAuth(local.auth, remote.auth);
+  merged.avater = mergeReviewAvater(local.avater, remote.avater, preferRemote);
+
+  const mergedEqualsLocal = reviewStateContentEquals(merged, local);
+  const mergedEqualsRemote = reviewStateContentEquals(merged, remote);
+  merged.sync = normalizeReviewDataSyncState(preferred.sync);
+  if (!mergedEqualsLocal && !mergedEqualsRemote) {
+    merged.sync.updatedAt = new Date().toISOString();
+  } else if (mergedEqualsRemote) {
+    merged.sync.updatedAt =
+      normalizeIsoDateString(remote.sync?.updatedAt) ||
+      normalizeIsoDateString(remoteRecord.clientUpdatedAt) ||
+      normalizeIsoDateString(remoteRecord.updatedAt) ||
+      new Date().toISOString();
+  } else {
+    merged.sync.updatedAt =
+      normalizeIsoDateString(local.sync?.updatedAt) ||
+      normalizeIsoDateString(remoteRecord.clientUpdatedAt) ||
+      normalizeIsoDateString(remoteRecord.updatedAt) ||
+      new Date().toISOString();
+  }
+  merged.sync.syncedAt = "";
+  merged.sync.lastRemoteUpdatedAt = normalizeIsoDateString(remoteRecord.updatedAt || remoteRecord.clientUpdatedAt);
+
+  return normalizePersistedState(merged);
+}
+
+function mergeReviewSettings(localSettings, remoteSettings, preferRemote) {
+  const local = normalizeSettingsState(localSettings);
+  const remote = normalizeSettingsState(remoteSettings);
+  const base = normalizeSettingsState(preferRemote ? remote : local);
+  base.unlockedThemes = mergeBooleanRecord(local.unlockedThemes, remote.unlockedThemes);
+  const educationCodes = normalizeEducationCodeList([...local.educationCodes, ...remote.educationCodes]);
+  const preferredEducationCode = preferRemote ? remote.educationCode : local.educationCode;
+  base.educationCodes = educationCodes;
+  base.educationCode = educationCodes.includes(preferredEducationCode) ? preferredEducationCode : educationCodes[0] || "";
+  return normalizeSettingsState(base);
+}
+
+function mergeReviewAuth(localAuth, remoteAuth) {
+  const local = normalizeAuthState(localAuth);
+  const remote = normalizeAuthState(remoteAuth);
+  if (local.isLoggedIn && local.provider !== "guest") {
+    return local;
+  }
+  if (remote.isLoggedIn && remote.provider !== "guest") {
+    return remote;
+  }
+  return local.isLoggedIn ? local : remote;
+}
+
+function mergeReviewAvater(localAvater, remoteAvater, preferRemote) {
+  const local = normalizeAvaterState(localAvater);
+  const remote = normalizeAvaterState(remoteAvater);
+  const base = normalizeAvaterState(preferRemote ? remote : local);
+  base.unlockedItems = mergeBooleanRecord(local.unlockedItems, remote.unlockedItems);
+  return normalizeAvaterState(base);
+}
+
+function mergeBooleanRecord(...records) {
+  const merged = {};
+  records.forEach((record) => {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      return;
+    }
+    Object.keys(record)
+      .sort()
+      .forEach((key) => {
+        if (record[key]) {
+          merged[key] = true;
+        }
+      });
+  });
+  return merged;
+}
+
+function mergeNumberRecord(...records) {
+  const merged = {};
+  records.forEach((record) => {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      return;
+    }
+    Object.keys(record)
+      .sort()
+      .forEach((key) => {
+        const amount = normalizeCoinAmount(record[key]);
+        if (amount > 0) {
+          merged[key] = Math.max(normalizeCoinAmount(merged[key]), amount);
+        }
+      });
+  });
+  return merged;
+}
+
+function mergeDailyTryRecordMap(localRecords, remoteRecords, preferRemote) {
+  const merged = {};
+  const keys = Array.from(
+    new Set([...Object.keys(localRecords || {}), ...Object.keys(remoteRecords || {})])
+  ).sort();
+  keys.forEach((key) => {
+    const localRecord = normalizeDailyTryRecord(localRecords?.[key]);
+    const remoteRecord = normalizeDailyTryRecord(remoteRecords?.[key]);
+    if (!localRecord && !remoteRecord) {
+      return;
+    }
+    if (!localRecord || !remoteRecord) {
+      merged[key] = localRecord || remoteRecord;
+      return;
+    }
+    const preferred = preferRemote ? remoteRecord : localRecord;
+    merged[key] = {
+      ...preferred,
+      answered: Boolean(localRecord.answered || remoteRecord.answered),
+      correct: Boolean(localRecord.correct || remoteRecord.correct),
+      rewarded: Boolean(localRecord.rewarded || remoteRecord.rewarded),
+    };
+  });
+  return merged;
+}
+
+function normalizeDailyTryRecord(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    return null;
+  }
+  const selectedNumber = Number(record.selected);
+  return {
+    answered: Boolean(record.answered),
+    selected: record.selected === null || record.selected === undefined ? null : Number.isFinite(selectedNumber) ? selectedNumber : null,
+    correct: Boolean(record.correct),
+    rewarded: Boolean(record.rewarded),
+  };
+}
+
+function getReviewStateUpdatedTime(value) {
+  const timestamp = normalizeIsoDateString(value?.sync?.updatedAt);
+  return timestamp ? Date.parse(timestamp) : 0;
+}
+
+function reviewStateContentEquals(a, b) {
+  return JSON.stringify(getReviewStateContentSnapshot(a)) === JSON.stringify(getReviewStateContentSnapshot(b));
+}
+
+function getReviewStateContentSnapshot(value) {
+  const normalized = normalizePersistedState(value);
+  return {
+    reviewCoin: normalized.reviewCoin,
+    coinGrant5000Applied: normalized.coinGrant5000Applied,
+    loginDays: normalized.loginDays,
+    dailyLoginRewardDays: normalized.dailyLoginRewardDays,
+    dailyTryRecords: normalized.dailyTryRecords,
+    settings: normalized.settings,
+    auth: normalized.auth,
+    avater: normalized.avater,
+  };
 }
 
 function getCurrentMonthStartDate() {
