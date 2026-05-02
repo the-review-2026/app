@@ -2750,7 +2750,7 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 .flashcard-static-message {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.01em;
   color: var(--text-main);
 }
@@ -8419,6 +8419,214 @@ body.flashcard-binder-global-focus .top-nav-character {
   white-space: nowrap;
 
   text-shadow: none;
+}
+
+.flashcard-note-library {
+  margin-top: -0.38rem;
+  overflow: visible;
+}
+
+.flashcard-note-library .flashcard-note-surface.flashcard-binder {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  transform: none;
+  cursor: default;
+  touch-action: pan-y;
+}
+
+.flashcard-note-library .flashcard-note-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(118px, 28vw, 158px), 1fr));
+  gap: 0.76rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.22rem 0 0.72rem;
+  overflow: visible;
+}
+
+.flashcard-note-library .flashcard-note {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  aspect-ratio: 1 / 1.4142135623730951;
+  padding: 0.64rem 0.62rem 0.82rem calc(0.7rem + var(--note-band-width));
+  border-radius: 0 12px 12px 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.flashcard-note-library .flashcard-note + .flashcard-note {
+  margin-top: 0;
+}
+
+.flashcard-note-library .flashcard-note.is-lifted {
+  transform: translate3d(0, -10px, 0) scale(1.015);
+  z-index: 8;
+}
+
+.flashcard-note-library .flashcard-note-jp {
+  display: block;
+  position: relative;
+  width: calc(62% - var(--note-band-width));
+  font-size: clamp(0.82rem, 2.4vw, 1.04rem);
+  line-height: 1.26;
+  letter-spacing: 0;
+  z-index: 2;
+}
+
+.flashcard-note-library .flashcard-note-en {
+  display: block !important;
+  top: 0.34rem;
+  left: auto;
+  right: 0.5rem;
+  max-width: 48%;
+  font-size: clamp(1.25rem, 5vw, 1.82rem);
+  letter-spacing: 0;
+  white-space: normal;
+  z-index: 2;
+}
+
+.flashcard-note-library .flashcard-note-take-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 0.7rem;
+  z-index: 5;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  transform: translate3d(-50%, 4px, 0);
+  background: #1d1d1d;
+  color: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.flashcard-note-library .flashcard-note.is-lifted .flashcard-note-take-btn {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0);
+  pointer-events: auto;
+}
+
+body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"], [data-theme="the-black"], [data-theme="kagiko"], [data-theme="city"])
+  .flashcard-note-library
+  .flashcard-note-take-btn {
+  background: #ffffff;
+  color: #1d1d1d;
+}
+
+.flashcard-series-index {
+  position: relative;
+  grid-column: 1 / -1;
+  min-height: 3.1rem;
+  display: flex;
+  align-items: center;
+  padding: 0.78rem 1rem 0.78rem 1.24rem;
+  border-radius: 4px 10px 10px 4px;
+  background: var(--band-tab-background);
+  background-blend-mode: var(--band-tab-background-blend);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 20px rgba(20, 31, 47, 0.14);
+  overflow: hidden;
+}
+
+.flashcard-series-index::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0.42rem;
+  background: color-mix(in srgb, var(--band-tab-base, var(--primary)) 68%, #ffffff);
+}
+
+.flashcard-series-index span {
+  position: relative;
+  z-index: 1;
+  font-family: "Noto Sans", "Noto Sans JP", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.flashcard-binder-stage .flashcard-series-index {
+  display: none;
+}
+
+.flashcard-binder-stage.flashcard-binder-list.is-bookshelf.is-binder-open
+  .flashcard-note-surface.flashcard-binder.is-active-binder {
+  --flashcard-stage-spine: 0px;
+  --flashcard-stage-pad: clamp(0.82rem, 2.1vw, 1.22rem);
+  --flashcard-note-stack-step: clamp(20px, 3.1dvh, 28px);
+  --flashcard-note-cover-width: min(var(--app-content-width), calc(100vw - 2rem));
+  --flashcard-open-note-width: var(--flashcard-note-cover-width);
+  --flashcard-stage-width: calc(var(--flashcard-note-cover-width) + (var(--flashcard-stage-pad) * 2));
+  --flashcard-stage-height: calc(
+    (var(--flashcard-note-cover-width) * 1.4142135623730951) + (var(--flashcard-note-stack-step) * 5) +
+      (var(--flashcard-stage-pad) * 2) + 2.7rem
+  );
+  padding: calc(var(--flashcard-stage-pad) + 1.55rem) var(--flashcard-stage-pad) var(--flashcard-stage-pad);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.flashcard-binder-stage.flashcard-binder-list.is-bookshelf.is-binder-open
+  .flashcard-note-surface.flashcard-binder.is-active-binder::before,
+.flashcard-binder-stage.flashcard-binder-list.is-bookshelf.is-binder-open
+  .flashcard-note-surface.flashcard-binder.is-active-binder::after {
+  display: none;
+}
+
+.flashcard-binder-stage.flashcard-binder-list.is-bookshelf.is-binder-open
+  .flashcard-note-surface.flashcard-binder.is-active-binder
+  .flashcard-note-list {
+  left: var(--flashcard-stage-pad);
+  top: calc(var(--flashcard-stage-pad) + 2.6rem);
+  width: calc(var(--flashcard-note-cover-width) + 0.2rem);
+}
+
+@media (max-width: 760px) {
+  .flashcard-note-library .flashcard-note-list {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 0.62rem;
+  }
+
+  .flashcard-series-index {
+    min-height: 2.72rem;
+    padding: 0.66rem 0.82rem 0.66rem 1rem;
+  }
+
+  .flashcard-binder-stage.flashcard-binder-list.is-bookshelf.is-binder-open
+    .flashcard-note-surface.flashcard-binder.is-active-binder {
+    --flashcard-stage-pad: clamp(0.42rem, 2.6vw, 0.62rem);
+    --flashcard-note-stack-step: clamp(15px, 2.5dvh, 22px);
+    --flashcard-note-cover-width: min(58vw, 218px, calc(100vw - (var(--flashcard-stage-pad) * 2) - 1.1rem));
+    --flashcard-open-note-width: var(--flashcard-note-cover-width);
+    --flashcard-stage-width: calc(var(--flashcard-note-cover-width) + (var(--flashcard-stage-pad) * 2));
+    --flashcard-stage-height: min(
+      66dvh,
+      calc(
+        (var(--flashcard-note-cover-width) * 1.4142135623730951) + (var(--flashcard-note-stack-step) * 5) +
+          (var(--flashcard-stage-pad) * 2) + 2.2rem
+      )
+    );
+    padding: calc(var(--flashcard-stage-pad) + 1.35rem) var(--flashcard-stage-pad) var(--flashcard-stage-pad);
+  }
 }
 
 /* Extend the blue mypage background behind the flashcard panel */

@@ -129,7 +129,7 @@ const FLASHCARD_BOOK_PUTAWAY_DROP_ANIMATION_MS = 360;
 const FLASHCARD_BOOK_PUTAWAY_ANIMATION_TOTAL_MS =
   FLASHCARD_BOOK_PUTAWAY_EXIT_ANIMATION_MS + FLASHCARD_BOOK_PUTAWAY_DROP_ANIMATION_MS;
 const FLASHCARD_BOOK_SINGLE_CLICK_DELAY_MS = 240;
-const FLASHCARD_SUMMARY_DEFAULT_TEXT = "復習する科目を選び、本をとり出してください。";
+const FLASHCARD_SUMMARY_DEFAULT_TEXT = "リビューする科目を選び、ノートをとってください。";
 const REVIEW_API_BASE_URL = "https://api.the-review.net";
 const REVIEW_API_AUDIENCE = "https://api.the-review.net";
 const FLASHCARD_QUESTIONS_API_URL = "https://api.the-review.net/questions";
@@ -2801,19 +2801,37 @@ function initializeFlashcardNoteBinder() {
     return;
   }
   binderList.dataset.noteBinderReady = "1";
+  const isDirectNoteMode = isFlashcardDirectNoteMode(binderList);
+  const directNoteSurface = isDirectNoteMode ? binderList.querySelector(".flashcard-note-surface") : null;
+  if (isDirectNoteMode && directNoteSurface instanceof HTMLElement) {
+    binderList.classList.add("is-direct-notes");
+    directNoteSurface.classList.add("flashcard-binder", "is-active-binder");
+    activeFlashcardBinderElement = directNoteSurface;
+  }
   const deckProblemCountByLabel = createFlashcardDeckProblemCountByLabelMap();
   const deckByLabel = createFlashcardDeckByLabelMap();
-  const binderElements = Array.from(binderList.querySelectorAll(".flashcard-binder"));
+  const binderElements =
+    isDirectNoteMode && directNoteSurface instanceof HTMLElement
+      ? [directNoteSurface]
+      : Array.from(binderList.querySelectorAll(".flashcard-binder"));
   const measuredBinderHeights = binderElements
     .map((binder) => Math.round(binder.getBoundingClientRect().height))
     .filter((height) => Number.isFinite(height) && height > 0);
   if (measuredBinderHeights.length > 0) {
     binderList.style.setProperty("--flashcard-binder-shelf-height", `${Math.max(...measuredBinderHeights)}px`);
   }
-  binderList.classList.add("is-bookshelf");
+  if (!isDirectNoteMode) {
+    binderList.classList.add("is-bookshelf");
+  }
 
   binderElements.forEach((binder, index) => {
     binder.dataset.flashcardBinderIndex = String(index);
+    if (isDirectNoteMode) {
+      binder.setAttribute("role", "region");
+      binder.removeAttribute("aria-pressed");
+      binder.removeAttribute("tabindex");
+      return;
+    }
     binder.setAttribute("role", "button");
     binder.setAttribute("aria-pressed", "false");
     binder.tabIndex = 0;
@@ -2826,7 +2844,7 @@ function initializeFlashcardNoteBinder() {
       useButton.dataset.flashcardUseBinder = "1";
       binder.append(useButton);
     }
-    useButton.textContent = "このバインダーを使う";
+    useButton.textContent = "このノート一覧を開く";
     useButton.tabIndex = -1;
     useButton.setAttribute("aria-hidden", "true");
 
@@ -2838,7 +2856,7 @@ function initializeFlashcardNoteBinder() {
       closeButton.dataset.flashcardCloseBinder = "1";
       binder.append(closeButton);
     }
-    closeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span><span>バインダーをしまう</span>';
+    closeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span><span>ノート一覧に戻る</span>';
     closeButton.tabIndex = -1;
     closeButton.setAttribute("aria-hidden", "true");
   });
@@ -2882,8 +2900,8 @@ function initializeFlashcardNoteBinder() {
       }
       note.setAttribute("role", "button");
       note.setAttribute("aria-pressed", "false");
-      note.setAttribute("aria-disabled", "true");
-      note.tabIndex = -1;
+      note.setAttribute("aria-disabled", String(!isDirectNoteMode));
+      note.tabIndex = isDirectNoteMode ? 0 : -1;
 
       let takeButton = note.querySelector(".flashcard-note-take-btn");
       if (!takeButton) {
@@ -2893,14 +2911,14 @@ function initializeFlashcardNoteBinder() {
         takeButton.dataset.flashcardTakeNote = "1";
         note.append(takeButton);
       }
-      takeButton.textContent = "このノートを使う";
+      takeButton.textContent = "このノートをとる";
       takeButton.tabIndex = -1;
       takeButton.setAttribute("aria-hidden", "true");
     }
     if (notes.length === 0) {
       noteStackThickness = FLASHCARD_NOTE_BASE_THICKNESS_PX;
     }
-    if (binder) {
+    if (binder && !isDirectNoteMode) {
       const binderThickness = noteStackThickness + FLASHCARD_BINDER_EXTRA_THICKNESS_PX;
       binder.style.setProperty("--flashcard-binder-thickness", `${binderThickness}px`);
       binder.dataset.flashcardBinderThickness = String(binderThickness);
@@ -3037,6 +3055,7 @@ function handleFlashcardNoteBinderClick(event) {
   if (!binderList) {
     return;
   }
+  const isDirectNoteMode = isFlashcardDirectNoteMode(binderList);
   const target = event.target;
   if (!(target instanceof Element)) {
     return;
@@ -3055,7 +3074,7 @@ function handleFlashcardNoteBinderClick(event) {
   }
 
   const useBinderButton = target.closest("[data-flashcard-use-binder]");
-  if (useBinderButton && isInFlashcardBinderInteractionSurface(useBinderButton)) {
+  if (!isDirectNoteMode && useBinderButton && isInFlashcardBinderInteractionSurface(useBinderButton)) {
     const binder = useBinderButton.closest(".flashcard-binder");
     if (binder && (binderList.contains(binder) || binder === activeFlashcardBinderElement)) {
       openFlashcardBinder(binder);
@@ -3111,13 +3130,14 @@ function handleFlashcardNoteBinderKeydown(event) {
   if (!binderList) {
     return;
   }
+  const isDirectNoteMode = isFlashcardDirectNoteMode(binderList);
   if (event.key === "Escape") {
     if (activeFlashcardNotebookState) {
       closeFlashcardNotebook();
       event.preventDefault();
       return;
     }
-    if (isFlashcardBinderOpen(binderList)) {
+    if (!isDirectNoteMode && isFlashcardBinderOpen(binderList)) {
       closeFlashcardBinder();
       event.preventDefault();
     }
@@ -3171,7 +3191,14 @@ function isFlashcardNoteBinderLocked(binderList) {
   return !isFlashcardBinderOpen(binderList);
 }
 
+function isFlashcardDirectNoteMode(binderList = elements.flashcardBinderList) {
+  return binderList?.dataset.flashcardDirectNotes === "1";
+}
+
 function isFlashcardBinderOpen(binderList = elements.flashcardBinderList) {
+  if (isFlashcardDirectNoteMode(binderList)) {
+    return Boolean(activeFlashcardBinderElement);
+  }
   return Boolean(binderList?.classList.contains("is-binder-open") && activeFlashcardBinderElement);
 }
 
@@ -3427,7 +3454,7 @@ function setFlashcardBinderFocusMode(shouldLock) {
 
 function openFlashcardBinder(binder) {
   const binderList = elements.flashcardBinderList;
-  if (!binderList || !(binder instanceof Element) || !binderList.contains(binder)) {
+  if (isFlashcardDirectNoteMode(binderList) || !binderList || !(binder instanceof Element) || !binderList.contains(binder)) {
     return;
   }
 
@@ -3471,6 +3498,12 @@ function openFlashcardBinder(binder) {
 function closeFlashcardBinder() {
   const binderList = elements.flashcardBinderList;
   if (!binderList) {
+    return;
+  }
+  if (isFlashcardDirectNoteMode(binderList)) {
+    closeFlashcardNotebook();
+    setLiftedFlashcardNote(null);
+    setFlashcardBinderFocusMode(false);
     return;
   }
 
@@ -3559,6 +3592,12 @@ function openFlashcardNotebook(note) {
     return;
   }
 
+  const isDirectNoteMode = isFlashcardDirectNoteMode(binderList);
+  if (isDirectNoteMode) {
+    activeFlashcardBinderElement.classList.add("is-active-binder");
+    mountFlashcardBinderStage(activeFlashcardBinderElement, binderList);
+    setFlashcardBinderFocusMode(true);
+  }
   setLiftedFlashcardNote(note);
   const activeNoteAccent = getComputedStyle(note).getPropertyValue("--note-accent").trim();
   if (activeNoteAccent) {
@@ -3586,6 +3625,7 @@ function closeFlashcardNotebook(options = {}) {
   const binderList = elements.flashcardBinderList;
   const shouldPreserveBinder = Boolean(options.preserveBinder);
   const activeBinder = activeFlashcardBinderElement;
+  const isDirectNoteMode = isFlashcardDirectNoteMode(binderList);
 
   if (activeBinder) {
     Array.from(activeBinder.querySelectorAll(".flashcard-note-reader")).forEach((reader) => reader.remove());
@@ -3604,6 +3644,11 @@ function closeFlashcardNotebook(options = {}) {
   activeFlashcardNotebookState = null;
   setLiftedFlashcardNote(null);
 
+  if (isDirectNoteMode) {
+    restoreFlashcardBinderStage();
+    setFlashcardBinderFocusMode(false);
+    return;
+  }
   if (!shouldPreserveBinder && binderList && !isFlashcardBinderOpen(binderList)) {
     setFlashcardBinderFocusMode(false);
   }
