@@ -93,9 +93,9 @@ const REVIEW_ACCOUNT_SUPPORT_EMAIL = "support@the-review.net";
 const MANAGER_REVIEW_COIN_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const INFO_MENU_NOTICES = [
   {
-    id: "20260429-review-account-update",
-    title: "Review Accountの設定を更新しました",
-    body: "アカウント情報、Review Data、Avaterの設定をInformationメニューから確認できます。",
+    id: "20260507",
+    title: "アプリの提供を開始しました！",
+    body: "現在はフラッシュカード機能を中心に提供していますが、今後はさらに多くの機能を追加していく予定です。ぜひご活用ください！",
   },
 ];
 const DEFAULT_STORE_CONFIG = {
