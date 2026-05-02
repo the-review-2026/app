@@ -1514,7 +1514,7 @@ body[data-theme="strawberry"] .aurora-right {
 }
 
 .screens {
-  margin-top: 0.8rem;
+  margin-top: 0;
   transition: width var(--focus-mode-transition), margin-top var(--focus-mode-transition);
 }
 
