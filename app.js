@@ -3609,7 +3609,7 @@ function openFlashcardNotebook(note) {
   activeFlashcardNotebookState = {
     note,
     pageIndex: 0,
-    leftVisible: false,
+    leftVisible: true,
     pageTurnDirection: "",
   };
   activeFlashcardBinderElement.classList.add("is-opening-note");
@@ -3668,14 +3668,14 @@ function handleFlashcardNoteReaderAction(actionButton) {
   const maxPageIndex = Math.max(0, spreads.length - 1);
   if (action === "prev") {
     activeFlashcardNotebookState.pageIndex = Math.max(0, activeFlashcardNotebookState.pageIndex - 1);
-    activeFlashcardNotebookState.leftVisible = false;
+    activeFlashcardNotebookState.leftVisible = true;
     activeFlashcardNotebookState.pageTurnDirection = "prev";
     renderFlashcardNotebook();
     return;
   }
   if (action === "next") {
     activeFlashcardNotebookState.pageIndex = Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex + 1);
-    activeFlashcardNotebookState.leftVisible = false;
+    activeFlashcardNotebookState.leftVisible = true;
     activeFlashcardNotebookState.pageTurnDirection = "next";
     renderFlashcardNotebook();
     return;
@@ -3701,16 +3701,13 @@ function renderFlashcardNotebook() {
     Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex)
   );
   const spread = spreads[activeFlashcardNotebookState.pageIndex] ?? createBlankFlashcardNotebookSpread();
-  const hasLeftContent = hasFlashcardNotebookPageContent(spread.left);
-  if (!hasLeftContent) {
-    activeFlashcardNotebookState.leftVisible = false;
-  }
+  activeFlashcardNotebookState.leftVisible = true;
   const pageTurnDirection = normalizeFlashcardText(activeFlashcardNotebookState.pageTurnDirection);
   activeFlashcardNotebookState.pageTurnDirection = "";
 
   const reader = document.createElement("section");
   reader.className = "flashcard-note-reader";
-  reader.classList.toggle("is-left-visible", Boolean(activeFlashcardNotebookState.leftVisible && hasLeftContent));
+  reader.classList.add("is-left-visible");
   if (pageTurnDirection === "next" || pageTurnDirection === "prev") {
     reader.classList.add(`is-turning-${pageTurnDirection}`);
   }
@@ -3722,18 +3719,6 @@ function renderFlashcardNotebook() {
   closeButton.dataset.flashcardNoteReaderAction = "close";
   closeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span><span>ノートを閉じる</span>';
   (flashcardBinderStageElement ?? reader).append(closeButton);
-
-  if (hasLeftContent) {
-    const leftToggleButton = document.createElement("button");
-    leftToggleButton.type = "button";
-    leftToggleButton.className = "flashcard-note-left-toggle-btn";
-    leftToggleButton.dataset.flashcardNoteReaderAction = "toggle-left";
-    leftToggleButton.textContent = activeFlashcardNotebookState.leftVisible
-      ? "右ページに戻る"
-      : spread.left.toggleLabel || "事前知識を見る";
-    leftToggleButton.setAttribute("aria-pressed", String(activeFlashcardNotebookState.leftVisible));
-    reader.append(leftToggleButton);
-  }
 
   const pageWrap = document.createElement("div");
   pageWrap.className = "flashcard-note-reader-pages";
