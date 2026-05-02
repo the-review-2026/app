@@ -549,6 +549,7 @@ const LOGIN_ONBOARDING_STEP_STORAGE_KEY = "the-review-login-onboarding-step";
 const AUTH_LOGOUT_INTENT_STORAGE_KEY = "the-review-explicit-logout-v1";
 const AUTH_LOCAL_LOGOUT_REQUEST_STORAGE_KEY = "the-review-auth-local-logout-request-v1";
 const LOGIN_ONBOARDING_STEP_IDS = ["welcome", "terms", "auth", "nickname", "educationCode", "avatar"];
+const AUTH_INIT_TIMEOUT_RESULT = Object.freeze({ timedOut: true, appState: null });
 const ACCOUNT_ACTION_DIALOG_COPY = {
   logout: {
     title: "ログアウト",
@@ -675,11 +676,58 @@ async function initLoginPage() {
   bindReviewDataCloudRefreshEvents();
   bindLoginPageAuthEvents();
   let authRedirectAppState = null;
+  let authInitializationTimedOut = false;
   if (explicitLogout && !isAuthCallback) {
     initializeAuth0AfterExplicitLogout({ clearLocalSession: shouldClearAuth0LocalSession });
   } else {
-    authRedirectAppState = await withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
+    const authInitialization = initializeAuth();
+    const authInitializationResult = await withTimeout(
+      authInitialization.then((appState) => ({
+        timedOut: false,
+        appState,
+      })),
+      AUTH_INIT_TIMEOUT_MS,
+      AUTH_INIT_TIMEOUT_RESULT,
+      "Auth initialization"
+    );
+    if (authInitializationResult?.timedOut) {
+      authInitializationTimedOut = true;
+      authInitialization
+        .then((appState) => {
+          completeLoginPageAuthInitialization({
+            appState,
+            isAuthCallback,
+            requestedOnboardingStep,
+            explicitLogout,
+          });
+        })
+        .catch((error) => {
+          console.warn("Background login auth initialization failed:", error);
+        });
+    } else {
+      authRedirectAppState = authInitializationResult?.appState ?? null;
+    }
   }
+  if (authInitializationTimedOut) {
+    renderAuthPanel();
+    renderAvater();
+    return;
+  }
+  completeLoginPageAuthInitialization({
+    appState: authRedirectAppState,
+    isAuthCallback,
+    requestedOnboardingStep,
+    explicitLogout,
+  });
+}
+
+function completeLoginPageAuthInitialization(options = {}) {
+  if (isNavigationRedirectPending) {
+    return;
+  }
+  const isAuthCallback = Boolean(options.isAuthCallback);
+  const requestedOnboardingStep = normalizeLoginOnboardingStep(options.requestedOnboardingStep);
+  const explicitLogout = Boolean(options.explicitLogout);
   const returnedToExistingReviewAccount =
     isAuthCallback &&
     state.auth.isLoggedIn &&
@@ -687,7 +735,7 @@ async function initLoginPage() {
     lastReviewAccountProfileSync?.isNewReviewAccount === false;
   const nextOnboardingStep = returnedToExistingReviewAccount
     ? ""
-    : normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep) || requestedOnboardingStep;
+    : normalizeLoginOnboardingStep(options.appState?.onboardingStep) || requestedOnboardingStep;
   if (nextOnboardingStep) {
     requestLoginOnboardingStep(nextOnboardingStep);
   }
@@ -1258,6 +1306,7 @@ function bindEvents() {
         {
           targetScreen: "mypage",
           targetMypagePage: "top",
+          onboardingStep: "nickname",
         },
         { provider }
       );
