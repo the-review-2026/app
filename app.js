@@ -89,7 +89,6 @@ const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
 const INFO_NOTICE_READ_KEY = "the-review-info-notice-read-v1";
 const MANAGER_ACCESS_CACHE_KEY = "the-review-manager-access-v1";
 const MANAGER_ACCESS_TOKEN_TIMEOUT_MS = 7000;
-const REVIEW_ACCOUNT_SUPPORT_EMAIL = "support@the-review.net";
 const MANAGER_REVIEW_COIN_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const INFO_MENU_NOTICES = [
   {
@@ -384,11 +383,10 @@ const elements = {
   authConfigHint: document.getElementById("authConfigHint"),
   accountEditBtn: document.getElementById("accountEditBtn"),
   accountEditDialog: document.getElementById("accountEditDialog"),
+  accountEditForm: document.querySelector("#accountEditDialog form"),
   accountEditNicknameInput: document.getElementById("accountEditNicknameInput"),
   accountEditNicknameFeedback: document.getElementById("accountEditNicknameFeedback"),
   accountEditNicknameSaveBtn: document.getElementById("accountEditNicknameSaveBtn"),
-  accountEditEmailText: document.getElementById("accountEditEmailText"),
-  accountEditGoogleText: document.getElementById("accountEditGoogleText"),
   accountEditActionButtons: Array.from(document.querySelectorAll("[data-account-edit-action]")),
   logoutBtn: document.getElementById("logoutBtn"),
   deleteAccountBtn: document.getElementById("deleteAccountBtn"),
@@ -506,6 +504,7 @@ let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
 let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
+let isSavingAccountEditNickname = false;
 let settingsEducationCodeScanStream = null;
 let settingsEducationCodeScanFrameId = 0;
 let settingsEducationCodeScanActive = false;
@@ -1476,7 +1475,17 @@ function bindEvents() {
     elements.accountEditBtn.addEventListener("click", openAccountEdit);
   }
 
-  elements.accountEditNicknameInput?.addEventListener("input", syncAccountEditNicknameSaveButton);
+  elements.accountEditNicknameInput?.addEventListener("input", () => {
+    setAccountEditNicknameFeedback("", "");
+    syncAccountEditNicknameSaveButton();
+  });
+
+  elements.accountEditForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!elements.accountEditNicknameSaveBtn?.disabled) {
+      void saveAccountEditNickname();
+    }
+  });
 
   elements.accountEditActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -2015,16 +2024,6 @@ function openAccountEdit() {
   }
   setAccountEditNicknameFeedback("", "");
   syncAccountEditNicknameSaveButton();
-  if (elements.accountEditEmailText) {
-    elements.accountEditEmailText.textContent =
-      state.auth.isLoggedIn && state.auth.provider !== "guest" ? state.auth.email ?? "未設定" : "Guest Modeでは未設定";
-  }
-  if (elements.accountEditGoogleText) {
-    elements.accountEditGoogleText.textContent =
-      state.auth.provider === "google"
-        ? "Googleアカウントと連携されています。"
-        : "Googleアカウントとの連携状態を確認できます。";
-  }
   if (elements.accountEditDialog && typeof elements.accountEditDialog.showModal === "function") {
     if (!elements.accountEditDialog.open) {
       elements.accountEditDialog.showModal();
@@ -2042,17 +2041,6 @@ async function handleAccountEditAction(action) {
     await saveAccountEditNickname();
     return;
   }
-  if (normalizedAction === "password-reset") {
-    await requestReviewAccountPasswordReset();
-    return;
-  }
-  if (normalizedAction === "email-manage") {
-    openReviewAccountSupportMail("email");
-    return;
-  }
-  if (normalizedAction === "google-manage") {
-    openReviewAccountSupportMail("google");
-  }
 }
 
 function getAccountEditNicknameValue() {
@@ -2066,7 +2054,11 @@ function syncAccountEditNicknameSaveButton() {
   const nextNickname = getAccountEditNicknameValue();
   const currentNickname = normalizeNicknameText(state.auth.nickname);
   elements.accountEditNicknameSaveBtn.disabled =
-    !state.auth.isLoggedIn || state.auth.provider === "guest" || !nextNickname || nextNickname === currentNickname;
+    isSavingAccountEditNickname ||
+    !state.auth.isLoggedIn ||
+    state.auth.provider === "guest" ||
+    !nextNickname ||
+    nextNickname === currentNickname;
 }
 
 function setAccountEditNicknameFeedback(message, status = "") {
@@ -2079,6 +2071,9 @@ function setAccountEditNicknameFeedback(message, status = "") {
 }
 
 async function saveAccountEditNickname() {
+  if (isSavingAccountEditNickname) {
+    return;
+  }
   const nickname = getAccountEditNicknameValue();
   if (!nickname) {
     setAccountEditNicknameFeedback("Nicknameを入力してください。", "error");
@@ -2092,6 +2087,7 @@ async function saveAccountEditNickname() {
   }
 
   const previousAuth = { ...state.auth };
+  isSavingAccountEditNickname = true;
   state.auth = normalizeAuthState({
     ...state.auth,
     nickname,
@@ -2102,6 +2098,7 @@ async function saveAccountEditNickname() {
   setAccountEditNicknameFeedback("保存しています。", "");
 
   const payload = await syncReviewAccountProfileToApi({ nickname });
+  isSavingAccountEditNickname = false;
   if (!payload) {
     state.auth = normalizeAuthState(previousAuth);
     saveState();
@@ -2113,69 +2110,6 @@ async function saveAccountEditNickname() {
 
   setAccountEditNicknameFeedback("Nicknameを保存しました。", "success");
   syncAccountEditNicknameSaveButton();
-}
-
-async function requestReviewAccountPasswordReset() {
-  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
-    openReviewAccountSupportMail("password");
-    return;
-  }
-  if (state.auth.provider === "google") {
-    openReviewAccountSupportMail("password");
-    return;
-  }
-
-  const email = typeof state.auth.email === "string" ? state.auth.email.trim() : "";
-  const connection = AUTH0_CONFIG.defaultConnection || "Username-Password-Authentication";
-  if (!email || !connection || !AUTH0_CONFIG.domain || !AUTH0_CONFIG.clientId) {
-    openReviewAccountSupportMail("password");
-    return;
-  }
-
-  try {
-    const response = await fetch(`https://${AUTH0_CONFIG.domain}/dbconnections/change_password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        client_id: AUTH0_CONFIG.clientId,
-        email,
-        connection,
-      }),
-    });
-    if (!response.ok) {
-      throw new Error(`Password reset request failed: ${response.status}`);
-    }
-    window.alert("パスワード変更用のメールを送信しました。メールボックスを確認してください。");
-  } catch (error) {
-    console.warn("Failed to request Auth0 password reset:", error);
-    openReviewAccountSupportMail("password");
-  }
-}
-
-function openReviewAccountSupportMail(topic) {
-  const subjectByTopic = {
-    email: "Review Accountのメールアドレス変更",
-    password: "Review Accountのパスワード変更",
-    google: "Review AccountとGoogleアカウントの連携",
-  };
-  const subject = subjectByTopic[topic] || "Review Accountの設定変更";
-  const bodyLines = [
-    "The Review Production Teamへ",
-    "",
-    "次のReview Account設定を変更したいです。",
-    "",
-    `項目: ${subject}`,
-    `現在のメールアドレス: ${state.auth.email || "未設定"}`,
-    `Nickname: ${normalizeNicknameText(state.auth.nickname) || "未設定"}`,
-    "",
-    "対応をお願いします。",
-  ];
-  const url = `mailto:${REVIEW_ACCOUNT_SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-    bodyLines.join("\n")
-  )}`;
-  window.location.href = url;
 }
 
 function closeAccountEditDialog() {
