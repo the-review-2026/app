@@ -9174,6 +9174,48 @@ body.manager-page #screen-profile .page-script-title::after {
   content: "プロフィール";
 }
 
+/* Full-bleed page title background while keeping title text aligned to the content column. */
+#screen-home .home-greeting-hero,
+#screen-notice > .page-title-row,
+#screen-settings > .page-title-row,
+body.manager-page .screen > .page-title-row {
+  isolation: isolate;
+  overflow: visible;
+  background: none;
+}
+
+#screen-home .home-greeting-hero::before,
+#screen-notice > .page-title-row::before,
+#screen-settings > .page-title-row::before,
+body.manager-page .screen > .page-title-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 50vw);
+  right: calc(50% - 50vw);
+  z-index: 0;
+  border-radius: 0 0 20px 20px;
+  background: var(--band-tab-background);
+  background-blend-mode: var(--band-tab-background-blend);
+}
+
+#screen-home .home-greeting-hero::after,
+#screen-notice > .page-title-row::after,
+#screen-settings > .page-title-row::after,
+body.manager-page .screen > .page-title-row::after {
+  left: calc(50% - 50vw);
+  right: calc(50% - 50vw);
+  z-index: 1;
+}
+
+#screen-home .home-greeting-hero .page-script-title,
+#screen-notice > .page-title-row .page-script-title,
+#screen-settings > .page-title-row .page-script-title,
+body.manager-page .screen > .page-title-row .page-script-title {
+  z-index: 2;
+}
+
 body.learn-popover-open::after {
   z-index: 22;
   opacity: 1;
