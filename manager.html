@@ -37,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260502-3" />
+    <link rel="stylesheet" href="./app.css?v=20260503-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
     <style>
       body.manager-page {
@@ -630,6 +630,10 @@
         background: #f4f4f4;
         color: #1d1d1d;
         font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.22rem;
       }
 
       body.manager-page .editor-tool-btn:hover {
@@ -654,6 +658,21 @@
       body.manager-page .editor-surface:empty::before {
         content: attr(data-placeholder);
         color: #1d1d1d;
+      }
+
+      body.manager-page .problem-rich-editor .editor-surface {
+        min-height: 220px;
+      }
+
+      body.manager-page .manager-editor-image {
+        display: block;
+        max-width: 100%;
+        max-height: 260px;
+        object-fit: contain;
+        margin: 0.58rem 0;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 10px;
+        background: #ffffff;
       }
 
       body.manager-page .editor-footer {
@@ -882,6 +901,152 @@
         clip: rect(0 0 0 0);
         clip-path: inset(50%);
         white-space: pre-wrap;
+      }
+
+      body.manager-page .manager-repeatable-editor {
+        display: grid;
+        gap: 0.62rem;
+      }
+
+      body.manager-page .manager-repeatable-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.46rem;
+      }
+
+      body.manager-page .manager-repeatable-actions button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.28rem;
+      }
+
+      body.manager-page .text-block-list {
+        display: grid;
+        gap: 0.52rem;
+      }
+
+      body.manager-page .text-block-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.52rem;
+        align-items: start;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 0.58rem;
+      }
+
+      body.manager-page .text-block-card.is-dragging {
+        opacity: 0.45;
+      }
+
+      body.manager-page .text-block-grip {
+        margin-top: 0.1rem;
+      }
+
+      body.manager-page .text-block-main {
+        display: grid;
+        gap: 0.36rem;
+        min-width: 0;
+      }
+
+      body.manager-page .text-block-type {
+        margin: 0;
+        color: #555555;
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      body.manager-page .text-block-editor {
+        min-height: 3rem;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 10px;
+        background: #fbfbfb;
+        padding: 0.54rem 0.62rem;
+        line-height: 1.62;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      body.manager-page .text-block-editor:focus {
+        outline: none;
+        border-color: #1d1d1d;
+        box-shadow: 0 0 0 2px rgba(29, 29, 29, 0.14);
+        background: #ffffff;
+      }
+
+      body.manager-page .text-block-editor:empty::before {
+        content: attr(data-placeholder);
+        color: rgba(29, 29, 29, 0.42);
+      }
+
+      body.manager-page .text-block-delete {
+        border-radius: 10px;
+        min-width: 2.3rem;
+        padding: 0.42rem;
+      }
+
+      body.manager-page .manager-image-dropzone {
+        width: 100%;
+        min-height: clamp(180px, 36vw, 300px);
+        border: 2px dashed rgba(0, 0, 0, 0.24);
+        border-radius: 14px;
+        background: #ffffff;
+        display: grid;
+        place-items: center;
+        padding: 0.82rem;
+        cursor: pointer;
+        overflow: hidden;
+      }
+
+      body.manager-page .manager-image-dropzone.is-dragover,
+      body.manager-page .manager-image-dropzone:focus-visible {
+        border-color: #1d1d1d;
+        box-shadow: 0 0 0 2px rgba(29, 29, 29, 0.14);
+        outline: none;
+      }
+
+      body.manager-page .manager-image-dropzone-empty {
+        display: grid;
+        place-items: center;
+        gap: 0.24rem;
+        color: #1d1d1d;
+        text-align: center;
+      }
+
+      body.manager-page .manager-image-dropzone-empty .material-symbols-rounded {
+        font-size: 2.1rem;
+      }
+
+      body.manager-page .manager-image-dropzone-preview {
+        width: 100%;
+        height: 100%;
+        max-height: 280px;
+        object-fit: contain;
+      }
+
+      body.manager-page .manager-store-item {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.72rem;
+        align-items: center;
+      }
+
+      body.manager-page .manager-store-item-main {
+        min-width: 0;
+      }
+
+      body.manager-page .manager-store-item .manager-store-item-image {
+        display: block;
+        width: 4.1rem !important;
+        height: 4.1rem !important;
+        top: auto;
+        left: auto;
+        border-radius: 12px;
+        object-fit: contain;
+        background: #f5f5f5;
+        border: 1px solid rgba(0, 0, 0, 0.12);
       }
 
       body.manager-page .problem-image-preview-wrap {
@@ -1426,6 +1591,11 @@
           grid-template-columns: 1fr;
         }
 
+        body.manager-page .text-block-card,
+        body.manager-page .manager-store-item {
+          grid-template-columns: 1fr;
+        }
+
         body.manager-page .problem-action-row {
           position: static;
         }
@@ -1579,10 +1749,6 @@
                 <div id="publishedNoteMenu" class="published-note-menu" role="listbox" aria-label="ノート"></div>
               </aside>
               <div class="published-question-main">
-                <label class="field-block" for="publishedChapterSelect">
-                  <span id="publishedChapterLabel" class="field-label-row">章</span>
-                  <select id="publishedChapterSelect"></select>
-                </label>
                 <ul id="createdQuestionList" class="manager-question-list" aria-label="作成済み問題一覧"></ul>
               </div>
             </div>
@@ -1627,77 +1793,73 @@
                         <select id="noteSelect" name="note" required></select>
                       </div>
                     </div>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset">
+                    <legend>テキスト</legend>
                     <div class="problem-field-row">
-                      <div class="field-block">
-                        <label class="field-label-row" for="chapterSelect">
-                          <span id="chapterFieldLabel">章</span>
-                          <span class="field-badge">必須</span>
-                        </label>
-                        <select id="chapterSelect" name="chapter" required></select>
+                      <label class="field-block" for="textNumberInput">
+                        <span class="field-label-row">テキスト番号</span>
+                        <input id="textNumberInput" type="text" maxlength="24" placeholder="例: 4" />
+                      </label>
+                      <label class="field-block" for="textNameInput">
+                        <span class="field-label-row">テキスト名</span>
+                        <input id="textNameInput" type="text" maxlength="64" placeholder="例: 恒等式" />
+                      </label>
+                    </div>
+                    <div class="manager-repeatable-editor" aria-label="テキスト文">
+                      <div class="manager-repeatable-actions">
+                        <button class="secondary white-button" type="button" data-add-text-block="heading">
+                          <span class="material-symbols-rounded" aria-hidden="true">title</span>
+                          <span>見出しを追加</span>
+                        </button>
+                        <button class="secondary white-button" type="button" data-add-text-block="body">
+                          <span class="material-symbols-rounded" aria-hidden="true">notes</span>
+                          <span>本文を追加</span>
+                        </button>
                       </div>
+                      <div id="textBlockList" class="text-block-list"></div>
                     </div>
                   </fieldset>
 
                   <fieldset class="problem-fieldset">
                     <legend>問題</legend>
+                    <div class="problem-field-row">
+                      <label class="field-block" for="questionNumberInput">
+                        <span class="field-label-row">問題番号</span>
+                        <input id="questionNumberInput" type="text" maxlength="24" placeholder="例: 12" />
+                      </label>
+                      <label class="field-block" for="questionNameInput">
+                        <span class="field-label-row">問題名</span>
+                        <input id="questionNameInput" type="text" maxlength="64" placeholder="例: 等式の証明①" />
+                      </label>
+                    </div>
                     <div class="field-block">
                       <div class="field-label-row">
-                        <span>問題</span>
+                        <span>問題文</span>
                         <span class="field-badge">必須</span>
                       </div>
-                      <div class="notebook-editor-shell">
-                        <div id="editorToolbar" class="notebook-editor-toolbar" role="toolbar" aria-label="ノートエディター">
-                          <button class="notebook-editor-tool" type="button" data-add-notebook-block="heading">
-                            <span class="material-symbols-rounded" aria-hidden="true">title</span>
-                            <span>見出し</span>
-                          </button>
-                          <button class="notebook-editor-tool" type="button" data-add-notebook-block="text">
-                            <span class="material-symbols-rounded" aria-hidden="true">notes</span>
-                            <span>テキスト</span>
-                          </button>
-                          <button class="notebook-editor-tool" type="button" data-add-notebook-block="question">
-                            <span class="material-symbols-rounded" aria-hidden="true">quiz</span>
-                            <span>問題</span>
-                          </button>
-                          <button class="notebook-editor-tool" type="button" data-add-notebook-block="formula">
+                      <div class="editor-shell problem-rich-editor">
+                        <div id="editorToolbar" class="editor-toolbar" role="toolbar" aria-label="問題文エディター">
+                          <button class="editor-tool-btn" type="button" data-command="bold" aria-label="太字">B</button>
+                          <button class="editor-tool-btn" type="button" data-command="italic" aria-label="斜体">I</button>
+                          <button class="editor-tool-btn" type="button" data-insert="formula">
                             <span class="material-symbols-rounded" aria-hidden="true">functions</span>
                             <span>数式</span>
                           </button>
-                        </div>
-                        <div id="notebookEditorBook" class="notebook-editor-book" aria-label="問題ノートエディター">
-                          <section class="notebook-editor-page" aria-label="テキストページ">
-                            <header class="notebook-editor-page-head">
-                              <p class="notebook-editor-page-title">
-                                <strong id="notebookTextSubject">数学Ⅰ</strong>
-                                <span class="notebook-editor-page-subtitle">テキスト</span>
-                              </p>
-                            </header>
-                            <div id="notebookTextSurface" class="notebook-page-grid" data-notebook-page-surface="text"></div>
-                            <p class="notebook-editor-watermark" aria-hidden="true">Text</p>
-                          </section>
-                          <section class="notebook-editor-page" aria-label="問題ページ">
-                            <header class="notebook-editor-page-head">
-                              <p class="notebook-editor-page-title">
-                                <strong id="notebookQuestionSubject">数学Ⅰ</strong>
-                                <span class="notebook-editor-page-subtitle">問題</span>
-                              </p>
-                              <p class="notebook-editor-date">
-                                <span>Date</span>
-                                <strong id="notebookEditorDate">26.5.2</strong>
-                              </p>
-                            </header>
-                            <div id="notebookQuestionSurface" class="notebook-page-grid" data-notebook-page-surface="question"></div>
-                            <p class="notebook-editor-watermark" aria-hidden="true">Question</p>
-                          </section>
+                          <button class="editor-tool-btn" type="button" data-insert="image">
+                            <span class="material-symbols-rounded" aria-hidden="true">image</span>
+                            <span>画像</span>
+                          </button>
                         </div>
                         <div
                           id="problemEditor"
-                          class="editor-surface notebook-hidden-editor"
+                          class="editor-surface"
                           contenteditable="true"
                           role="textbox"
                           aria-multiline="true"
-                          aria-label="問題"
-                          data-placeholder="問題を入力してください（例: 次の文を読んで正しいものを選びなさい。）"
+                          aria-label="問題文"
+                          data-placeholder="問題文を入力してください。数式や画像も追加できます。"
                         ></div>
                         <div class="editor-footer">
                           <p class="editor-counter">
@@ -1705,16 +1867,6 @@
                           </p>
                         </div>
                       </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="problem-fieldset">
-                    <legend>画像</legend>
-                    <div class="field-block">
-                      <label class="field-label-row" for="problemImageInput">
-                        <span>添付画像</span>
-                        <span class="field-badge is-optional">任意</span>
-                      </label>
                       <div class="image-picker">
                         <input id="problemImageInput" name="image" type="file" accept="image/*" hidden />
                         <div class="image-picker-actions">
@@ -1722,7 +1874,7 @@
                           <button id="viewProblemImageBtn" class="secondary white-button" type="button" disabled>画像を確認</button>
                         </div>
                         <p id="problemImageMeta" class="image-picker-filename"></p>
-                        <p class="field-help">図などが必要な場合は添付してください。</p>
+                        <p class="field-help">選択した画像は問題文エディターにも挿入されます。</p>
                       </div>
                       <div id="problemImagePreviewWrap" class="problem-image-preview-wrap" hidden>
                         <div class="problem-image-actions">
@@ -1774,10 +1926,6 @@
                       <p id="pendingQuestionNote">-</p>
                     </li>
                     <li>
-                      <strong>章</strong>
-                      <p id="pendingQuestionChapter">-</p>
-                    </li>
-                    <li>
                       <strong>ステータス</strong>
                       <p id="pendingQuestionStatus">-</p>
                     </li>
@@ -1817,6 +1965,22 @@
               </span>
             </div>
             <div class="manager-field-grid">
+              <div class="field-block">
+                <span class="field-label-row">アイテム画像</span>
+                <div id="avaterItemImageDropzone" class="manager-image-dropzone" tabindex="0" role="button" aria-label="アイテム画像をアップロード">
+                  <input id="avaterItemImageInput" type="file" accept="image/*" hidden />
+                  <div id="avaterItemImageEmpty" class="manager-image-dropzone-empty">
+                    <span class="material-symbols-rounded" aria-hidden="true">upload</span>
+                    <strong>画像をアップロード</strong>
+                    <span>タップ、またはドラッグアンドドロップ</span>
+                  </div>
+                  <img id="avaterItemImagePreview" class="manager-image-dropzone-preview" alt="" hidden />
+                </div>
+                <div class="image-picker-actions">
+                  <button id="clearAvaterItemImageBtn" class="secondary white-button" type="button">画像を削除</button>
+                </div>
+                <p id="avaterItemImageMeta" class="image-picker-filename"></p>
+              </div>
               <label class="field-block" for="avaterItemNameInput">
                 <span class="field-label-row">アイテム名</span>
                 <input id="avaterItemNameInput" type="text" maxlength="32" />
@@ -1907,8 +2071,6 @@
           <dd id="confirmProblemBinder">-</dd>
           <dt>ノート</dt>
           <dd id="confirmProblemNote">-</dd>
-          <dt>章</dt>
-          <dd id="confirmProblemChapter">-</dd>
           <dt>画像</dt>
           <dd id="confirmProblemImage">画像なし</dd>
         </dl>
@@ -1951,38 +2113,46 @@
         const MANAGER_AVATER_ITEM_CLASSES = {};
 
         const NOTE_BY_BINDER = {
-          "Reboot 1st Edition (JESH)": ["現代の国語", "言語文化", "論理・表現Ⅰ", "ＥＣⅠ", "公共", "保健"],
-          "Reboot 1st Edition (STIM)": ["数学Ⅰ", "数学Ａ", "物理基礎", "化学基礎", "生物基礎", "情報（工業情報数理）"],
-          "Refine 2nd Edition (JESH)": ["論理国語", "論理・表現Ⅱ", "ＥＣⅡ", "地理総合", "家庭基礎", "保健"],
-          "Refine 2nd Edition (MASC)": ["数学Ⅱ", "数学Ｃ", "数学Ｂ", "物理", "化学", "生物"],
-          "Refine 2nd Edition (STEAMI)": ["ＳＳ科学技術理論Ⅰ（１分野）", "ＳＳ科学技術理論Ⅰ（２分野）", "ＳＳ科学技術理論Ⅰ（３分野）"],
+          "Reboot 1st Edition": [
+            "現代の国語",
+            "言語文化",
+            "論理・表現Ⅰ",
+            "ＥＣⅠ",
+            "公共",
+            "保健",
+            "数学Ⅰ",
+            "数学Ａ",
+            "物理基礎",
+            "化学基礎",
+            "生物基礎",
+            "情報（工業情報数理）",
+          ],
+          "Refine 2nd Edition": [
+            "論理国語",
+            "論理・表現Ⅱ",
+            "ＥＣⅡ",
+            "地理総合",
+            "家庭基礎",
+            "保健",
+            "数学Ⅱ",
+            "数学Ｃ",
+            "数学Ｂ",
+            "物理",
+            "化学",
+            "生物",
+            "ＳＳ科学技術理論Ⅰ（１分野）",
+            "ＳＳ科学技術理論Ⅰ（２分野）",
+            "ＳＳ科学技術理論Ⅰ（３分野）",
+          ],
           "On COLORFUL": ["朝学習テスト（１学年）", "朝学習テスト（２学年）"],
         };
 
         const DEFAULT_CHAPTER_CONFIG = {
-          label: "章",
-          options: ["共通"],
+          label: "",
+          options: [],
         };
 
-        const CHAPTER_CONFIG_BY_NOTE = {
-          "現代の国語": { label: "章", options: createNumberedOptions("第", "章", 10) },
-          "言語文化": { label: "Part", options: createNumberedOptions("Part ", "", 8) },
-          "論理国語": { label: "章", options: createNumberedOptions("第", "章", 10) },
-          "数学Ⅰ": { label: "章", options: createNumberedOptions("第", "章", 8) },
-          "数学Ⅱ": { label: "章", options: createNumberedOptions("第", "章", 8) },
-          "数学Ａ": { label: "章", options: createNumberedOptions("第", "章", 8) },
-          "数学Ｂ": { label: "章", options: createNumberedOptions("第", "章", 8) },
-          "数学Ｃ": { label: "章", options: createNumberedOptions("第", "章", 8) },
-          "論理・表現Ⅰ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
-          "論理・表現Ⅱ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
-          "ＥＣⅠ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
-          "ＥＣⅡ": { label: "Lesson", options: createNumberedOptions("Lesson ", "", 12) },
-          "公共": { label: "章", options: createNumberedOptions("第", "章", 8) },
-          "地理総合": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
-          "物理": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
-          "化学": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
-          "生物": { label: "Part", options: createNumberedOptions("Part ", "", 6) },
-        };
+        const CHAPTER_CONFIG_BY_NOTE = {};
 
         const STATUS_LABEL = {
           draft: "下書き",
@@ -2010,11 +2180,14 @@
           lastProblemStep: "create",
           activeProblemTab: "create",
           selectedPendingQuestionId: "",
+          textBlocks: [],
+          draggingTextBlockId: "",
           notebookBlocks: [],
           activeNotebookBlockId: "",
           notebookDragState: null,
           notebookLongPressTimerId: null,
           notebookSuppressSurfaceClick: false,
+          avaterItemImageData: null,
           activeStoreItemId: "",
           reviewDataSnapshot: null,
         };
@@ -2056,6 +2229,12 @@
           noteSelect: document.getElementById("noteSelect"),
           chapterSelect: document.getElementById("chapterSelect"),
           chapterFieldLabel: document.getElementById("chapterFieldLabel"),
+          textNumberInput: document.getElementById("textNumberInput"),
+          textNameInput: document.getElementById("textNameInput"),
+          textBlockList: document.getElementById("textBlockList"),
+          textBlockAddButtons: Array.from(document.querySelectorAll("[data-add-text-block]")),
+          questionNumberInput: document.getElementById("questionNumberInput"),
+          questionNameInput: document.getElementById("questionNameInput"),
           problemImageInput: document.getElementById("problemImageInput"),
           selectProblemImageBtn: document.getElementById("selectProblemImageBtn"),
           viewProblemImageBtn: document.getElementById("viewProblemImageBtn"),
@@ -2084,6 +2263,12 @@
           avaterItemNameInput: document.getElementById("avaterItemNameInput"),
           avaterItemCategorySelect: document.getElementById("avaterItemCategorySelect"),
           avaterItemCostInput: document.getElementById("avaterItemCostInput"),
+          avaterItemImageInput: document.getElementById("avaterItemImageInput"),
+          avaterItemImageDropzone: document.getElementById("avaterItemImageDropzone"),
+          avaterItemImagePreview: document.getElementById("avaterItemImagePreview"),
+          avaterItemImageEmpty: document.getElementById("avaterItemImageEmpty"),
+          avaterItemImageMeta: document.getElementById("avaterItemImageMeta"),
+          clearAvaterItemImageBtn: document.getElementById("clearAvaterItemImageBtn"),
           addAvaterItemBtn: document.getElementById("addAvaterItemBtn"),
           managerAvaterItemList: document.getElementById("managerAvaterItemList"),
           storeConfigFeedback: document.getElementById("storeConfigFeedback"),
@@ -2122,6 +2307,8 @@
           renderPendingQuestionManager();
           renderProfile();
           renderProblemImagePreview();
+          renderTextBlocks();
+          renderAvaterItemImagePreview();
           updateEditorCounts();
           window.setTimeout(() => {
             if (elements.appLoader) {
@@ -2248,6 +2435,39 @@
 
         function initializeStoreSettings() {
           elements.addAvaterItemBtn?.addEventListener("click", addManagerAvaterItem);
+          elements.avaterItemImageDropzone?.addEventListener("click", () => {
+            elements.avaterItemImageInput?.click();
+          });
+          elements.avaterItemImageDropzone?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              elements.avaterItemImageInput?.click();
+            }
+          });
+          elements.avaterItemImageInput?.addEventListener("change", async () => {
+            await syncAvaterItemImageFromFile(elements.avaterItemImageInput?.files?.[0] || null);
+          });
+          elements.clearAvaterItemImageBtn?.addEventListener("click", clearAvaterItemImage);
+          ["dragenter", "dragover"].forEach((eventName) => {
+            elements.avaterItemImageDropzone?.addEventListener(eventName, (event) => {
+              event.preventDefault();
+              elements.avaterItemImageDropzone?.classList.add("is-dragover");
+              if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = "copy";
+              }
+            });
+          });
+          ["dragleave", "dragend"].forEach((eventName) => {
+            elements.avaterItemImageDropzone?.addEventListener(eventName, () => {
+              elements.avaterItemImageDropzone?.classList.remove("is-dragover");
+            });
+          });
+          elements.avaterItemImageDropzone?.addEventListener("drop", async (event) => {
+            event.preventDefault();
+            elements.avaterItemImageDropzone?.classList.remove("is-dragover");
+            const file = Array.from(event.dataTransfer?.files || []).find((item) => item.type.startsWith("image/")) || null;
+            await syncAvaterItemImageFromFile(file);
+          });
           elements.managerAvaterItemList?.addEventListener("click", (event) => {
             const target = event.target instanceof Element ? event.target : null;
             const deleteButton = target?.closest("[data-manager-avater-delete]");
@@ -2429,6 +2649,7 @@
           const name = String(elements.avaterItemNameInput?.value || "").trim();
           const category = normalizeManagerAvaterCategory(elements.avaterItemCategorySelect?.value);
           const cost = Math.max(0, Math.floor(Number(elements.avaterItemCostInput?.value) || 0));
+          const image = state.avaterItemImageData ? { ...state.avaterItemImageData } : null;
           if (!name) {
             if (elements.storeConfigFeedback) {
               elements.storeConfigFeedback.textContent = "アイテム名を入力してください。";
@@ -2441,11 +2662,13 @@
             name,
             category,
             cost,
+            image,
           });
           saveManagerAvaterItems(items);
           if (elements.avaterItemNameInput) {
             elements.avaterItemNameInput.value = "";
           }
+          clearAvaterItemImage();
           if (elements.storeConfigFeedback) {
             elements.storeConfigFeedback.textContent = "Avaterアイテムを追加しました。";
           }
@@ -2475,6 +2698,66 @@
           return Object.prototype.hasOwnProperty.call(MANAGER_AVATER_CATEGORY_LABELS, category) ? category : "accessory";
         }
 
+        async function syncAvaterItemImageFromFile(file) {
+          if (!file) {
+            return;
+          }
+          if (!file.type.startsWith("image/")) {
+            if (elements.storeConfigFeedback) {
+              elements.storeConfigFeedback.textContent = "画像ファイルを選択してください。";
+            }
+            return;
+          }
+          try {
+            const dataUrl = await fileToDataUrl(file);
+            state.avaterItemImageData = {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              dataUrl,
+            };
+            renderAvaterItemImagePreview();
+            if (elements.storeConfigFeedback) {
+              elements.storeConfigFeedback.textContent = "";
+            }
+          } catch {
+            state.avaterItemImageData = null;
+            renderAvaterItemImagePreview();
+            if (elements.storeConfigFeedback) {
+              elements.storeConfigFeedback.textContent = "画像の読み込みに失敗しました。";
+            }
+          }
+        }
+
+        function renderAvaterItemImagePreview() {
+          const imageData = state.avaterItemImageData;
+          if (elements.avaterItemImagePreview) {
+            elements.avaterItemImagePreview.hidden = !imageData;
+            elements.avaterItemImagePreview.src = imageData?.dataUrl || "";
+            elements.avaterItemImagePreview.alt = imageData?.name || "";
+          }
+          if (elements.avaterItemImageEmpty) {
+            elements.avaterItemImageEmpty.hidden = Boolean(imageData);
+          }
+          if (elements.avaterItemImageMeta) {
+            const sizeKb = imageData?.size ? Math.max(1, Math.round(imageData.size / 1024)) : 0;
+            elements.avaterItemImageMeta.textContent = imageData ? `${imageData.name} (${sizeKb}KB)` : "";
+          }
+        }
+
+        function clearAvaterItemImage() {
+          state.avaterItemImageData = null;
+          if (elements.avaterItemImageInput) {
+            elements.avaterItemImageInput.value = "";
+          }
+          renderAvaterItemImagePreview();
+        }
+
+        function getManagerAvaterItemImage(item) {
+          const image = item?.image;
+          return image && typeof image.dataUrl === "string" && image.dataUrl ? image : null;
+        }
+
         function renderManagerAvaterItems() {
           if (!elements.managerAvaterItemList) {
             return;
@@ -2493,6 +2776,7 @@
               (item) => {
                 const category = normalizeManagerAvaterCategory(item.category);
                 const isActive = item.id === state.activeStoreItemId;
+                const image = getManagerAvaterItemImage(item);
                 return `
                 <article
                   class="manager-store-item${isActive ? " is-active" : ""}"
@@ -2501,9 +2785,16 @@
                   tabindex="0"
                   aria-label="${escapeHtml(item.name || "未設定")}の操作"
                 >
-                  <h3>${escapeHtml(item.name || "未設定")}</h3>
-                  <p>${escapeHtml(MANAGER_AVATER_CATEGORY_LABELS[category])}</p>
-                  <p class="manager-store-price"><img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />${escapeHtml(String(item.cost || 0))}</p>
+                  ${
+                    image
+                      ? `<img class="manager-store-item-image" src="${escapeHtml(image.dataUrl)}" alt="" />`
+                      : `<span class="manager-store-item-image avater-item-custom avater-category-${escapeHtml(category)}" aria-hidden="true"></span>`
+                  }
+                  <div class="manager-store-item-main">
+                    <h3>${escapeHtml(item.name || "未設定")}</h3>
+                    <p>${escapeHtml(MANAGER_AVATER_CATEGORY_LABELS[category])}</p>
+                    <p class="manager-store-price"><img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />${escapeHtml(String(item.cost || 0))}</p>
+                  </div>
                   ${
                     isActive
                       ? `<div class="manager-store-delete-bubble" role="dialog" aria-label="アイテム削除">
@@ -2694,7 +2985,7 @@
 
         function initializePublishedFilters() {
           const binders = Object.keys(NOTE_BY_BINDER);
-          if (!elements.publishedBinderSelect || !elements.publishedNoteMenu || !elements.publishedChapterSelect) {
+          if (!elements.publishedBinderSelect || !elements.publishedNoteMenu) {
             return;
           }
 
@@ -2707,19 +2998,11 @@
           elements.publishedBinderSelect.addEventListener("change", () => {
             state.selectedListBinder = elements.publishedBinderSelect.value;
             state.selectedListNote = "";
-            state.selectedListChapter = "all";
             renderPublishedNoteMenu();
-            updatePublishedChapterOptions();
-            renderQuestionList();
-          });
-
-          elements.publishedChapterSelect.addEventListener("change", () => {
-            state.selectedListChapter = elements.publishedChapterSelect.value || "all";
             renderQuestionList();
           });
 
           renderPublishedNoteMenu();
-          updatePublishedChapterOptions();
         }
 
         function initializeProblemTabs() {
@@ -2786,9 +3069,7 @@
           elements.publishedNoteMenu.querySelectorAll("[data-note]").forEach((button) => {
             button.addEventListener("click", () => {
               state.selectedListNote = button.dataset.note || "";
-              state.selectedListChapter = "all";
               renderPublishedNoteMenu();
-              updatePublishedChapterOptions();
               renderQuestionList();
             });
           });
@@ -2827,10 +3108,16 @@
             renderNotebookEditorFrame();
             updateProblemPreview();
           });
-          elements.chapterSelect?.addEventListener("change", () => {
-            renderNotebookEditorFrame();
-            updateProblemPreview();
+          [elements.textNumberInput, elements.textNameInput, elements.questionNumberInput, elements.questionNameInput].forEach((input) => {
+            input?.addEventListener("input", updateProblemPreview);
           });
+
+          elements.textBlockAddButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              addTextBlock(button.dataset.addTextBlock || "body");
+            });
+          });
+          initializeTextBlockList();
 
           elements.editorToolbar?.addEventListener("click", (event) => {
             const button = event.target instanceof Element ? event.target.closest("button") : null;
@@ -2859,6 +3146,13 @@
               insertTextAtCursor("ア. \nイ. \nウ. ");
               updateEditorCounts();
             }
+            if (insertType === "formula") {
+              insertTextAtCursor(" $a^2 + b^2 = c^2$ ");
+              updateEditorCounts();
+            }
+            if (insertType === "image") {
+              elements.problemImageInput?.click();
+            }
           });
 
           elements.problemEditor.addEventListener("input", () => {
@@ -2868,7 +3162,7 @@
           initializeNotebookEditor();
 
           elements.problemImageInput?.addEventListener("change", async () => {
-            await syncProblemImageFromInput();
+            await syncProblemImageFromInput({ insertIntoEditor: true });
           });
 
           elements.selectProblemImageBtn?.addEventListener("click", () => {
@@ -2928,6 +3222,144 @@
           });
 
           updateProblemPreview();
+        }
+
+        function initializeTextBlockList() {
+          if (!elements.textBlockList) {
+            return;
+          }
+          elements.textBlockList.addEventListener("input", (event) => {
+            const blockCard = event.target instanceof Element ? event.target.closest("[data-text-block-id]") : null;
+            const block = getTextBlockById(blockCard?.getAttribute("data-text-block-id") || "");
+            if (!block) {
+              return;
+            }
+            block.text = event.target?.textContent || "";
+            updateProblemPreview();
+          });
+          elements.textBlockList.addEventListener("click", (event) => {
+            const deleteButton = event.target instanceof Element ? event.target.closest("[data-delete-text-block]") : null;
+            if (!deleteButton) {
+              return;
+            }
+            deleteTextBlock(deleteButton.getAttribute("data-delete-text-block") || "");
+          });
+          elements.textBlockList.addEventListener("dragstart", (event) => {
+            const blockCard = event.target instanceof Element ? event.target.closest("[data-text-block-id]") : null;
+            if (!(blockCard instanceof HTMLElement)) {
+              return;
+            }
+            state.draggingTextBlockId = blockCard.dataset.textBlockId || "";
+            blockCard.classList.add("is-dragging");
+            event.dataTransfer?.setData("text/plain", state.draggingTextBlockId);
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+            }
+          });
+          elements.textBlockList.addEventListener("dragend", (event) => {
+            const blockCard = event.target instanceof Element ? event.target.closest("[data-text-block-id]") : null;
+            blockCard?.classList.remove("is-dragging");
+            persistTextBlockOrderFromDom();
+            state.draggingTextBlockId = "";
+          });
+          elements.textBlockList.addEventListener("dragover", (event) => {
+            if (!state.draggingTextBlockId) {
+              return;
+            }
+            event.preventDefault();
+            const draggingCard = elements.textBlockList.querySelector(`[data-text-block-id="${cssEscape(state.draggingTextBlockId)}"]`);
+            const targetCard = event.target instanceof Element ? event.target.closest("[data-text-block-id]") : null;
+            if (!(draggingCard instanceof HTMLElement) || !(targetCard instanceof HTMLElement) || draggingCard === targetCard) {
+              return;
+            }
+            const rect = targetCard.getBoundingClientRect();
+            const before = event.clientY < rect.top + rect.height / 2;
+            elements.textBlockList.insertBefore(draggingCard, before ? targetCard : targetCard.nextElementSibling);
+          });
+          elements.textBlockList.addEventListener("drop", (event) => {
+            event.preventDefault();
+            persistTextBlockOrderFromDom();
+          });
+        }
+
+        function addTextBlock(type = "body") {
+          const normalizedType = type === "heading" ? "heading" : "body";
+          const block = {
+            id: `text_${Date.now()}_${Math.random().toString(16).slice(2, 7)}`,
+            type: normalizedType,
+            text: "",
+          };
+          state.textBlocks.push(block);
+          renderTextBlocks();
+          updateProblemPreview();
+          window.requestAnimationFrame(() => {
+            elements.textBlockList
+              ?.querySelector(`[data-text-block-id="${cssEscape(block.id)}"] [contenteditable]`)
+              ?.focus();
+          });
+        }
+
+        function deleteTextBlock(blockId) {
+          const nextBlocks = state.textBlocks.filter((block) => block.id !== blockId);
+          if (nextBlocks.length === state.textBlocks.length) {
+            return;
+          }
+          state.textBlocks = nextBlocks;
+          renderTextBlocks();
+          updateProblemPreview();
+        }
+
+        function getTextBlockById(blockId) {
+          return state.textBlocks.find((block) => block.id === blockId) || null;
+        }
+
+        function renderTextBlocks() {
+          if (!elements.textBlockList) {
+            return;
+          }
+          if (!state.textBlocks.length) {
+            elements.textBlockList.innerHTML = `<p class="hint-text">見出しまたは本文を追加してください。</p>`;
+            return;
+          }
+          elements.textBlockList.innerHTML = state.textBlocks
+            .map((block) => {
+              const type = block.type === "heading" ? "heading" : "body";
+              const label = type === "heading" ? "テキスト文（見出し）" : "テキスト文（本文）";
+              const placeholder = type === "heading" ? "見出しを入力" : "本文を入力";
+              return `
+                <article class="text-block-card" data-text-block-id="${escapeHtml(block.id)}">
+                  <button class="drag-handle text-block-grip" type="button" aria-label="並び替え" draggable="true"></button>
+                  <div class="text-block-main">
+                    <p class="text-block-type">${escapeHtml(label)}</p>
+                    <div
+                      class="text-block-editor"
+                      contenteditable="plaintext-only"
+                      role="textbox"
+                      aria-multiline="true"
+                      data-placeholder="${escapeHtml(placeholder)}"
+                    >${escapeHtml(block.text || "")}</div>
+                  </div>
+                  <button class="secondary white-button text-block-delete" type="button" data-delete-text-block="${escapeHtml(block.id)}" aria-label="削除">
+                    <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+                  </button>
+                </article>
+              `;
+            })
+            .join("");
+        }
+
+        function persistTextBlockOrderFromDom() {
+          if (!elements.textBlockList || !state.textBlocks.length) {
+            return;
+          }
+          const ids = Array.from(elements.textBlockList.querySelectorAll("[data-text-block-id]"))
+            .map((item) => item.getAttribute("data-text-block-id") || "")
+            .filter(Boolean);
+          const blockMap = new Map(state.textBlocks.map((block) => [block.id, block]));
+          const ordered = ids.map((id) => blockMap.get(id)).filter(Boolean);
+          if (ordered.length === state.textBlocks.length) {
+            state.textBlocks = ordered;
+          }
         }
 
         function initializeNotebookEditor() {
@@ -3256,7 +3688,10 @@
         function updateProblemPreview() {
           const binder = elements.binderSelect?.value.trim() || "";
           const note = elements.noteSelect?.value.trim() || "";
-          const chapter = elements.chapterSelect?.value.trim() || "";
+          const textNumber = elements.textNumberInput?.value.trim() || "";
+          const textName = elements.textNameInput?.value.trim() || "";
+          const questionNumber = elements.questionNumberInput?.value.trim() || "";
+          const questionName = elements.questionNameInput?.value.trim() || "";
           const contentText = (elements.problemEditor?.textContent || "").replace(/\s+/g, " ").trim();
 
           const missingFields = [];
@@ -3266,11 +3701,20 @@
           if (!note) {
             missingFields.push("ノート");
           }
-          if (!chapter) {
-            missingFields.push(getChapterConfig(note).label);
+          if (!textNumber) {
+            missingFields.push("テキスト番号");
+          }
+          if (!textName) {
+            missingFields.push("テキスト名");
+          }
+          if (!questionNumber) {
+            missingFields.push("問題番号");
+          }
+          if (!questionName) {
+            missingFields.push("問題名");
           }
           if (!contentText) {
-            missingFields.push("問題");
+            missingFields.push("問題文");
           }
 
           elements.problemCreateForm?.classList.toggle("is-ready", missingFields.length === 0);
@@ -3373,7 +3817,18 @@
         async function createProblemDraftFromForm(status) {
           const binder = elements.binderSelect.value.trim();
           const note = elements.noteSelect.value.trim();
-          const chapter = elements.chapterSelect?.value.trim() || "";
+          const chapter = "";
+          const textNumber = elements.textNumberInput?.value.trim() || "";
+          const textName = elements.textNameInput?.value.trim() || "";
+          const questionNumber = elements.questionNumberInput?.value.trim() || "";
+          const questionName = elements.questionNameInput?.value.trim() || "";
+          const textBlocks = state.textBlocks
+            .map((block) => ({
+              id: block.id,
+              type: block.type === "heading" ? "heading" : "body",
+              text: String(block.text || "").trim(),
+            }))
+            .filter((block) => block.text);
           const contentHtml = normalizeEditorHtml(elements.problemEditor.innerHTML);
           const contentText = elements.problemEditor.textContent.trim();
 
@@ -3384,11 +3839,20 @@
           if (!note) {
             missingFields.push("ノート");
           }
-          if (!chapter) {
-            missingFields.push(getChapterConfig(note).label);
+          if (!textNumber) {
+            missingFields.push("テキスト番号");
+          }
+          if (!textName) {
+            missingFields.push("テキスト名");
+          }
+          if (!questionNumber) {
+            missingFields.push("問題番号");
+          }
+          if (!questionName) {
+            missingFields.push("問題名");
           }
           if (!contentText) {
-            missingFields.push("問題");
+            missingFields.push("問題文");
           }
           if (missingFields.length) {
             elements.proofreadingFeedback.textContent = `${missingFields.join("・")}を入力してください。`;
@@ -3407,10 +3871,15 @@
             note,
             chapter,
             section: "",
+            textNumber,
+            textName,
+            textBlocks,
+            questionNumber,
+            questionName,
             image,
             contentHtml,
             contentText,
-            notebookBlocks: state.notebookBlocks.map((block) => ({ ...block })),
+            notebookBlocks: [],
             submittedAt: new Date().toISOString(),
             status,
             remoteId: null,
@@ -3418,7 +3887,7 @@
           };
         }
 
-        async function syncProblemImageFromInput() {
+        async function syncProblemImageFromInput(options = {}) {
           const file = elements.problemImageInput?.files?.[0] || null;
           if (!file) {
             state.problemImageData = null;
@@ -3435,6 +3904,9 @@
               size: file.size,
               dataUrl,
             };
+            if (options.insertIntoEditor) {
+              insertProblemImageIntoEditor(state.problemImageData);
+            }
             renderProblemImagePreview();
             updateProblemPreview();
           } catch {
@@ -3477,10 +3949,15 @@
         function populateProblemConfirmDialog(draft) {
           setPreviewText(elements.confirmProblemBinder, draft.binder, "-");
           setPreviewText(elements.confirmProblemNote, draft.note, "-");
-          setPreviewText(elements.confirmProblemChapter, draft.chapter, "-");
           setPreviewText(elements.confirmProblemImage, draft.image?.name ? draft.image.name : "", "画像なし");
           if (elements.confirmProblemContent) {
-            elements.confirmProblemContent.textContent = draft.contentText || "";
+            elements.confirmProblemContent.textContent = [
+              draft.textNumber || draft.textName ? `テキスト ${[draft.textNumber, draft.textName].filter(Boolean).join(" ")}` : "",
+              draft.questionNumber || draft.questionName ? `問題 ${[draft.questionNumber, draft.questionName].filter(Boolean).join(" ")}` : "",
+              draft.contentText || "",
+            ]
+              .filter(Boolean)
+              .join("\n\n");
           }
         }
 
@@ -3542,6 +4019,34 @@
           updateProblemPreview();
         }
 
+        function insertProblemImageIntoEditor(imageData) {
+          if (!elements.problemEditor || !imageData?.dataUrl) {
+            return;
+          }
+          const image = document.createElement("img");
+          image.className = "manager-editor-image";
+          image.src = imageData.dataUrl;
+          image.alt = imageData.name || "問題画像";
+          const selection = window.getSelection();
+          const canUseSelection =
+            selection &&
+            selection.rangeCount > 0 &&
+            elements.problemEditor.contains(selection.getRangeAt(0).commonAncestorContainer);
+          if (canUseSelection) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(image);
+            range.setStartAfter(image);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } else {
+            elements.problemEditor.append(image);
+          }
+          elements.problemEditor.append(document.createElement("br"));
+          updateEditorCounts();
+        }
+
         function fileToDataUrl(file) {
           return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -3553,12 +4058,23 @@
 
         function resetProblemComposer() {
           elements.problemEditor.innerHTML = "";
+          if (elements.textNumberInput) {
+            elements.textNumberInput.value = "";
+          }
+          if (elements.textNameInput) {
+            elements.textNameInput.value = "";
+          }
+          if (elements.questionNumberInput) {
+            elements.questionNumberInput.value = "";
+          }
+          if (elements.questionNameInput) {
+            elements.questionNameInput.value = "";
+          }
+          state.textBlocks = [];
+          renderTextBlocks();
           state.notebookBlocks = [];
           state.activeNotebookBlockId = "";
           renderNotebookEditor();
-          if (elements.chapterSelect) {
-            elements.chapterSelect.value = "";
-          }
           clearProblemImage();
           updateEditorCounts();
           updateProblemPreview();
@@ -3595,6 +4111,11 @@
             note: draft.note,
             chapter: draft.chapter,
             section: draft.section,
+            textNumber: draft.textNumber,
+            textName: draft.textName,
+            textBlocks: draft.textBlocks || [],
+            questionNumber: draft.questionNumber,
+            questionName: draft.questionName,
             image: draft.image,
             notebookBlocks: draft.notebookBlocks || [],
             contentHtml: draft.contentHtml,
@@ -3827,6 +4348,13 @@
           saveJson(MANAGER_DRAFT_KEY, state.drafts);
         }
 
+        function getDraftDisplayTitle(draft) {
+          const questionTitle = [draft?.questionNumber, draft?.questionName].filter(Boolean).join(" ");
+          const textTitle = [draft?.textNumber, draft?.textName].filter(Boolean).join(" ");
+          const itemTitle = questionTitle || textTitle || "未設定の問題";
+          return [draft?.binder, draft?.note, itemTitle].filter(Boolean).join(" / ");
+        }
+
         function renderQuestionList() {
           const list = elements.createdQuestionList;
           list.innerHTML = "";
@@ -3837,9 +4365,6 @@
               return false;
             }
             if (state.selectedListNote && draft.note !== state.selectedListNote) {
-              return false;
-            }
-            if (state.selectedListChapter && state.selectedListChapter !== "all" && draft.chapter !== state.selectedListChapter) {
               return false;
             }
             return true;
@@ -3855,8 +4380,8 @@
             const status = normalizeStatus(draft.status);
             const textSnippet = truncateText(draft.contentText || "", 32);
             const imageMeta = draft.image?.name ? `画像: ${truncateText(draft.image.name, 24)}` : "画像なし";
-            const metaText = [formatDate(draft.submittedAt), draft.chapter || "-", textSnippet, imageMeta].join(" / ");
-            const titleText = [draft.binder, draft.note, draft.chapter].filter(Boolean).join(" / ");
+            const metaText = [formatDate(draft.submittedAt), textSnippet, imageMeta].join(" / ");
+            const titleText = getDraftDisplayTitle(draft);
             const draggingClass = draft.id === state.draggingId ? " is-dragging" : "";
             return `
               <li class="manager-question-item${draggingClass}" data-id="${escapeHtml(draft.id)}">
@@ -3902,7 +4427,7 @@
                 .map((draft) => {
                   const isActive = draft.id === state.selectedPendingQuestionId;
                   const textSnippet = truncateText(draft.contentText || "", 38);
-                  const titleText = [draft.binder, draft.note, draft.chapter].filter(Boolean).join(" / ");
+                  const titleText = getDraftDisplayTitle(draft);
                   const metaText = [formatDate(draft.submittedAt), textSnippet].filter(Boolean).join(" / ");
                   return `
                     <li class="manager-question-item${isActive ? " is-active" : ""}" data-pending-question-id="${escapeHtml(draft.id)}">
@@ -3930,7 +4455,6 @@
 
           setTextContent(elements.pendingQuestionBinder, selectedDraft.binder || "-");
           setTextContent(elements.pendingQuestionNote, selectedDraft.note || "-");
-          setTextContent(elements.pendingQuestionChapter, selectedDraft.chapter || "-");
           setTextContent(elements.pendingQuestionStatus, STATUS_LABEL[normalizeStatus(selectedDraft.status)]);
           if (elements.pendingQuestionEditor) {
             elements.pendingQuestionEditor.value = selectedDraft.contentText || "";
@@ -4050,6 +4574,7 @@
           const avater = appState?.avater || {};
           const equipped = avater?.equipped && typeof avater.equipped === "object" ? avater.equipped : {};
           const itemOffsets = avater?.itemOffsets && typeof avater.itemOffsets === "object" ? avater.itemOffsets : {};
+          const managerItems = new Map(loadManagerAvaterItems().map((item) => [item.id, item]));
           elements.managerAvaterPreviews.forEach((preview) => {
             preview.querySelectorAll(".avater-layer").forEach((layer) => layer.remove());
             Object.entries(equipped).forEach(([category, itemId]) => {
@@ -4057,12 +4582,20 @@
               if (!className) {
                 return;
               }
+              const managerItem = managerItems.get(itemId);
+              const image = getManagerAvaterItemImage(managerItem);
               const offset = itemOffsets[itemId] || {};
               const layer = document.createElement("span");
-              layer.className = `avater-layer ${className} avater-category-${category}`;
+              layer.className = `avater-layer ${className} avater-category-${category}${image ? " has-custom-image" : ""}`;
               layer.style.setProperty("--avater-item-offset-x", `${Number(offset.x) || 0}px`);
               layer.style.setProperty("--avater-item-offset-y", `${Number(offset.y) || 0}px`);
               layer.setAttribute("aria-hidden", "true");
+              if (image) {
+                const imageElement = document.createElement("img");
+                imageElement.src = image.dataUrl;
+                imageElement.alt = "";
+                layer.append(imageElement);
+              }
               preview.append(layer);
             });
           });
@@ -4233,6 +4766,10 @@
             .replaceAll(">", "&gt;")
             .replaceAll('"', "&quot;")
             .replaceAll("'", "&#39;");
+        }
+
+        function cssEscape(value) {
+          return window.CSS?.escape ? window.CSS.escape(String(value || "")) : String(value || "").replace(/["\\]/g, "\\$&");
         }
 
         function loadJson(key, fallback) {

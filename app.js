@@ -1,6 +1,6 @@
 ﻿const STORAGE_KEY = "the-review-quest-v1";
 const HOME_GREETING_REFRESH_MS = 60 * 1000;
-const AUTH_INIT_TIMEOUT_MS = 3000;
+const AUTH_INIT_TIMEOUT_MS = 8000;
 const FLASHCARD_INIT_TIMEOUT_MS = 5000;
 const FLASHCARD_QUESTIONS_FETCH_TIMEOUT_MS = 4500;
 const JP_HOLIDAY_CACHE = new Map();
@@ -613,11 +613,15 @@ async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation
 
 async function init() {
   ensureInitialCoinGrant();
-  const shouldWaitForAuth = hasAuth0CallbackParams() || !state.auth.isLoggedIn;
-  const authInitialization = shouldWaitForAuth
-    ? withTimeout(initializeAuth(), AUTH_INIT_TIMEOUT_MS, null, "Auth initialization")
-    : initializeAuth({ preserveExistingSession: true });
-  const authRedirectAppState = shouldWaitForAuth ? await authInitialization : null;
+  const isAuthCallback = hasAuth0CallbackParams();
+  const shouldWaitForAuth = isAuthCallback || !state.auth.isLoggedIn;
+  const authInitialization = initializeAuth(shouldWaitForAuth ? {} : { preserveExistingSession: true });
+  let authRedirectAppState = null;
+  if (isAuthCallback) {
+    authRedirectAppState = await authInitialization;
+  } else if (shouldWaitForAuth) {
+    authRedirectAppState = await withTimeout(authInitialization, AUTH_INIT_TIMEOUT_MS, null, "Auth initialization");
+  }
   if (!shouldWaitForAuth) {
     authInitialization
       .then((appState) => {
@@ -5489,7 +5493,7 @@ function renderAvaterPreview(preview) {
     }
     const offset = getAvaterItemOffset(item.id);
     const layer = document.createElement("span");
-    layer.className = `avater-layer ${item.className} avater-category-${item.category}`;
+    layer.className = `avater-layer ${item.className} avater-category-${item.category}${item.image?.dataUrl ? " has-custom-image" : ""}`;
     layer.dataset.avaterLayer = item.id;
     layer.dataset.avaterCategory = item.category;
     layer.style.setProperty("--avater-item-offset-x", `${offset.x}px`);
@@ -5497,6 +5501,12 @@ function renderAvaterPreview(preview) {
     layer.setAttribute("role", "button");
     layer.setAttribute("tabindex", "0");
     layer.setAttribute("aria-label", `${item.name}を調整`);
+    if (item.image?.dataUrl) {
+      const image = document.createElement("img");
+      image.src = item.image.dataUrl;
+      image.alt = "";
+      layer.append(image);
+    }
     preview.append(layer);
   });
 }
@@ -5532,9 +5542,12 @@ function renderAvaterItemList(container, options = {}) {
     const canAfford = hasUnlimitedReviewCoins() || state.reviewCoin >= item.cost;
     const canUseItem = isUnlocked || canAfford;
     const buttonText = isEquipped ? "選択中" : isUnlocked ? "追加する" : `${item.cost}`;
+    const sampleImage = item.image?.dataUrl
+      ? `<img class="avater-item-sample-image" src="${escapeHtml(item.image.dataUrl)}" alt="" />`
+      : "";
     return `
       <article class="avater-item-card ${isEquipped ? "is-equipped" : ""}" draggable="${String(canUseItem)}" data-avater-item="${escapeHtml(item.id)}" aria-disabled="${String(!canUseItem)}">
-        <div class="avater-item-sample ${item.className} avater-category-${item.category}" aria-hidden="true"></div>
+        <div class="avater-item-sample ${item.className} avater-category-${item.category}${sampleImage ? " has-custom-image" : ""}" aria-hidden="true">${sampleImage}</div>
         <div class="avater-item-body">
           <p class="avater-item-category">${escapeHtml(AVATER_CATEGORY_LABELS[item.category] || item.category)}</p>
           <h3>${escapeHtml(item.name)}</h3>
@@ -5578,12 +5591,29 @@ function loadCustomAvaterItems() {
         category: normalizeAvaterCategory(item?.category) || "accessory",
         name: String(item?.name || "").trim(),
         cost: normalizeCoinAmount(item?.cost),
+        image: normalizeCustomAvaterItemImage(item?.image),
         className: "avater-item-custom",
       }))
       .filter((item) => item.id && item.name && Object.prototype.hasOwnProperty.call(AVATER_CATEGORY_LABELS, item.category));
   } catch {
     return [];
   }
+}
+
+function normalizeCustomAvaterItemImage(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const dataUrl = typeof value.dataUrl === "string" && value.dataUrl.startsWith("data:image/") ? value.dataUrl : "";
+  if (!dataUrl) {
+    return null;
+  }
+  return {
+    name: typeof value.name === "string" ? value.name : "",
+    type: typeof value.type === "string" ? value.type : "",
+    size: Number.isFinite(Number(value.size)) ? Number(value.size) : 0,
+    dataUrl,
+  };
 }
 
 function isAvaterItemUnlocked(itemId) {
