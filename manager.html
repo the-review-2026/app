@@ -37,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260503-1" />
+    <link rel="stylesheet" href="./app.css?v=20260506-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
     <style>
       body.manager-page {
@@ -1363,16 +1363,22 @@
       }
 
       body.manager-page .profile-character {
-        min-height: 160px;
+        width: min(210px, 58vw);
+        aspect-ratio: 1 / 1.1;
+        min-height: 0;
         display: grid;
         place-items: end center;
         overflow: hidden;
+        background: transparent;
+        justify-self: center;
       }
 
       body.manager-page .profile-character img {
         display: block;
-        width: min(210px, 100%);
-        height: auto;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform: none;
       }
 
       body.manager-page .profile-details {
@@ -1460,15 +1466,16 @@
         width: 4.1rem;
         aspect-ratio: 1 / 1.1;
         align-self: start;
-        border-radius: 14px;
-        background:
-          radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.7), transparent 44%),
-          linear-gradient(135deg, rgba(75, 200, 225, 0.18), rgba(29, 29, 29, 0.06));
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 0;
+        background: transparent;
+        border: 0;
       }
 
       body.manager-page .manager-member-avatar .avater-base-image {
-        transform: scale(1.06);
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform: none;
         transform-origin: center bottom;
       }
 
@@ -4790,6 +4797,6 @@
         }
       })();
     </script>
-    <script src="./pwa.js?v=20260501-2" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260506-1" charset="UTF-8"></script>
   </body>
 </html>

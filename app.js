@@ -137,6 +137,7 @@ const FLASHCARD_REMOTE_DEFAULT_UNIT = "Questions";
 const EDUCATION_CODE_MAX_LENGTH = 32;
 const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
 const EDUCATION_CODE_DUPLICATE_MESSAGE = "このEducation Codeはすでに追加されています。";
+const TOKYO_SCIENCE_TECH_SCHOOL_NAME = "東京都立科学技術高等学校";
 const FLASHCARD_REMOTE_SUBJECT_ALIASES = {
   english: "ec1",
   "english-communication-i": "ec1",
@@ -155,6 +156,16 @@ const FLASHCARD_REMOTE_SUBJECT_ALIASES = {
   health: "health",
   logic: "ss-tech-theory-1",
 };
+const FLASHCARD_DIRECT_NOTE_DECK_ALIASES = {
+  "朝学習テスト（１学年）": "morning-test-1-10",
+  "Week Test (1st Grade)": "morning-test-1-10",
+};
+const FLASHCARD_SCHOOL_GATED_DECK_IDS = new Set([
+  "ss-tech-theory-1",
+  "ss-tech-theory-2",
+  "ss-tech-theory-3",
+  "morning-test-1-10",
+]);
 const FLASHCARD_BOOK_OPEN_RIGHT_SUBJECT_IDS = new Set([
   "reboot-modern-japanese",
   "reboot-language-culture",
@@ -366,6 +377,7 @@ const elements = {
   avaterScrollLockBtn: document.getElementById("avaterScrollLockBtn"),
   authNicknameText: document.getElementById("authNicknameText"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
+  authNicknameRow: document.getElementById("authNicknameText")?.closest(".setting-row") ?? null,
   settingsEducationCodeStatusText: document.getElementById("settingsEducationCodeStatusText"),
   settingsEducationCodeList: document.getElementById("settingsEducationCodeList"),
   settingsEducationCodeAddBtn: document.getElementById("settingsEducationCodeAddBtn"),
@@ -382,6 +394,7 @@ const elements = {
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
   accountEditBtn: document.getElementById("accountEditBtn"),
+  accountEditRow: document.getElementById("accountEditBtn")?.closest(".setting-row") ?? null,
   accountEditDialog: document.getElementById("accountEditDialog"),
   accountEditForm: document.querySelector("#accountEditDialog form"),
   accountEditNicknameInput: document.getElementById("accountEditNicknameInput"),
@@ -390,6 +403,7 @@ const elements = {
   accountEditActionButtons: Array.from(document.querySelectorAll("[data-account-edit-action]")),
   logoutBtn: document.getElementById("logoutBtn"),
   deleteAccountBtn: document.getElementById("deleteAccountBtn"),
+  accountActionRow: document.getElementById("logoutBtn")?.closest(".setting-row") ?? null,
   themeCardList: document.getElementById("themeCardList"),
   themeCards: Array.from(document.querySelectorAll("[data-theme-choice]")),
   highContrastToggle: document.getElementById("highContrastToggle"),
@@ -505,6 +519,7 @@ let pendingThemeUnlockKey = null;
 let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
 let isSavingAccountEditNickname = false;
+let settingsEducationCodeEditingCode = "";
 let settingsEducationCodeScanStream = null;
 let settingsEducationCodeScanFrameId = 0;
 let settingsEducationCodeScanActive = false;
@@ -515,8 +530,11 @@ let settingsEducationCodeValidationState = {
   value: "",
   isValid: true,
   message: "",
+  schoolName: "",
   status: "",
 };
+const pendingEducationCodeDetailRequests = new Set();
+const completedEducationCodeDetailRequests = new Set();
 let managerAccessState = loadManagerAccessCache();
 let lastReviewAccountProfileSync = null;
 let reviewDataSyncTimerId = 0;
@@ -554,6 +572,12 @@ const ACCOUNT_ACTION_DIALOG_COPY = {
     title: "ログアウト",
     message: "ログイン画面に戻ります。続行しますか？",
     confirmClass: "primary",
+    confirmText: "はい",
+  },
+  guestLogout: {
+    title: "ログアウト",
+    message: "ログアウトすると、ご利用になったデータが消えてしまうことがあります。続行しますか？",
+    confirmClass: "danger",
     confirmText: "はい",
   },
   delete: {
@@ -1263,11 +1287,32 @@ function bindEvents() {
 
   elements.settingsEducationCodeAddBtn?.addEventListener("click", openSettingsEducationCodeDialog);
   elements.settingsEducationCodeList?.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target.closest("[data-education-code-remove]") : null;
-    if (!target) {
+    const source = event.target instanceof Element ? event.target : null;
+    if (!source) {
       return;
     }
-    removeSettingsEducationCode(target.dataset.educationCodeRemove || "");
+    const menuButton = source.closest("[data-education-code-menu]");
+    if (menuButton) {
+      toggleSettingsEducationCodeMenu(menuButton.dataset.educationCodeMenu || "");
+      return;
+    }
+    const editTarget = source.closest("[data-education-code-edit]");
+    if (editTarget) {
+      closeSettingsEducationCodeMenus();
+      openSettingsEducationCodeDialog({ code: editTarget.dataset.educationCodeEdit || "" });
+      return;
+    }
+    const removeTarget = source.closest("[data-education-code-remove]");
+    if (removeTarget) {
+      closeSettingsEducationCodeMenus();
+      removeSettingsEducationCode(removeTarget.dataset.educationCodeRemove || "");
+    }
+  });
+  document.addEventListener("click", (event) => {
+    const source = event.target instanceof Element ? event.target : null;
+    if (!source?.closest(".education-code-menu-wrap")) {
+      closeSettingsEducationCodeMenus();
+    }
   });
   elements.settingsEducationCodeInput?.addEventListener("input", handleSettingsEducationCodeInput);
   elements.settingsEducationCodeSaveBtn?.addEventListener("click", () => {
@@ -1476,7 +1521,7 @@ function bindEvents() {
   }
 
   if (elements.accountEditBtn) {
-    elements.accountEditBtn.addEventListener("click", openAccountEdit);
+    elements.accountEditBtn.addEventListener("click", handleAccountEditButtonClick);
   }
 
   elements.accountEditNicknameInput?.addEventListener("input", () => {
@@ -1852,13 +1897,14 @@ function loginAsGuest(appState = {}) {
 }
 
 function requestAccountAction(action) {
-  const normalizedAction = normalizeAccountAction(action);
+  const requestedAction = normalizeAccountAction(action);
+  const normalizedAction = requestedAction === "logout" && state.auth.provider === "guest" ? "guestLogout" : requestedAction;
   if (!normalizedAction || !state.auth.isLoggedIn) {
     return;
   }
   const copy = ACCOUNT_ACTION_DIALOG_COPY[normalizedAction];
   pendingAccountAction = normalizedAction;
-  elements.accountActionDialog?.classList.toggle("is-delete-action", normalizedAction === "delete");
+  elements.accountActionDialog?.classList.toggle("is-delete-action", accountActionRequiresCountdown(normalizedAction));
 
   if (!elements.accountActionDialog || typeof elements.accountActionDialog.showModal !== "function") {
     const shouldContinue = window.confirm(copy.message);
@@ -1883,12 +1929,12 @@ function requestAccountAction(action) {
     elements.accountActionConfirmBtn.disabled = false;
   }
   if (elements.accountActionExportBtn) {
-    elements.accountActionExportBtn.hidden = normalizedAction !== "delete";
+    elements.accountActionExportBtn.hidden = !accountActionShowsExport(normalizedAction);
   }
   if (!elements.accountActionDialog.open) {
     elements.accountActionDialog.showModal();
   }
-  if (normalizedAction === "delete") {
+  if (accountActionRequiresCountdown(normalizedAction)) {
     startAccountDeleteCountdown();
   } else {
     clearAccountDeleteCountdown();
@@ -1909,7 +1955,7 @@ function handleAccountActionDialogAction(action) {
   if (normalizedAction !== "confirm") {
     return;
   }
-  if (pendingAccountAction === "delete" && accountActionCountdownRemainingSeconds > 0) {
+  if (accountActionRequiresCountdown(pendingAccountAction) && accountActionCountdownRemainingSeconds > 0) {
     return;
   }
 
@@ -1948,14 +1994,14 @@ function clearAccountDeleteCountdown(options = {}) {
   if (!keepReadyLabel) {
     accountActionCountdownRemainingSeconds = 0;
   }
-  if (elements.accountActionConfirmBtn && (!keepReadyLabel || pendingAccountAction !== "delete")) {
+  if (elements.accountActionConfirmBtn && (!keepReadyLabel || !accountActionRequiresCountdown(pendingAccountAction))) {
     elements.accountActionConfirmBtn.disabled = false;
     elements.accountActionConfirmBtn.textContent = ACCOUNT_ACTION_DIALOG_COPY[pendingAccountAction]?.confirmText || "はい";
   }
 }
 
 function updateAccountDeleteCountdownLabel() {
-  if (!elements.accountActionConfirmBtn || pendingAccountAction !== "delete") {
+  if (!elements.accountActionConfirmBtn || !accountActionRequiresCountdown(pendingAccountAction)) {
     return;
   }
   const remaining = Math.max(0, accountActionCountdownRemainingSeconds);
@@ -1963,13 +2009,24 @@ function updateAccountDeleteCountdownLabel() {
   elements.accountActionConfirmBtn.textContent = remaining > 0 ? `はい (${remaining})` : "はい";
 }
 
+function accountActionRequiresCountdown(action) {
+  return action === "delete" || action === "guestLogout";
+}
+
+function accountActionShowsExport(action) {
+  return action === "delete" || action === "guestLogout";
+}
+
 function normalizeAccountAction(action) {
   const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "guestlogout") {
+    return "guestLogout";
+  }
   return Object.prototype.hasOwnProperty.call(ACCOUNT_ACTION_DIALOG_COPY, normalizedAction) ? normalizedAction : "";
 }
 
 function performConfirmedAccountAction(action) {
-  if (action === "logout") {
+  if (action === "logout" || action === "guestLogout") {
     performLogoutAccount();
     return;
   }
@@ -2020,6 +2077,21 @@ async function loginWithAuth0(appState, options = {}) {
 
 async function logoutAccount() {
   requestAccountAction("logout");
+}
+
+function handleAccountEditButtonClick() {
+  if (state.auth.isLoggedIn && state.auth.provider === "guest") {
+    void loginWithAuth0(
+      {
+        targetScreen: "mypage",
+        targetMypagePage: "top",
+        onboardingStep: "nickname",
+      },
+      { provider: "auth0" }
+    );
+    return;
+  }
+  openAccountEdit();
 }
 
 function openAccountEdit() {
@@ -2161,17 +2233,24 @@ async function initializeAuth(options = {}) {
 
   let appStateFromRedirect = null;
   if (hasAuth0CallbackParams()) {
+    const callbackError = getAuth0CallbackErrorInfo();
     try {
       const redirectResult = await auth0Client.handleRedirectCallback();
       appStateFromRedirect = redirectResult?.appState ?? null;
     } catch (error) {
       console.error("Auth0 redirect callback failed:", error);
+      if (isAuth0LoginRequiredError(error) || isAuth0LoginRequiredError(callbackError)) {
+        showAuthLoginRequiredDialog();
+      }
       if (!shouldPreserveGuest && !shouldPreserveExistingSession) {
         setLoggedOutAuthState();
         saveState();
       }
     } finally {
       clearAuth0CallbackParamsFromUrl();
+    }
+    if (isAuth0LoginRequiredError(callbackError) && !state.auth.isLoggedIn) {
+      showAuthLoginRequiredDialog();
     }
   }
 
@@ -2364,6 +2443,7 @@ function updateManagerMenuVisibilityFromAccess(access) {
   renderCoinBoard();
   renderMypageCoin();
   renderThemeCardSelection();
+  renderAvaterItemList(elements.storeAvatarHint, { storeMode: true });
 }
 
 function clearManagerAccessCache() {
@@ -2519,6 +2599,95 @@ function getStoredNicknameForAuth0User(user, value) {
 function hasAuth0CallbackParams() {
   const params = new URLSearchParams(window.location.search);
   return params.has("state") && (params.has("code") || params.has("error"));
+}
+
+function getAuth0CallbackErrorInfo() {
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get("error") || "";
+  const errorDescription = params.get("error_description") || params.get("errorDescription") || "";
+  return {
+    error,
+    error_description: errorDescription,
+    message: errorDescription || error,
+  };
+}
+
+function isAuth0LoginRequiredError(error) {
+  if (!error) {
+    return false;
+  }
+  const candidates = [
+    error.error,
+    error.error_description,
+    error.errorDescription,
+    error.message,
+    typeof error === "string" ? error : "",
+  ]
+    .map((value) => String(value || "").toLowerCase())
+    .filter(Boolean);
+  return candidates.some((value) => value.includes("login_required") || value.includes("login required"));
+}
+
+function showAuthLoginRequiredDialog() {
+  const dialog = ensureAuthLoginRequiredDialog();
+  if (!dialog) {
+    window.alert("ログインが必要です。ログインフォームで認証を完了してください。");
+    return;
+  }
+  if (dialog.open) {
+    return;
+  }
+  if (typeof dialog.showModal === "function") {
+    dialog.showModal();
+    return;
+  }
+  window.alert("ログインが必要です。ログインフォームで認証を完了してください。");
+}
+
+function ensureAuthLoginRequiredDialog() {
+  const existing = document.getElementById("authLoginRequiredDialog");
+  if (existing) {
+    return existing;
+  }
+  if (!document.body) {
+    return null;
+  }
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "authLoginRequiredDialog";
+  dialog.className = "text-reset-dialog auth-login-required-dialog";
+  dialog.setAttribute("aria-labelledby", "authLoginRequiredDialogTitle");
+  dialog.innerHTML = `
+    <form method="dialog" class="text-reset-dialog-body">
+      <h3 id="authLoginRequiredDialogTitle">ログインが必要です</h3>
+      <p>Review Accountを利用するにはログインが必要です。ログインフォームで認証を完了してください。</p>
+      <div class="guest-mode-actions pwa-update-actions">
+        <button class="secondary" type="button" data-auth-login-required-action="close">閉じる</button>
+        <button class="primary" type="button" data-auth-login-required-action="login">ログインする</button>
+      </div>
+    </form>
+  `;
+  dialog.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("[data-auth-login-required-action]") : null;
+    if (!button) {
+      return;
+    }
+    if (button.dataset.authLoginRequiredAction === "login") {
+      dialog.close();
+      void loginWithAuth0(
+        {
+          targetScreen: "mypage",
+          targetMypagePage: "top",
+          onboardingStep: "nickname",
+        },
+        { provider: "auth0", screenHint: "" }
+      );
+      return;
+    }
+    dialog.close();
+  });
+  document.body.append(dialog);
+  return dialog;
 }
 
 function clearAuth0CallbackParamsFromUrl() {
@@ -2848,11 +3017,31 @@ function initializeFlashcardNoteBinder() {
     closeButton.setAttribute("aria-hidden", "true");
   });
 
+  refreshFlashcardNoteBinderMetrics();
+
+  binderList.addEventListener("click", handleFlashcardNoteBinderClick);
+  binderList.addEventListener("keydown", handleFlashcardNoteBinderKeydown);
+  binderList.addEventListener("pointerdown", handleFlashcardNoteBinderPointerDown);
+  binderList.addEventListener("pointerup", handleFlashcardNoteBinderPointerUp);
+  binderList.addEventListener("pointercancel", clearFlashcardNoteBinderPointerState);
+  window.addEventListener("resize", () => updateFlashcardBinderTargetWidth());
+}
+
+function refreshFlashcardNoteBinderMetrics() {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList) {
+    return;
+  }
+
+  syncFlashcardNoteLibraryVisibility();
+  const isDirectNoteMode = isFlashcardDirectNoteMode(binderList);
+  const deckProblemCountByLabel = createFlashcardDeckProblemCountByLabelMap();
+  const deckByLabel = createFlashcardDeckByLabelMap();
   const noteLists = Array.from(binderList.querySelectorAll(".flashcard-note-list"));
   noteLists.forEach((noteList) => {
     const binder = noteList.closest(".flashcard-binder");
     const binderItem = binder?.closest(".flashcard-binder-item");
-    const notes = Array.from(noteList.querySelectorAll(".flashcard-note"));
+    const notes = Array.from(noteList.querySelectorAll(".flashcard-note")).filter((note) => !note.hidden);
     const noteMetrics = notes.map((note) => {
       const problemCount = resolveFlashcardProblemCountForNote(note, deckProblemCountByLabel);
       const thicknessStepCount = Math.floor(
@@ -2914,13 +3103,83 @@ function initializeFlashcardNoteBinder() {
       }
     }
   });
+}
 
-  binderList.addEventListener("click", handleFlashcardNoteBinderClick);
-  binderList.addEventListener("keydown", handleFlashcardNoteBinderKeydown);
-  binderList.addEventListener("pointerdown", handleFlashcardNoteBinderPointerDown);
-  binderList.addEventListener("pointerup", handleFlashcardNoteBinderPointerUp);
-  binderList.addEventListener("pointercancel", clearFlashcardNoteBinderPointerState);
-  window.addEventListener("resize", () => updateFlashcardBinderTargetWidth());
+function syncFlashcardNoteLibraryVisibility() {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList || !Array.isArray(flashcardState?.decks) || flashcardState.decks.length === 0) {
+    return;
+  }
+
+  const deckByLabel = createFlashcardDeckByLabelMap();
+  const hasSchoolCode = hasTokyoScienceTechEducationCode();
+  const notes = Array.from(binderList.querySelectorAll(".flashcard-note"));
+  notes.forEach((note) => {
+    const deck = resolveFlashcardDeckForNote(note, deckByLabel);
+    const deckId = normalizeFlashcardText(deck?.id) || resolveFlashcardDeckAliasIdForNote(note);
+    const hasProblemData = Boolean(deck && deck.totalCards > 0);
+    const isSchoolGated = isSchoolGatedFlashcardNote(note, deckId);
+    const shouldShow = hasProblemData && (!isSchoolGated || hasSchoolCode);
+    note.hidden = !shouldShow;
+    note.classList.toggle("is-hidden-by-data", !shouldShow);
+    note.setAttribute("aria-hidden", String(!shouldShow));
+  });
+
+  syncFlashcardSeriesIndexVisibility(binderList);
+  syncFlashcardVisibleStackClasses(binderList);
+}
+
+function syncFlashcardSeriesIndexVisibility(binderList) {
+  const noteLists = Array.from(binderList.querySelectorAll(".flashcard-note-list"));
+  noteLists.forEach((noteList) => {
+    const children = Array.from(noteList.children);
+    children.forEach((child, index) => {
+      if (!child.classList?.contains("flashcard-series-index")) {
+        return;
+      }
+      const hasVisibleNote = children.slice(index + 1).some((candidate) => {
+        if (candidate.classList?.contains("flashcard-series-index")) {
+          return false;
+        }
+        return candidate.classList?.contains("flashcard-note") && !candidate.hidden;
+      });
+      const nextIndex = children.findIndex(
+        (candidate, candidateIndex) =>
+          candidateIndex > index && candidate.classList?.contains("flashcard-series-index")
+      );
+      const seriesChildren = nextIndex >= 0 ? children.slice(index + 1, nextIndex) : children.slice(index + 1);
+      const hasVisibleSeriesNote = seriesChildren.some(
+        (candidate) => candidate.classList?.contains("flashcard-note") && !candidate.hidden
+      );
+      child.hidden = !(hasVisibleSeriesNote || (nextIndex < 0 && hasVisibleNote));
+    });
+  });
+}
+
+function syncFlashcardVisibleStackClasses(binderList) {
+  const noteLists = Array.from(binderList.querySelectorAll(".flashcard-note-list"));
+  noteLists.forEach((noteList) => {
+    let hasVisibleNoteInSeries = false;
+    let previousVisibleNote = false;
+    Array.from(noteList.children).forEach((child) => {
+      if (child.classList?.contains("flashcard-series-index")) {
+        child.classList.toggle("is-after-visible-notes", hasVisibleNoteInSeries);
+        hasVisibleNoteInSeries = false;
+        previousVisibleNote = false;
+        return;
+      }
+      if (!child.classList?.contains("flashcard-note")) {
+        return;
+      }
+      if (child.hidden) {
+        child.classList.remove("is-stack-continuation");
+        return;
+      }
+      child.classList.toggle("is-stack-continuation", previousVisibleNote);
+      hasVisibleNoteInSeries = true;
+      previousVisibleNote = true;
+    });
+  });
 }
 
 function resetFlashcardBinderScroll() {
@@ -2952,6 +3211,16 @@ function createFlashcardDeckProblemCountByLabelMap() {
       }
     });
   });
+  Object.entries(FLASHCARD_DIRECT_NOTE_DECK_ALIASES).forEach(([label, deckId]) => {
+    const deck = getFlashcardDeckById(deckId);
+    if (!deck) {
+      return;
+    }
+    const lookupKeys = [label, toFlashcardLabelLookupKey(label)].filter(Boolean);
+    lookupKeys.forEach((lookupKey) => {
+      map.set(lookupKey, deck.totalCards);
+    });
+  });
   return map;
 }
 
@@ -2972,7 +3241,27 @@ function createFlashcardDeckByLabelMap() {
       }
     });
   });
+  Object.entries(FLASHCARD_DIRECT_NOTE_DECK_ALIASES).forEach(([label, deckId]) => {
+    const deck = getFlashcardDeckById(deckId);
+    if (!deck) {
+      return;
+    }
+    const lookupKeys = [label, toFlashcardLabelLookupKey(label)].filter(Boolean);
+    lookupKeys.forEach((lookupKey) => {
+      if (!map.has(lookupKey)) {
+        map.set(lookupKey, deck);
+      }
+    });
+  });
   return map;
+}
+
+function getFlashcardDeckById(deckId) {
+  const normalizedDeckId = normalizeFlashcardText(deckId);
+  if (!normalizedDeckId || !Array.isArray(flashcardState?.decks)) {
+    return null;
+  }
+  return flashcardState.decks.find((deck) => deck.id === normalizedDeckId) ?? null;
 }
 
 function resolveFlashcardDeckForNote(note, deckByLabel = createFlashcardDeckByLabelMap()) {
@@ -3024,6 +3313,60 @@ function resolveFlashcardProblemCountForNote(note, deckProblemCountByLabel) {
     }
   }
   return 0;
+}
+
+function resolveFlashcardDeckAliasIdForNote(note) {
+  if (!(note instanceof Element)) {
+    return "";
+  }
+  const labels = [
+    note.querySelector(".flashcard-note-jp")?.textContent,
+    note.querySelector(".flashcard-note-en")?.textContent,
+    note.getAttribute("aria-label"),
+  ]
+    .map((label) => normalizeFlashcardText(label))
+    .filter(Boolean);
+  for (const label of labels) {
+    const directAlias = FLASHCARD_DIRECT_NOTE_DECK_ALIASES[label];
+    if (directAlias) {
+      return directAlias;
+    }
+    const lookupKey = toFlashcardLabelLookupKey(label);
+    const matchedEntry = Object.entries(FLASHCARD_DIRECT_NOTE_DECK_ALIASES).find(
+      ([aliasLabel]) => toFlashcardLabelLookupKey(aliasLabel) === lookupKey
+    );
+    if (matchedEntry?.[1]) {
+      return matchedEntry[1];
+    }
+    const catalogEntry = getFlashcardSubjectCatalogEntryByLabel(label);
+    if (catalogEntry?.id) {
+      return catalogEntry.id;
+    }
+  }
+  return "";
+}
+
+function isSchoolGatedFlashcardNote(note, deckId) {
+  const normalizedDeckId = normalizeFlashcardText(deckId);
+  if (FLASHCARD_SCHOOL_GATED_DECK_IDS.has(normalizedDeckId)) {
+    return true;
+  }
+  const label = normalizeFlashcardText(note?.querySelector?.(".flashcard-note-jp")?.textContent);
+  return label.includes("ＳＳ科学技術理論Ⅰ") || label.includes("SS科学技術理論Ⅰ") || label.includes("朝学習テスト");
+}
+
+function hasTokyoScienceTechEducationCode() {
+  return getSavedEducationCodes().some((code) => {
+    const detail = getEducationCodeDetail(code);
+    return isTokyoScienceTechSchoolDetail(detail);
+  });
+}
+
+function isTokyoScienceTechSchoolDetail(detail) {
+  const target = normalizeSchoolName(TOKYO_SCIENCE_TECH_SCHOOL_NAME).replace(/\s+/g, "");
+  const schoolName = normalizeSchoolName(detail?.schoolName).replace(/\s+/g, "");
+  const message = normalizeSchoolName(detail?.message).replace(/\s+/g, "");
+  return Boolean(target && (schoolName === target || schoolName.includes(target) || message.includes(target)));
 }
 
 function toFlashcardLabelLookupKey(value) {
@@ -5621,7 +5964,7 @@ function isAvaterItemUnlocked(itemId) {
   if (!item) {
     return false;
   }
-  return item.cost === 0 || Boolean(state.avater.unlockedItems?.[itemId]);
+  return hasUnlimitedReviewCoins() || item.cost === 0 || Boolean(state.avater.unlockedItems?.[itemId]);
 }
 
 function handleAvaterNoneAction(category) {
@@ -5638,7 +5981,8 @@ function handleAvaterItemAction(itemId, options = {}) {
     return;
   }
   const previousCoin = state.reviewCoin;
-  if (!isAvaterItemUnlocked(item.id)) {
+  const isAlreadyOwned = item.cost === 0 || Boolean(state.avater.unlockedItems?.[item.id]);
+  if (!isAlreadyOwned) {
     if (!hasUnlimitedReviewCoins() && state.reviewCoin < item.cost) {
       return;
     }
@@ -5918,8 +6262,9 @@ function getAuthNicknameText(fallbackText = "未設定") {
 
 function renderMypageSettings() {
   const nicknameText = getAuthNicknameText();
+  const isGuestMode = state.auth.isLoggedIn && state.auth.provider === "guest";
   if (elements.infoMenuUser) {
-    elements.infoMenuUser.hidden = state.auth.isLoggedIn && state.auth.provider === "guest";
+    elements.infoMenuUser.hidden = isGuestMode;
   }
   if (elements.infoMenuNickname) {
     elements.infoMenuNickname.textContent = nicknameText;
@@ -5942,12 +6287,39 @@ function renderMypageSettings() {
 
   if (elements.logoutBtn) {
     elements.logoutBtn.disabled = !state.auth.isLoggedIn;
+    elements.logoutBtn.classList.toggle("is-danger-action", isGuestMode);
+    elements.logoutBtn.classList.toggle("secondary", !isGuestMode);
+    elements.logoutBtn.classList.toggle("danger", isGuestMode);
   }
   if (elements.accountEditBtn) {
     elements.accountEditBtn.disabled = !state.auth.isLoggedIn;
+    const icon = elements.accountEditBtn.querySelector(".material-symbols-rounded");
+    const label = elements.accountEditBtn.querySelector("span:last-child");
+    if (isGuestMode) {
+      if (icon) {
+        icon.textContent = "person_add";
+      }
+      if (label) {
+        label.textContent = "Review Accountを作成する";
+      }
+    } else {
+      if (icon) {
+        icon.textContent = "edit";
+      }
+      if (label) {
+        label.textContent = "編集する";
+      }
+    }
   }
   if (elements.deleteAccountBtn) {
     elements.deleteAccountBtn.disabled = !state.auth.isLoggedIn;
+    elements.deleteAccountBtn.hidden = isGuestMode;
+  }
+  if (elements.authNicknameRow) {
+    elements.authNicknameRow.hidden = isGuestMode;
+  }
+  if (elements.accountActionRow) {
+    elements.accountActionRow.classList.toggle("is-guest-account-actions", isGuestMode);
   }
   renderThemeCardSelection();
   updateThemeSelectionLockState();
@@ -5975,25 +6347,39 @@ function renderMypageSettings() {
 function renderSettingsEducationCode() {
   const savedCodes = getSavedEducationCodes();
   if (elements.settingsEducationCodeStatusText) {
-    elements.settingsEducationCodeStatusText.textContent = savedCodes.length ? `${savedCodes.length}件設定済み` : "未設定";
+    elements.settingsEducationCodeStatusText.hidden = true;
   }
   if (elements.settingsEducationCodeList) {
     elements.settingsEducationCodeList.innerHTML = savedCodes.length
       ? savedCodes
           .map(
-            (code) => `
-              <article class="education-code-chip">
-                <span class="material-symbols-rounded" aria-hidden="true">verified</span>
-                <strong>${escapeHtml(code)}</strong>
-                <button class="secondary" type="button" data-education-code-remove="${escapeHtml(code)}" aria-label="${escapeHtml(code)}を削除">
-                  <span class="material-symbols-rounded" aria-hidden="true">close</span>
-                </button>
+            (code) => {
+              const displayName = getEducationCodeDisplayName(code);
+              return `
+              <article class="education-code-chip" data-education-code-chip="${escapeHtml(code)}">
+                <strong>${escapeHtml(displayName)}</strong>
+                <span class="education-code-set-badge">
+                  <span class="material-symbols-rounded" aria-hidden="true">check</span>
+                  <span>設定済み</span>
+                </span>
+                <span class="education-code-menu-wrap">
+                  <button class="secondary education-code-menu-btn" type="button" data-education-code-menu="${escapeHtml(code)}" aria-label="${escapeHtml(displayName)}のメニュー" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">more_horiz</span>
+                  </button>
+                  <span class="education-code-menu" role="menu">
+                    <button type="button" data-education-code-edit="${escapeHtml(code)}" role="menuitem">編集する</button>
+                    <button type="button" data-education-code-remove="${escapeHtml(code)}" role="menuitem">削除する</button>
+                  </span>
+                </span>
               </article>
-            `
+            `;
+            }
           )
           .join("")
       : '<p class="hint-text education-code-empty">Education Codeはまだ追加されていません。</p>';
   }
+  requestSavedEducationCodeDetailHydration();
+  syncFlashcardNoteLibraryVisibility();
   syncSettingsEducationCodeSaveButton();
   syncSettingsEducationCodeScannerAvailability();
 }
@@ -6002,11 +6388,118 @@ function getSavedEducationCodes() {
   return normalizeEducationCodeList(state.settings.educationCodes, state.settings.educationCode);
 }
 
-function commitSettingsEducationCodes(codes) {
+function getSavedEducationCodeDetails() {
+  return normalizeEducationCodeDetails(state.settings.educationCodeDetails, getSavedEducationCodes());
+}
+
+function getEducationCodeDetail(code) {
+  const normalizedCode = normalizeEducationCodeValue(code);
+  if (!normalizedCode) {
+    return null;
+  }
+  return getSavedEducationCodeDetails()[normalizedCode] ?? null;
+}
+
+function getEducationCodeDisplayName(code) {
+  const detail = getEducationCodeDetail(code);
+  const schoolName = normalizeSchoolName(detail?.schoolName);
+  return schoolName || "学校名を確認中";
+}
+
+function commitSettingsEducationCodes(codes, detailUpdates = {}) {
   const normalizedCodes = normalizeEducationCodeList(codes);
+  const existingDetails = getSavedEducationCodeDetails();
+  const nextDetails = normalizeEducationCodeDetails(
+    {
+      ...existingDetails,
+      ...detailUpdates,
+    },
+    normalizedCodes
+  );
   state.settings.educationCodes = normalizedCodes;
   state.settings.educationCode = normalizedCodes[0] || "";
+  state.settings.educationCodeDetails = nextDetails;
   saveState();
+  refreshFlashcardNoteBinderMetrics();
+}
+
+function createEducationCodeDetailFromValidation(result) {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+  return {
+    schoolName: normalizeSchoolName(result.schoolName),
+    message: typeof result.message === "string" ? result.message.trim() : "",
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+function createEducationCodeDetailUpdate(code, result) {
+  const normalizedCode = normalizeEducationCodeValue(code);
+  const detail = createEducationCodeDetailFromValidation(result);
+  return normalizedCode && detail ? { [normalizedCode]: detail } : {};
+}
+
+function requestSavedEducationCodeDetailHydration() {
+  const savedCodes = getSavedEducationCodes();
+  savedCodes.forEach((code) => {
+    const detail = getEducationCodeDetail(code);
+    if (normalizeSchoolName(detail?.schoolName)) {
+      return;
+    }
+    if (pendingEducationCodeDetailRequests.has(code) || completedEducationCodeDetailRequests.has(code)) {
+      return;
+    }
+    pendingEducationCodeDetailRequests.add(code);
+    void hydrateSavedEducationCodeDetail(code);
+  });
+}
+
+async function hydrateSavedEducationCodeDetail(code) {
+  const normalizedCode = normalizeEducationCodeValue(code);
+  if (!normalizedCode) {
+    return;
+  }
+  try {
+    const result = await validateEducationCodeValue(normalizedCode);
+    if (!getSavedEducationCodes().includes(normalizedCode)) {
+      return;
+    }
+    if (result.isValid) {
+      const detailUpdate = createEducationCodeDetailUpdate(normalizedCode, result);
+      if (Object.keys(detailUpdate).length > 0) {
+        commitSettingsEducationCodes(getSavedEducationCodes(), detailUpdate);
+        renderSettingsEducationCode();
+      }
+    }
+  } finally {
+    pendingEducationCodeDetailRequests.delete(normalizedCode);
+    completedEducationCodeDetailRequests.add(normalizedCode);
+  }
+}
+
+function toggleSettingsEducationCodeMenu(code) {
+  const normalizedCode = normalizeEducationCodeValue(code);
+  if (!normalizedCode || !elements.settingsEducationCodeList) {
+    return;
+  }
+  const targetChip = elements.settingsEducationCodeList.querySelector(
+    `[data-education-code-chip="${cssEscape(normalizedCode)}"]`
+  );
+  const shouldOpen = !targetChip?.classList.contains("is-menu-open");
+  closeSettingsEducationCodeMenus();
+  if (!targetChip || !shouldOpen) {
+    return;
+  }
+  targetChip.classList.add("is-menu-open");
+  targetChip.querySelector("[data-education-code-menu]")?.setAttribute("aria-expanded", "true");
+}
+
+function closeSettingsEducationCodeMenus() {
+  elements.settingsEducationCodeList?.querySelectorAll(".education-code-chip.is-menu-open").forEach((chip) => {
+    chip.classList.remove("is-menu-open");
+    chip.querySelector("[data-education-code-menu]")?.setAttribute("aria-expanded", "false");
+  });
 }
 
 function getSettingsEducationCodeValue() {
@@ -6028,9 +6521,12 @@ function syncSettingsEducationCodeSaveButton() {
   }
   const value = getSettingsEducationCodeValue();
   const cachedState = settingsEducationCodeValidationState.value === value ? settingsEducationCodeValidationState : null;
-  const isDuplicate = getSavedEducationCodes().includes(value);
+  const isUnchangedEdit = Boolean(settingsEducationCodeEditingCode && value === settingsEducationCodeEditingCode);
+  const isDuplicate = getSavedEducationCodes().some(
+    (savedCode) => savedCode === value && savedCode !== settingsEducationCodeEditingCode
+  );
   const isKnownValid = Boolean(value && cachedState?.status === "valid" && cachedState?.isValid);
-  elements.settingsEducationCodeSaveBtn.disabled = !value || isDuplicate || !isKnownValid;
+  elements.settingsEducationCodeSaveBtn.disabled = !value || isUnchangedEdit || isDuplicate || !isKnownValid;
 }
 
 function resetSettingsEducationCodeValidationState() {
@@ -6038,6 +6534,7 @@ function resetSettingsEducationCodeValidationState() {
     value: "",
     isValid: false,
     message: "",
+    schoolName: "",
     status: "",
   };
 }
@@ -6061,11 +6558,15 @@ function handleSettingsEducationCodeInput() {
   syncSettingsEducationCodeSaveButton();
 
   const value = getSettingsEducationCodeValue();
-  if (value && getSavedEducationCodes().includes(value)) {
+  if (
+    value &&
+    getSavedEducationCodes().some((savedCode) => savedCode === value && savedCode !== settingsEducationCodeEditingCode)
+  ) {
     settingsEducationCodeValidationState = {
       value,
       isValid: false,
       message: EDUCATION_CODE_DUPLICATE_MESSAGE,
+      schoolName: "",
       status: "invalid",
     };
     renderSettingsEducationCodeFeedback(EDUCATION_CODE_DUPLICATE_MESSAGE, "invalid");
@@ -6088,17 +6589,19 @@ async function validateSettingsEducationCodeInput() {
       value: "",
       isValid: true,
       message: "",
+      schoolName: "",
       status: "",
     };
     renderSettingsEducationCodeFeedback("", "");
     syncSettingsEducationCodeSaveButton();
     return true;
   }
-  if (getSavedEducationCodes().includes(value)) {
+  if (getSavedEducationCodes().some((savedCode) => savedCode === value && savedCode !== settingsEducationCodeEditingCode)) {
     settingsEducationCodeValidationState = {
       value,
       isValid: false,
       message: EDUCATION_CODE_DUPLICATE_MESSAGE,
+      schoolName: "",
       status: "invalid",
     };
     renderSettingsEducationCodeFeedback(EDUCATION_CODE_DUPLICATE_MESSAGE, "invalid");
@@ -6124,6 +6627,7 @@ async function validateSettingsEducationCodeInput() {
     value,
     isValid: result.isValid,
     message: result.message,
+    schoolName: result.schoolName || "",
     status: result.status,
   };
   renderSettingsEducationCodeFeedback(result.message, result.status);
@@ -6137,12 +6641,24 @@ async function saveSettingsEducationCode() {
     syncSettingsEducationCodeSaveButton();
     return;
   }
+  if (settingsEducationCodeEditingCode && value === settingsEducationCodeEditingCode) {
+    closeSettingsEducationCodeDialog();
+    return;
+  }
   if (!(await validateSettingsEducationCodeInput())) {
     return;
   }
-  commitSettingsEducationCodes([...getSavedEducationCodes(), value]);
+  const savedCodes = getSavedEducationCodes();
+  const nextCodes = settingsEducationCodeEditingCode
+    ? savedCodes.map((code) => (code === settingsEducationCodeEditingCode ? value : code))
+    : [...savedCodes, value];
+  const detailUpdate = createEducationCodeDetailUpdate(value, settingsEducationCodeValidationState);
+  commitSettingsEducationCodes(nextCodes, detailUpdate);
   renderSettingsEducationCode();
-  renderSettingsEducationCodeFeedback("Education Codeを追加しました。", "valid");
+  renderSettingsEducationCodeFeedback(
+    settingsEducationCodeEditingCode ? "Education Codeを保存しました。" : "Education Codeを追加しました。",
+    "valid"
+  );
   closeSettingsEducationCodeDialog();
 }
 
@@ -6156,11 +6672,39 @@ function removeSettingsEducationCode(code) {
   renderSettingsEducationCode();
 }
 
-function openSettingsEducationCodeDialog() {
+function openSettingsEducationCodeDialog(options = {}) {
+  const editingCode = normalizeEducationCodeValue(options.code);
+  settingsEducationCodeEditingCode = getSavedEducationCodes().includes(editingCode) ? editingCode : "";
   resetSettingsEducationCodeValidationState();
   renderSettingsEducationCodeFeedback("", "");
   if (elements.settingsEducationCodeInput) {
-    elements.settingsEducationCodeInput.value = "";
+    elements.settingsEducationCodeInput.value = settingsEducationCodeEditingCode;
+  }
+  if (settingsEducationCodeEditingCode) {
+    const detail = getEducationCodeDetail(settingsEducationCodeEditingCode);
+    settingsEducationCodeValidationState = {
+      value: settingsEducationCodeEditingCode,
+      isValid: true,
+      message: detail?.message || "",
+      schoolName: detail?.schoolName || "",
+      status: "valid",
+    };
+  }
+  if (elements.settingsEducationCodeDialog) {
+    const title = elements.settingsEducationCodeDialog.querySelector("#settingsEducationCodeDialogTitle");
+    if (title) {
+      title.textContent = settingsEducationCodeEditingCode ? "Education Codeを編集する" : "Education Codeを追加する";
+    }
+  }
+  if (elements.settingsEducationCodeSaveBtn) {
+    const icon = elements.settingsEducationCodeSaveBtn.querySelector(".material-symbols-rounded");
+    const label = elements.settingsEducationCodeSaveBtn.querySelector("span:last-child");
+    if (icon) {
+      icon.textContent = settingsEducationCodeEditingCode ? "save" : "add";
+    }
+    if (label) {
+      label.textContent = settingsEducationCodeEditingCode ? "保存する" : "追加する";
+    }
   }
   syncSettingsEducationCodeSaveButton();
   syncSettingsEducationCodeScannerAvailability();
@@ -6178,6 +6722,7 @@ function closeSettingsEducationCodeDialog() {
   stopSettingsEducationCodeScanner();
   clearSettingsEducationCodeValidationTimer();
   settingsEducationCodeValidationRequestId += 1;
+  settingsEducationCodeEditingCode = "";
   if (elements.settingsEducationCodeDialog?.open) {
     elements.settingsEducationCodeDialog.close();
   }
@@ -6187,6 +6732,7 @@ function handleSettingsEducationCodeDialogClose() {
   stopSettingsEducationCodeScanner();
   clearSettingsEducationCodeValidationTimer();
   settingsEducationCodeValidationRequestId += 1;
+  settingsEducationCodeEditingCode = "";
 }
 
 function setSettingsEducationCodeScannerVisible(isVisible) {
@@ -6338,6 +6884,9 @@ function updateThemeSetting(nextTheme) {
   }
 
   state.settings.theme = normalizedTheme;
+  if (hasUnlimitedReviewCoins() && PREMIUM_THEMES.includes(normalizedTheme)) {
+    state.settings.unlockedThemes[normalizedTheme] = true;
+  }
   applyTheme(normalizedTheme, { withFade: true });
   saveState();
   renderMypageSettings();
@@ -6383,6 +6932,9 @@ function isModeThemeActive() {
 function isThemeUnlocked(themeKey) {
   if (!AVAILABLE_THEMES.includes(themeKey)) {
     return false;
+  }
+  if (hasUnlimitedReviewCoins()) {
+    return true;
   }
   return Boolean(state.settings.unlockedThemes?.[themeKey]);
 }
@@ -7658,6 +8210,7 @@ function createDefaultState() {
       monochrome: false,
       educationCode: "",
       educationCodes: [],
+      educationCodeDetails: {},
       text: { ...DEFAULT_TEXT_SETTINGS },
       notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
       notificationTimeMinutes: DEFAULT_NOTIFICATION_TIME_MINUTES,
@@ -7802,6 +8355,10 @@ function normalizeSettingsState(value) {
   const theme = unlockedThemes[storedTheme] ? storedTheme : DEFAULT_THEME;
   unlockedThemes[theme] = true;
   const educationCodes = normalizeEducationCodeList(value?.educationCodes, value?.educationCode ?? value?.schoolCode);
+  const educationCodeDetails = normalizeEducationCodeDetails(
+    value?.educationCodeDetails ?? value?.educationCodeNames ?? value?.educationCodeSchoolNames,
+    educationCodes
+  );
   return {
     theme,
     unlockedThemes,
@@ -7810,6 +8367,7 @@ function normalizeSettingsState(value) {
     monochrome: normalizedMode.monochrome,
     educationCode: educationCodes[0] || "",
     educationCodes,
+    educationCodeDetails,
     text: normalizeTextSettings(value?.text),
     notifications: normalizeNotificationSettings(value?.notifications),
     notificationTimeMinutes: normalizeNotificationTimeMinutes(
@@ -8340,6 +8898,13 @@ function mergeReviewSettings(localSettings, remoteSettings, preferRemote) {
   const preferredEducationCode = preferRemote ? remote.educationCode : local.educationCode;
   base.educationCodes = educationCodes;
   base.educationCode = educationCodes.includes(preferredEducationCode) ? preferredEducationCode : educationCodes[0] || "";
+  base.educationCodeDetails = normalizeEducationCodeDetails(
+    {
+      ...local.educationCodeDetails,
+      ...remote.educationCodeDetails,
+    },
+    educationCodes
+  );
   return normalizeSettingsState(base);
 }
 
@@ -8514,6 +9079,10 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
+function cssEscape(value) {
+  return window.CSS?.escape ? window.CSS.escape(String(value || "")) : String(value || "").replace(/["\\]/g, "\\$&");
+}
+
 function normalizeEducationCodeValue(value) {
   return String(value ?? "")
     .normalize("NFKC")
@@ -8541,6 +9110,34 @@ function normalizeEducationCodeList(value, legacyValue = "") {
     }
   });
   return codes;
+}
+
+function normalizeSchoolName(value) {
+  return String(value ?? "").normalize("NFKC").trim();
+}
+
+function normalizeEducationCodeDetails(value, validCodes = []) {
+  const validCodeSet = new Set(normalizeEducationCodeList(validCodes));
+  const details = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return details;
+  }
+  Object.entries(value).forEach(([rawCode, rawDetail]) => {
+    const code = normalizeEducationCodeValue(rawCode);
+    if (!code || (validCodeSet.size > 0 && !validCodeSet.has(code))) {
+      return;
+    }
+    const detail = rawDetail && typeof rawDetail === "object" && !Array.isArray(rawDetail) ? rawDetail : {};
+    const schoolName = normalizeSchoolName(detail.schoolName ?? detail.school_name ?? rawDetail);
+    const message = typeof detail.message === "string" ? detail.message.trim() : "";
+    const checkedAt = normalizeIsoDateString(detail.checkedAt ?? detail.checked_at);
+    details[code] = {
+      schoolName,
+      message,
+      checkedAt,
+    };
+  });
+  return details;
 }
 
 function extractEducationCodeFromQrText(rawValue) {
@@ -8686,6 +9283,7 @@ async function validateEducationCodeValue(value) {
     value: "",
     isValid: true,
     message: "",
+    schoolName: "",
     status: "",
   };
 
@@ -8928,7 +9526,10 @@ async function validateEducationCodeValue(value) {
   function commitOnboardingEducationCode() {
     const code = getEducationCodeValue();
     if (code) {
-      commitSettingsEducationCodes([...getSavedEducationCodes(), code]);
+      commitSettingsEducationCodes(
+        [...getSavedEducationCodes(), code],
+        createEducationCodeDetailUpdate(code, educationCodeValidationState)
+      );
     } else {
       saveState();
     }
@@ -8958,6 +9559,7 @@ async function validateEducationCodeValue(value) {
         value: "",
         isValid: true,
         message: "",
+        schoolName: "",
         status: "",
       };
       renderEducationCodeFeedback("", "");
@@ -8995,6 +9597,7 @@ async function validateEducationCodeValue(value) {
         value,
         isValid,
         message,
+        schoolName: result.schoolName || "",
         status: isValid ? "valid" : "invalid",
       };
       renderEducationCodeFeedback(message, isValid ? "valid" : "invalid");
@@ -9007,6 +9610,7 @@ async function validateEducationCodeValue(value) {
         value,
         isValid: false,
         message: EDUCATION_CODE_INVALID_MESSAGE,
+        schoolName: "",
         status: "invalid",
       };
       renderEducationCodeFeedback(EDUCATION_CODE_INVALID_MESSAGE, "invalid");
@@ -9248,6 +9852,7 @@ async function validateEducationCodeValue(value) {
       value: "",
       isValid: false,
       message: "",
+      schoolName: "",
       status: "",
     };
     syncEducationCodeStep();

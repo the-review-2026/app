@@ -1403,7 +1403,8 @@ body[data-theme="strawberry"] .aurora-right {
   bottom: max(0.18rem, env(safe-area-inset-bottom));
   transform: translateX(-50%);
   width: 172px;
-  height: 172px;
+  height: auto;
+  aspect-ratio: 1 / 1.1;
   overflow: hidden;
   pointer-events: none;
   z-index: 21;
@@ -1412,9 +1413,10 @@ body[data-theme="strawberry"] .aurora-right {
 .top-nav-character img {
   display: block;
   width: 100%;
-  height: auto;
-  transform: scale(1.04);
-  transform-origin: top center;
+  height: 100%;
+  object-fit: contain;
+  transform: none;
+  transform-origin: center bottom;
 }
 
 .top-nav-item.is-active:not([data-screen="mypage"]):not([data-screen="learn"]) {
@@ -5196,6 +5198,10 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   white-space: nowrap;
 }
 
+.education-code-status-badge[hidden] {
+  display: none;
+}
+
 .education-code-setting-content {
   display: grid;
   gap: 0.64rem;
@@ -5208,18 +5214,14 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 
 .education-code-chip {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 0.48rem;
   border: 1px solid rgba(103, 132, 156, 0.24);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
   padding: 0.5rem 0.56rem;
-}
-
-.education-code-chip > .material-symbols-rounded {
-  color: var(--success);
-  font-size: 1.18rem;
+  position: relative;
 }
 
 .education-code-chip strong {
@@ -5229,7 +5231,31 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   font-size: 0.92rem;
 }
 
-.education-code-chip button {
+.education-code-set-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  border-radius: 999px;
+  background: #2c9d64;
+  color: #ffffff;
+  padding: 0.28rem 0.56rem;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.education-code-set-badge .material-symbols-rounded {
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.education-code-menu-wrap {
+  position: relative;
+}
+
+.education-code-menu-btn {
   width: 2rem;
   min-width: 2rem;
   height: 2rem;
@@ -5239,8 +5265,46 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   border-radius: 50%;
 }
 
-.education-code-chip button .material-symbols-rounded {
+.education-code-menu-btn .material-symbols-rounded {
   font-size: 1rem;
+}
+
+.education-code-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.32rem);
+  z-index: 12;
+  min-width: 8.8rem;
+  display: none;
+  padding: 0.32rem;
+  border-radius: 10px;
+  background: #1d1d1d;
+  box-shadow: 0 12px 26px rgba(5, 10, 18, 0.22);
+}
+
+.education-code-chip.is-menu-open .education-code-menu {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.education-code-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  padding: 0.46rem 0.54rem;
+  text-align: left;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.education-code-menu button:hover,
+.education-code-menu button:focus-visible {
+  background: rgba(255, 255, 255, 0.13);
+  outline: none;
 }
 
 .education-code-empty {
@@ -5302,6 +5366,10 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   gap: 0.52rem;
 }
 
+.account-action-row.is-guest-account-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .account-icon-button {
   width: 100%;
   min-width: 0;
@@ -5336,6 +5404,15 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 
 .account-delete-button::before {
   content: "×";
+}
+
+.account-logout-button.is-danger-action {
+  color: #ffffff;
+  background:
+    var(--band-tab-grain),
+    linear-gradient(135deg, #f06c61, #b73535 78%);
+  background-blend-mode: overlay, normal;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 18px rgba(116, 28, 24, 0.2);
 }
 
 .account-edit-options {
@@ -6375,11 +6452,12 @@ button {
 
   .top-nav-character {
     width: 138px;
-    height: 138px;
+    height: auto;
+    aspect-ratio: 1 / 1.1;
   }
 
   .top-nav-character img {
-    transform: scale(1.05);
+    transform: none;
   }
 
   .top-nav-item[data-screen="mypage"] {
@@ -6524,7 +6602,8 @@ button {
 
   .top-nav-character {
     width: 122px;
-    height: 122px;
+    height: auto;
+    aspect-ratio: 1 / 1.1;
   }
 
   .selfcheck-timer-layout {
@@ -6817,6 +6896,8 @@ body.login-page .aurora {
 .avater-preview {
   position: relative;
   overflow: hidden;
+  display: grid;
+  place-items: end center;
 }
 
 .top-nav-character.avater-preview {
@@ -6826,24 +6907,24 @@ body.login-page .aurora {
 .avater-preview-large {
   width: min(210px, 58vw);
   aspect-ratio: 1 / 1.1;
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.5), transparent 42%),
-    rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  background: transparent;
 }
 
 .avater-base-image {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
   transform-origin: center bottom;
+  transform: none;
   user-select: none;
   -webkit-user-drag: none;
 }
 
 .avater-preview-nav .avater-base-image {
-  transform: scale(1.04);
-  transform-origin: top center;
+  transform: none;
+  transform-origin: center bottom;
 }
 
 .avater-layer {
@@ -8451,7 +8532,19 @@ body.flashcard-binder-global-focus .top-nav-character {
 
 .flashcard-note-library {
   margin-top: -0.38rem;
-  overflow: visible;
+  height: clamp(390px, 58dvh, 620px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding-right: 0.24rem;
+}
+
+#mypageFlashcardPanel .flashcard-binder-list.flashcard-note-library {
+  height: clamp(390px, 58dvh, 620px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0.62rem;
 }
 
 .flashcard-note-library .flashcard-note-surface.flashcard-binder {
@@ -8499,6 +8592,10 @@ body.flashcard-binder-global-focus .top-nav-character {
 }
 
 .flashcard-note-library .flashcard-note + .flashcard-note {
+  margin-top: 0;
+}
+
+.flashcard-note-library .flashcard-note.is-stack-continuation {
   margin-top: calc(-141.421% + clamp(46px, 10vw, 64px));
 }
 
@@ -8591,6 +8688,10 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 }
 
 .flashcard-note-library .flashcard-note + .flashcard-series-index {
+  margin-top: 0;
+}
+
+.flashcard-note-library .flashcard-series-index.is-after-visible-notes {
   margin-top: calc(-141.421% + clamp(46px, 10vw, 64px));
 }
 
