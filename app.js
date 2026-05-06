@@ -1474,6 +1474,7 @@ function bindEvents() {
       flashcardState.cardIndex = 0;
       flashcardState.answerVisible = false;
       renderFlashcardPanel();
+      recordActiveFlashcardProgress();
     });
   }
 
@@ -2836,6 +2837,66 @@ function createInitialFlashcardState() {
   };
 }
 
+function ensureLearningProgressState() {
+  state.learningProgress = normalizeLearningProgressState(state.learningProgress);
+  return state.learningProgress;
+}
+
+function recordActiveFlashcardProgress() {
+  const deck = getActiveFlashcardDeck();
+  const unit = getActiveFlashcardUnit();
+  if (!deck || !unit || !Array.isArray(unit.cards) || unit.cards.length === 0) {
+    return;
+  }
+  const deckId = normalizeFlashcardText(deck.id);
+  const unitId = normalizeFlashcardText(unit.id);
+  if (!deckId || !unitId) {
+    return;
+  }
+  const cardIndex = Math.max(0, Math.min(unit.cards.length - 1, Number(flashcardState.cardIndex) || 0));
+  const progress = ensureLearningProgressState();
+  progress.flashcards[deckId] = {
+    seriesId: normalizeFlashcardText(deck.seriesId),
+    seriesLabel: normalizeFlashcardText(deck.seriesLabel),
+    deckId,
+    deckLabel: normalizeFlashcardText(deck.label),
+    unitId,
+    unitLabel: normalizeFlashcardText(unit.label),
+    cardIndex,
+    cardNumber: cardIndex + 1,
+    cardCount: unit.cards.length,
+    answerVisible: Boolean(flashcardState.answerVisible),
+    updatedAt: new Date().toISOString(),
+  };
+  saveState();
+}
+
+function recordActiveFlashcardNotebookProgress() {
+  if (!activeFlashcardNotebookState?.note) {
+    return;
+  }
+  const note = activeFlashcardNotebookState.note;
+  const noteLabel = getFlashcardNoteJapaneseLabel(note);
+  const deckId = normalizeFlashcardText(note.dataset.flashcardDeckId);
+  const noteKey = deckId || toFlashcardLabelLookupKey(noteLabel);
+  if (!noteKey) {
+    return;
+  }
+  const spreads = buildFlashcardNotebookSpreads(note);
+  const pageIndex = Math.max(0, Math.min(Math.max(0, spreads.length - 1), Number(activeFlashcardNotebookState.pageIndex) || 0));
+  const progress = ensureLearningProgressState();
+  progress.notebooks[noteKey] = {
+    deckId,
+    noteLabel,
+    pageIndex,
+    pageNumber: pageIndex + 1,
+    spreadCount: spreads.length,
+    leftVisible: Boolean(activeFlashcardNotebookState.leftVisible),
+    updatedAt: new Date().toISOString(),
+  };
+  saveState();
+}
+
 function getFlashcardBookIntentTimerKey(seriesId, deckId) {
   const normalizedSeriesId = normalizeFlashcardText(seriesId);
   const normalizedDeckId = normalizeFlashcardText(deckId);
@@ -3956,6 +4017,7 @@ function openFlashcardNotebook(note) {
   binderList.classList.add("is-note-open");
   setFlashcardBinderStageNoteOpen(true);
   renderFlashcardNotebook();
+  recordActiveFlashcardNotebookProgress();
 }
 
 function closeFlashcardNotebook(options = {}) {
@@ -4008,6 +4070,7 @@ function handleFlashcardNoteReaderAction(actionButton) {
     activeFlashcardNotebookState.leftVisible = true;
     activeFlashcardNotebookState.pageTurnDirection = "prev";
     renderFlashcardNotebook();
+    recordActiveFlashcardNotebookProgress();
     return;
   }
   if (action === "next") {
@@ -4015,11 +4078,13 @@ function handleFlashcardNoteReaderAction(actionButton) {
     activeFlashcardNotebookState.leftVisible = true;
     activeFlashcardNotebookState.pageTurnDirection = "next";
     renderFlashcardNotebook();
+    recordActiveFlashcardNotebookProgress();
     return;
   }
   if (action === "toggle-left") {
     activeFlashcardNotebookState.leftVisible = !activeFlashcardNotebookState.leftVisible;
     renderFlashcardNotebook();
+    recordActiveFlashcardNotebookProgress();
   }
 }
 
@@ -4968,6 +5033,7 @@ function startFlashcardBookUseAnimation(seriesId, deckId) {
     flashcardBookUseAnimationBySeries.delete(normalizedSeriesId);
     flashcardBookUseTimerBySeries.delete(normalizedSeriesId);
     renderFlashcardPanel();
+    recordActiveFlashcardProgress();
   }, FLASHCARD_BOOK_USE_ANIMATION_TOTAL_MS + 40);
 
   flashcardBookUseTimerBySeries.set(normalizedSeriesId, [exitTimerId, dropTimerId, completeTimerId]);
@@ -5706,6 +5772,7 @@ function toggleFlashcardAnswer() {
   }
   flashcardState.answerVisible = !flashcardState.answerVisible;
   renderFlashcardPanel();
+  recordActiveFlashcardProgress();
 }
 
 function updateFlashcardActionButtons(cardCount) {
@@ -5736,6 +5803,7 @@ function shiftFlashcardIndex(offset) {
   flashcardState.cardIndex = (flashcardState.cardIndex + Math.trunc(normalizedOffset) + cardCount) % cardCount;
   flashcardState.answerVisible = false;
   renderFlashcardPanel();
+  recordActiveFlashcardProgress();
 }
 
 function jumpToRandomFlashcard() {
@@ -5751,6 +5819,7 @@ function jumpToRandomFlashcard() {
   flashcardState.cardIndex = nextIndex;
   flashcardState.answerVisible = false;
   renderFlashcardPanel();
+  recordActiveFlashcardProgress();
 }
 
 function renderCoinBoard(options = {}) {
@@ -7254,7 +7323,7 @@ function isLikelyReviewState(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
-  const keys = ["reviewCoin", "coinGrant5000Applied", "loginDays", "dailyTryRecords", "settings", "auth"];
+  const keys = ["reviewCoin", "coinGrant5000Applied", "loginDays", "dailyTryRecords", "learningProgress", "settings", "auth"];
   return keys.some((key) => key in value);
 }
 
@@ -8209,6 +8278,7 @@ function createDefaultState() {
     loginDays: {},
     dailyLoginRewardDays: {},
     dailyTryRecords: {},
+    learningProgress: createDefaultLearningProgressState(),
     settings: {
       theme: DEFAULT_THEME,
       unlockedThemes: createDefaultThemeUnlockState(),
@@ -8248,6 +8318,7 @@ function normalizePersistedState(parsed) {
     loginDays: parsed?.loginDays && typeof parsed.loginDays === "object" ? parsed.loginDays : {},
     dailyLoginRewardDays: normalizeDailyLoginRewardDays(parsed?.dailyLoginRewardDays),
     dailyTryRecords: parsed?.dailyTryRecords && typeof parsed.dailyTryRecords === "object" ? parsed.dailyTryRecords : {},
+    learningProgress: normalizeLearningProgressState(parsed?.learningProgress ?? parsed?.progress ?? parsed?.noteProgress),
     settings: normalizeSettingsState(parsed?.settings),
     auth: normalizeAuthState(parsed?.auth),
     avater: normalizeAvaterState(parsed?.avater || parsed?.avatar),
@@ -8313,6 +8384,58 @@ function normalizeDailyLoginRewardDays(value) {
     }
   });
   return normalized;
+}
+
+function createDefaultLearningProgressState() {
+  return {
+    flashcards: {},
+    notebooks: {},
+  };
+}
+
+function normalizeLearningProgressState(value) {
+  const fallback = createDefaultLearningProgressState();
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return fallback;
+  }
+  return {
+    flashcards: normalizeLearningProgressRecordMap(value.flashcards),
+    notebooks: normalizeLearningProgressRecordMap(value.notebooks),
+  };
+}
+
+function normalizeLearningProgressRecordMap(value) {
+  const normalized = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return normalized;
+  }
+  Object.entries(value).forEach(([rawKey, rawRecord]) => {
+    const key = normalizeLearningProgressKey(rawKey);
+    if (!key || !rawRecord || typeof rawRecord !== "object" || Array.isArray(rawRecord)) {
+      return;
+    }
+    normalized[key] = normalizeLearningProgressRecord(rawRecord);
+  });
+  return normalized;
+}
+
+function normalizeLearningProgressRecord(value) {
+  const record = {};
+  Object.entries(value || {}).forEach(([rawKey, rawValue]) => {
+    const key = normalizeLearningProgressKey(rawKey);
+    if (!key) {
+      return;
+    }
+    if (rawValue === null || ["string", "number", "boolean"].includes(typeof rawValue)) {
+      record[key] = rawValue;
+    }
+  });
+  record.updatedAt = normalizeIsoDateString(value?.updatedAt);
+  return record;
+}
+
+function normalizeLearningProgressKey(value) {
+  return String(value ?? "").trim().slice(0, 120);
 }
 
 function createDefaultAvaterState() {
@@ -8989,6 +9112,7 @@ function createReviewDataStateSnapshot(sourceState = state) {
     loginDays: normalized.loginDays,
     dailyLoginRewardDays: normalized.dailyLoginRewardDays,
     dailyTryRecords: normalized.dailyTryRecords,
+    learningProgress: normalized.learningProgress,
     sync: normalizeReviewDataSyncState(normalized.sync),
   };
 }
@@ -8998,6 +9122,7 @@ function createPersonalDataStateSnapshot(sourceState = state) {
   return {
     reviewCoin: normalized.reviewCoin,
     coinGrant5000Applied: normalized.coinGrant5000Applied,
+    hasUnlimitedReviewCoins: hasUnlimitedReviewCoins(),
     settings: normalized.settings,
     auth: normalized.auth,
     avater: normalized.avater,
@@ -9077,6 +9202,7 @@ function applyReviewDataState(nextState, options = {}) {
     loginDays: normalizedNextState.loginDays,
     dailyLoginRewardDays: normalizedNextState.dailyLoginRewardDays,
     dailyTryRecords: normalizedNextState.dailyTryRecords,
+    learningProgress: normalizedNextState.learningProgress,
     sync: normalizedNextState.sync,
   });
   isApplyingRemoteReviewData = true;
@@ -9145,6 +9271,7 @@ function mergeReviewDataStates(localState, remoteState, remoteRecord = {}) {
   merged.loginDays = mergeBooleanRecord(local.loginDays, remote.loginDays);
   merged.dailyLoginRewardDays = mergeNumberRecord(local.dailyLoginRewardDays, remote.dailyLoginRewardDays);
   merged.dailyTryRecords = mergeDailyTryRecordMap(local.dailyTryRecords, remote.dailyTryRecords, preferRemote);
+  merged.learningProgress = mergeLearningProgressStates(local.learningProgress, remote.learningProgress, preferRemote);
 
   const mergedEqualsLocal = reviewDataStateContentEquals(merged, local);
   const mergedEqualsRemote = reviewDataStateContentEquals(merged, remote);
@@ -9316,6 +9443,36 @@ function mergeDailyTryRecordMap(localRecords, remoteRecords, preferRemote) {
   return merged;
 }
 
+function mergeLearningProgressStates(localProgress, remoteProgress, preferRemote) {
+  const local = normalizeLearningProgressState(localProgress);
+  const remote = normalizeLearningProgressState(remoteProgress);
+  return {
+    flashcards: mergeLearningProgressRecordMaps(local.flashcards, remote.flashcards, preferRemote),
+    notebooks: mergeLearningProgressRecordMaps(local.notebooks, remote.notebooks, preferRemote),
+  };
+}
+
+function mergeLearningProgressRecordMaps(localRecords, remoteRecords, preferRemote) {
+  const merged = {};
+  const keys = Array.from(new Set([...Object.keys(localRecords || {}), ...Object.keys(remoteRecords || {})])).sort();
+  keys.forEach((key) => {
+    const localRecord = normalizeLearningProgressRecord(localRecords?.[key]);
+    const remoteRecord = normalizeLearningProgressRecord(remoteRecords?.[key]);
+    if (!localRecords?.[key]) {
+      merged[key] = remoteRecord;
+      return;
+    }
+    if (!remoteRecords?.[key]) {
+      merged[key] = localRecord;
+      return;
+    }
+    const localUpdatedAt = Date.parse(localRecord.updatedAt || "") || 0;
+    const remoteUpdatedAt = Date.parse(remoteRecord.updatedAt || "") || 0;
+    merged[key] = remoteUpdatedAt > localUpdatedAt || (remoteUpdatedAt === localUpdatedAt && preferRemote) ? remoteRecord : localRecord;
+  });
+  return merged;
+}
+
 function normalizeDailyTryRecord(record) {
   if (!record || typeof record !== "object" || Array.isArray(record)) {
     return null;
@@ -9353,6 +9510,7 @@ function getReviewDataStateContentSnapshot(value) {
     loginDays: normalized.loginDays,
     dailyLoginRewardDays: normalized.dailyLoginRewardDays,
     dailyTryRecords: normalized.dailyTryRecords,
+    learningProgress: normalized.learningProgress,
   };
 }
 

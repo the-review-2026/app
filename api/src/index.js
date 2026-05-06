@@ -412,6 +412,7 @@ async function saveCurrentReviewData(request, env) {
     storage_key: payloadResult.value.storage_key,
     payload: payloadResult.value.payload,
     client_updated_at: payloadResult.value.client_updated_at,
+    ...extractReviewDataColumns(payloadResult.value.payload),
   });
   if (!savedResult.ok) {
     return json(savedResult.body, savedResult.status);
@@ -498,6 +499,7 @@ async function saveCurrentPersonalData(request, env) {
     storage_key: payloadResult.value.storage_key,
     payload: payloadResult.value.payload,
     client_updated_at: payloadResult.value.client_updated_at,
+    ...extractPersonalDataColumns(payloadResult.value.payload),
   });
   if (!savedResult.ok) {
     return json(savedResult.body, savedResult.status);
@@ -781,6 +783,51 @@ function normalizePersonalDataPayload(body) {
   };
 }
 
+function extractReviewDataColumns(payload) {
+  const data = normalizeJsonObject(payload);
+  return {
+    login_days: normalizeJsonObject(data.loginDays),
+    daily_login_reward_days: normalizeJsonObject(data.dailyLoginRewardDays),
+    daily_try_records: normalizeJsonObject(data.dailyTryRecords),
+    learning_progress: normalizeJsonObject(data.learningProgress ?? data.progress ?? data.noteProgress),
+  };
+}
+
+function extractPersonalDataColumns(payload) {
+  const data = normalizeJsonObject(payload);
+  const settings = normalizeJsonObject(data.settings);
+  const auth = normalizeJsonObject(data.auth);
+  const avater = normalizeJsonObject(data.avater ?? data.avatar);
+  const equippedAvater = normalizeJsonObject(avater.equipped);
+  const reviewCoin = Number(data.reviewCoin);
+  const isLoggedIn = Boolean(auth.isLoggedIn);
+  const provider = normalizeSupabaseText(auth.provider);
+  const loginStatus = isLoggedIn ? (provider === "guest" ? "guest" : "logged_in") : "logged_out";
+
+  return {
+    login_status: loginStatus,
+    is_logged_in: isLoggedIn,
+    auth_provider: provider || null,
+    display_name: normalizeSupabaseText(auth.displayName) || null,
+    nickname: normalizeSupabaseText(auth.nickname) || null,
+    email: normalizeSupabaseText(auth.email) || null,
+    color_theme: normalizeSupabaseText(settings.theme) || null,
+    high_contrast: Boolean(settings.highContrast),
+    monochrome: Boolean(settings.monochrome),
+    review_coin: Number.isFinite(reviewCoin) && reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
+    coin_grant_5000_applied: Boolean(data.coinGrant5000Applied),
+    has_unlimited_review_coins: Boolean(data.hasUnlimitedReviewCoins),
+    settings,
+    education_codes: Array.isArray(settings.educationCodes) ? settings.educationCodes : [],
+    avater,
+    equipped_avater: equippedAvater,
+  };
+}
+
+function normalizeJsonObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 async function getOrCreateUserByAuth0Sub(supabase, claims) {
   const auth0Sub = normalizeSupabaseText(claims?.sub);
   if (!auth0Sub) {
@@ -901,7 +948,7 @@ async function getReviewDataByUserId(supabase, userId) {
     supabase,
     `/review_data?user_id=eq.${encodeURIComponent(
       normalizedUserId
-    )}&select=user_id,storage_key,payload,client_updated_at,created_at,updated_at&limit=1`
+    )}&select=user_id,storage_key,payload,login_days,daily_login_reward_days,daily_try_records,learning_progress,client_updated_at,created_at,updated_at&limit=1`
   );
   if (!response.ok) {
     return supabaseError(response, "Failed to look up Review Data in Supabase");
@@ -970,6 +1017,19 @@ function serializeReviewDataRow(row) {
   return {
     storageKey: row.storage_key || REVIEW_DATA_STORAGE_KEY,
     data: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
+    loginDays: row.login_days && typeof row.login_days === "object" && !Array.isArray(row.login_days) ? row.login_days : {},
+    dailyLoginRewardDays:
+      row.daily_login_reward_days && typeof row.daily_login_reward_days === "object" && !Array.isArray(row.daily_login_reward_days)
+        ? row.daily_login_reward_days
+        : {},
+    dailyTryRecords:
+      row.daily_try_records && typeof row.daily_try_records === "object" && !Array.isArray(row.daily_try_records)
+        ? row.daily_try_records
+        : {},
+    learningProgress:
+      row.learning_progress && typeof row.learning_progress === "object" && !Array.isArray(row.learning_progress)
+        ? row.learning_progress
+        : {},
     clientUpdatedAt: row.client_updated_at || null,
     updatedAt: row.updated_at || null,
   };
@@ -991,7 +1051,7 @@ async function getPersonalDataByUserId(supabase, userId) {
     supabase,
     `/personal_data?user_id=eq.${encodeURIComponent(
       normalizedUserId
-    )}&select=user_id,storage_key,payload,client_updated_at,created_at,updated_at&limit=1`
+    )}&select=user_id,storage_key,payload,login_status,is_logged_in,auth_provider,display_name,nickname,email,color_theme,high_contrast,monochrome,review_coin,coin_grant_5000_applied,has_unlimited_review_coins,settings,education_codes,avater,equipped_avater,client_updated_at,created_at,updated_at&limit=1`
   );
   if (!response.ok) {
     return supabaseError(response, "Failed to look up Personal Data in Supabase");
@@ -1060,6 +1120,25 @@ function serializePersonalDataRow(row) {
   return {
     storageKey: row.storage_key || PERSONAL_DATA_STORAGE_KEY,
     data: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
+    loginStatus: row.login_status || null,
+    isLoggedIn: Boolean(row.is_logged_in),
+    authProvider: row.auth_provider || null,
+    displayName: row.display_name || null,
+    nickname: row.nickname || null,
+    email: row.email || null,
+    colorTheme: row.color_theme || null,
+    highContrast: Boolean(row.high_contrast),
+    monochrome: Boolean(row.monochrome),
+    reviewCoin: Number.isFinite(Number(row.review_coin)) ? Number(row.review_coin) : 0,
+    coinGrant5000Applied: Boolean(row.coin_grant_5000_applied),
+    hasUnlimitedReviewCoins: Boolean(row.has_unlimited_review_coins),
+    settings: row.settings && typeof row.settings === "object" && !Array.isArray(row.settings) ? row.settings : {},
+    educationCodes: Array.isArray(row.education_codes) ? row.education_codes : [],
+    avater: row.avater && typeof row.avater === "object" && !Array.isArray(row.avater) ? row.avater : {},
+    equippedAvater:
+      row.equipped_avater && typeof row.equipped_avater === "object" && !Array.isArray(row.equipped_avater)
+        ? row.equipped_avater
+        : {},
     clientUpdatedAt: row.client_updated_at || null,
     updatedAt: row.updated_at || null,
   };
