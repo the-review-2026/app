@@ -8582,16 +8582,111 @@ function normalizeRemoteReviewDataRecord(record) {
   if (storageKey !== REVIEW_DATA_STORAGE_KEY) {
     return null;
   }
-  const data = record.data && typeof record.data === "object" && !Array.isArray(record.data) ? record.data : null;
-  if (!data) {
-    return null;
-  }
+  const data = createReviewDataPayloadFromRemoteRecord(record);
   return {
     storageKey,
     data,
     clientUpdatedAt: normalizeIsoDateString(record.clientUpdatedAt),
     updatedAt: normalizeIsoDateString(record.updatedAt),
   };
+}
+
+function createReviewDataPayloadFromRemoteRecord(record) {
+  const data =
+    record.data && typeof record.data === "object" && !Array.isArray(record.data) ? { ...record.data } : {};
+  const loginDays = normalizePlainRemoteObject(record.loginDays);
+  const dailyLoginRewardDays = normalizePlainRemoteObject(record.dailyLoginRewardDays);
+  const dailyTryRecords = normalizePlainRemoteObject(record.dailyTryRecords);
+  const learningProgress = normalizePlainRemoteObject(record.learningProgress);
+  const existingLearningProgress = normalizePlainRemoteObject(data.learningProgress ?? data.progress ?? data.noteProgress);
+
+  data.loginDays = Object.keys(loginDays).length > 0 || !data.loginDays ? loginDays : normalizePlainRemoteObject(data.loginDays);
+  data.dailyLoginRewardDays =
+    Object.keys(dailyLoginRewardDays).length > 0 || !data.dailyLoginRewardDays
+      ? dailyLoginRewardDays
+      : normalizePlainRemoteObject(data.dailyLoginRewardDays);
+  data.dailyTryRecords =
+    Object.keys(dailyTryRecords).length > 0 || !data.dailyTryRecords
+      ? dailyTryRecords
+      : normalizePlainRemoteObject(data.dailyTryRecords);
+  data.learningProgress =
+    Object.keys(learningProgress).length > 0 || Object.keys(existingLearningProgress).length === 0
+      ? learningProgress
+      : existingLearningProgress;
+
+  if (Object.prototype.hasOwnProperty.call(record, "reviewCoin")) {
+    const reviewCoin = normalizeCoinAmount(record.reviewCoin);
+    if (reviewCoin > 0 || !Number.isFinite(Number(data.reviewCoin))) {
+      data.reviewCoin = reviewCoin;
+    }
+  }
+  if (typeof record.hasUnlimitedReviewCoins === "boolean") {
+    data.hasUnlimitedReviewCoins = Boolean(record.hasUnlimitedReviewCoins || data.hasUnlimitedReviewCoins);
+  }
+
+  const settings = normalizePlainRemoteObject(record.settings);
+  const educationCodes = Array.isArray(record.educationCodes) ? record.educationCodes : [];
+  if (Object.keys(settings).length > 0 || educationCodes.length > 0 || record.colorTheme) {
+    data.settings = {
+      ...normalizePlainRemoteObject(data.settings),
+      ...settings,
+    };
+    if (record.colorTheme) {
+      data.settings.theme = record.colorTheme;
+    }
+    if (educationCodes.length > 0) {
+      data.settings.educationCodes = educationCodes;
+    }
+  }
+
+  const avater = normalizePlainRemoteObject(record.avater);
+  const equippedAvater = normalizePlainRemoteObject(record.equippedAvater);
+  const existingAvater = normalizePlainRemoteObject(data.avater ?? data.avatar);
+  if (Object.keys(avater).length > 0 || Object.keys(equippedAvater).length > 0 || Object.keys(existingAvater).length > 0) {
+    data.avater = {
+      ...existingAvater,
+      ...avater,
+    };
+    if (Object.keys(equippedAvater).length > 0) {
+      data.avater.equipped = equippedAvater;
+    }
+  }
+
+  if (remoteRecordHasAuthFields(record)) {
+    const auth = normalizePlainRemoteObject(data.auth);
+    const nickname = normalizeNicknameText(record.nickname) || normalizeNicknameText(auth.nickname);
+    const displayName =
+      normalizeNicknameText(record.displayName) ||
+      normalizeNicknameText(record.nickname) ||
+      normalizeNicknameText(auth.displayName) ||
+      "Guest Mode";
+    data.auth = {
+      ...auth,
+      isLoggedIn:
+        typeof record.isLoggedIn === "boolean"
+          ? Boolean(record.isLoggedIn || auth.isLoggedIn)
+          : Boolean(auth.isLoggedIn),
+      provider:
+        typeof record.authProvider === "string" && record.authProvider.trim()
+          ? record.authProvider.trim()
+          : auth.provider || null,
+      displayName,
+      nickname,
+      email: typeof record.email === "string" && record.email.trim() ? record.email.trim() : auth.email || null,
+    };
+  }
+
+  return data;
+}
+
+function normalizePlainRemoteObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? { ...value } : {};
+}
+
+function remoteRecordHasAuthFields(record) {
+  return ["isLoggedIn", "authProvider", "displayName", "nickname", "email"].some((key) =>
+    Object.prototype.hasOwnProperty.call(record, key)
+  );
 }
 
 function applyReviewDataRemoteMetadata(remoteRecord) {

@@ -898,30 +898,71 @@ function serializeReviewDataRow(row) {
     return null;
   }
   const reviewPeriod = normalizeJsonObject(row.review_period);
+  const data = { ...normalizeJsonObject(row.personal_data) };
+  const loginDays = normalizeJsonObject(reviewPeriod.loginDays);
+  const dailyLoginRewardDays = normalizeJsonObject(reviewPeriod.dailyLoginRewardDays);
+  const dailyTryRecords = normalizeJsonObject(row.todays_mission);
+  const learningProgress = normalizeJsonObject(row.review_data);
+  const settings = normalizeJsonObject(row.settings);
+  const educationCodes = Array.isArray(row.education_codes) ? row.education_codes : [];
+  const avater = normalizeJsonObject(row.avater);
+  const equippedAvater = normalizeJsonObject(row.equipped_avater);
+  const reviewCoin = Number.isFinite(Number(row.review_coin)) ? Number(row.review_coin) : 0;
+  const auth = normalizeJsonObject(data.auth);
+  const existingLearningProgress = normalizeJsonObject(data.learningProgress ?? data.progress ?? data.noteProgress);
+  const existingAvater = normalizeJsonObject(data.avater ?? data.avatar);
+
+  data.loginDays = Object.keys(loginDays).length > 0 || !data.loginDays ? loginDays : normalizeJsonObject(data.loginDays);
+  data.dailyLoginRewardDays =
+    Object.keys(dailyLoginRewardDays).length > 0 || !data.dailyLoginRewardDays
+      ? dailyLoginRewardDays
+      : normalizeJsonObject(data.dailyLoginRewardDays);
+  data.dailyTryRecords =
+    Object.keys(dailyTryRecords).length > 0 || !data.dailyTryRecords
+      ? dailyTryRecords
+      : normalizeJsonObject(data.dailyTryRecords);
+  data.learningProgress =
+    Object.keys(learningProgress).length > 0 || Object.keys(existingLearningProgress).length === 0
+      ? learningProgress
+      : existingLearningProgress;
+  if (reviewCoin > 0 || !Number.isFinite(Number(data.reviewCoin))) {
+    data.reviewCoin = reviewCoin;
+  }
+  data.hasUnlimitedReviewCoins = Boolean(row.has_unlimited_review_coins || data.hasUnlimitedReviewCoins);
+  data.settings = {
+    ...normalizeJsonObject(data.settings),
+    ...settings,
+  };
+  if (educationCodes.length > 0) {
+    data.settings.educationCodes = educationCodes;
+  }
+  data.auth = {
+    ...auth,
+    isLoggedIn: Boolean(row.is_logged_in || auth.isLoggedIn),
+    provider: row.auth_provider || auth.provider || null,
+    displayName: row.nickname || auth.displayName || "Guest Mode",
+    nickname: row.nickname || auth.nickname || "",
+    email: row.email || auth.email || null,
+  };
+  if (Object.keys(avater).length > 0 || Object.keys(existingAvater).length === 0) {
+    data.avater = {
+      ...avater,
+      equipped: Object.keys(equippedAvater).length > 0 ? equippedAvater : normalizeJsonObject(avater.equipped),
+    };
+  } else {
+    data.avater = {
+      ...existingAvater,
+      equipped:
+        Object.keys(equippedAvater).length > 0 ? equippedAvater : normalizeJsonObject(existingAvater.equipped),
+    };
+  }
   return {
     storageKey: REVIEW_DATA_STORAGE_KEY,
-    data:
-      row.personal_data && typeof row.personal_data === "object" && !Array.isArray(row.personal_data)
-        ? row.personal_data
-        : {},
-    loginDays:
-      reviewPeriod.loginDays && typeof reviewPeriod.loginDays === "object" && !Array.isArray(reviewPeriod.loginDays)
-        ? reviewPeriod.loginDays
-        : {},
-    dailyLoginRewardDays:
-      reviewPeriod.dailyLoginRewardDays &&
-      typeof reviewPeriod.dailyLoginRewardDays === "object" &&
-      !Array.isArray(reviewPeriod.dailyLoginRewardDays)
-        ? reviewPeriod.dailyLoginRewardDays
-        : {},
-    dailyTryRecords:
-      row.todays_mission && typeof row.todays_mission === "object" && !Array.isArray(row.todays_mission)
-        ? row.todays_mission
-        : {},
-    learningProgress:
-      row.review_data && typeof row.review_data === "object" && !Array.isArray(row.review_data)
-        ? row.review_data
-        : {},
+    data,
+    loginDays,
+    dailyLoginRewardDays,
+    dailyTryRecords,
+    learningProgress,
     loginStatus: row.login_status || null,
     isLoggedIn: Boolean(row.is_logged_in),
     authProvider: row.auth_provider || null,
@@ -929,15 +970,12 @@ function serializeReviewDataRow(row) {
     nickname: row.nickname || null,
     email: row.email || null,
     colorTheme: row.color_theme || null,
-    reviewCoin: Number.isFinite(Number(row.review_coin)) ? Number(row.review_coin) : 0,
+    reviewCoin,
     hasUnlimitedReviewCoins: Boolean(row.has_unlimited_review_coins),
-    settings: row.settings && typeof row.settings === "object" && !Array.isArray(row.settings) ? row.settings : {},
-    educationCodes: Array.isArray(row.education_codes) ? row.education_codes : [],
-    avater: row.avater && typeof row.avater === "object" && !Array.isArray(row.avater) ? row.avater : {},
-    equippedAvater:
-      row.equipped_avater && typeof row.equipped_avater === "object" && !Array.isArray(row.equipped_avater)
-        ? row.equipped_avater
-        : {},
+    settings,
+    educationCodes,
+    avater,
+    equippedAvater,
     clientUpdatedAt: row.review_client_updated_at || null,
     updatedAt: row.review_remote_updated_at || row.updated_at || null,
   };
