@@ -2197,6 +2197,7 @@
           avaterItemImageData: null,
           activeStoreItemId: "",
           reviewDataSnapshot: null,
+          personalDataSnapshot: null,
         };
 
         const elements = {
@@ -2553,7 +2554,7 @@
             };
           }
           applyManagerProfileFromAccess(state.managerAccess);
-          await loadReviewDataSnapshotFromApi(token);
+          await loadPersonalDataSnapshotFromApi(token);
           renderManagerAccess();
         }
 
@@ -4549,12 +4550,25 @@
           renderProfile();
         }
 
-        async function loadReviewDataSnapshotFromApi(token) {
+        async function loadPersonalDataSnapshotFromApi(token) {
           if (!token) {
             return;
           }
+          const data =
+            (await fetchCloudDataSnapshot(token, "/me/personal-data", "personalData")) ||
+            (await fetchCloudDataSnapshot(token, "/me/review-data", "reviewData"));
+          if (!data || typeof data !== "object" || Array.isArray(data)) {
+            return;
+          }
+          state.personalDataSnapshot = data;
+          state.reviewDataSnapshot = data;
+          state.auth = createAuthSummaryFromAppState(data, state.auth);
+          renderProfile();
+        }
+
+        async function fetchCloudDataSnapshot(token, path, responseKey) {
           try {
-            const response = await fetch(`${resolveApiBase()}/me/review-data`, {
+            const response = await fetch(`${resolveApiBase()}${path}`, {
               headers: {
                 Authorization: `Bearer ${token}`,
                 Accept: "application/json",
@@ -4564,20 +4578,18 @@
               return;
             }
             const json = await response.json().catch(() => null);
-            const data = json?.reviewData?.data;
+            const data = json?.[responseKey]?.data;
             if (!data || typeof data !== "object" || Array.isArray(data)) {
-              return;
+              return null;
             }
-            state.reviewDataSnapshot = data;
-            state.auth = createAuthSummaryFromAppState(data, state.auth);
-            renderProfile();
+            return data;
           } catch {
-            // The Manager can continue with locally cached profile data.
+            return null;
           }
         }
 
         function renderManagerAvaterPreview() {
-          const appState = state.reviewDataSnapshot || loadJson(APP_STATE_KEY, {});
+          const appState = state.personalDataSnapshot || state.reviewDataSnapshot || loadJson(APP_STATE_KEY, {});
           const avater = appState?.avater || {};
           const equipped = avater?.equipped && typeof avater.equipped === "object" ? avater.equipped : {};
           const itemOffsets = avater?.itemOffsets && typeof avater.itemOffsets === "object" ? avater.itemOffsets : {};

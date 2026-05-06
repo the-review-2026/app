@@ -81,7 +81,10 @@ const COIN_COUNT_DURATION_PER_STEP_MS = 0.22;
 const REVIEW_COIN_FORMATTER = new Intl.NumberFormat("ja-JP");
 const REVIEW_DATA_EXPORT_FORMAT = "the-review-obfuscated-v1";
 const REVIEW_DATA_EXPORT_KEY = "TheReview::DataExport::v1";
+const REVIEW_DATA_STORAGE_KEY = STORAGE_KEY;
+const PERSONAL_DATA_STORAGE_KEY = "the-review-personal-v1";
 const REVIEW_DATA_SYNC_VERSION = 1;
+const PERSONAL_DATA_SYNC_VERSION = 1;
 const REVIEW_DATA_SYNC_DEBOUNCE_MS = 1200;
 const REVIEW_DATA_SYNC_REFRESH_MIN_MS = 15 * 1000;
 const STORE_CONFIG_KEY = "the-review-store-config-v1";
@@ -2387,7 +2390,7 @@ async function syncReviewAccountProfileToApi(options = {}) {
     }
     const payload = await response.json().catch(() => null);
     lastReviewAccountProfileSync = payload;
-    applyReviewAccountProfilePayload(payload, { requestedNickname });
+    applyReviewAccountProfilePayload(payload, { requestedNickname, skipTouch: Boolean(options.skipTouch) });
     if (payload?.managerMember) {
       const member = payload.managerMember;
       const role = getManagerAccessRole({ member });
@@ -2424,7 +2427,11 @@ function applyReviewAccountProfilePayload(payload, options = {}) {
     ...state.auth,
     nickname: nextNickname,
   });
-  saveState();
+  if (options.skipTouch) {
+    saveState({ skipTouch: true, skipRemoteSync: true });
+  } else {
+    saveState();
+  }
   renderMypageSettings();
 }
 
@@ -2728,8 +2735,8 @@ async function syncAuthStateFromAuth0(options = {}) {
     nickname: getStoredNicknameForAuth0User(user, state.auth?.nickname),
     email: typeof user?.email === "string" && user.email.trim() ? user.email : null,
   });
-  saveState();
-  await syncReviewAccountProfileToApi();
+  saveState({ skipTouch: true, skipRemoteSync: true });
+  await syncReviewAccountProfileToApi({ skipTouch: true });
   await syncReviewDataWithCloud({ reason: "auth" });
 }
 
@@ -2778,7 +2785,7 @@ async function performDeleteAccountAndResetProgress() {
 
   const shouldClearAuth0Session = state.auth.provider !== "guest";
   clearReviewDataSyncTimer();
-  await deleteReviewDataFromCloud();
+  await Promise.all([deleteReviewDataFromCloud(), deletePersonalDataFromCloud()]);
   markExplicitLogoutIntent();
   if (shouldClearAuth0Session) {
     requestAuth0LocalLogout();
@@ -8224,6 +8231,7 @@ function createDefaultState() {
     },
     avater: createDefaultAvaterState(),
     sync: createDefaultReviewDataSyncState(),
+    personalSync: createDefaultPersonalDataSyncState(),
   };
 }
 
@@ -8244,6 +8252,7 @@ function normalizePersistedState(parsed) {
     auth: normalizeAuthState(parsed?.auth),
     avater: normalizeAvaterState(parsed?.avater || parsed?.avatar),
     sync: normalizeReviewDataSyncState(parsed?.sync),
+    personalSync: normalizePersonalDataSyncState(parsed?.personalSync),
   };
 }
 
@@ -8263,6 +8272,28 @@ function normalizeReviewDataSyncState(value) {
   }
   return {
     version: REVIEW_DATA_SYNC_VERSION,
+    updatedAt: normalizeIsoDateString(value.updatedAt),
+    syncedAt: normalizeIsoDateString(value.syncedAt),
+    lastRemoteUpdatedAt: normalizeIsoDateString(value.lastRemoteUpdatedAt),
+  };
+}
+
+function createDefaultPersonalDataSyncState() {
+  return {
+    version: PERSONAL_DATA_SYNC_VERSION,
+    updatedAt: "",
+    syncedAt: "",
+    lastRemoteUpdatedAt: "",
+  };
+}
+
+function normalizePersonalDataSyncState(value) {
+  const fallback = createDefaultPersonalDataSyncState();
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return fallback;
+  }
+  return {
+    version: PERSONAL_DATA_SYNC_VERSION,
     updatedAt: normalizeIsoDateString(value.updatedAt),
     syncedAt: normalizeIsoDateString(value.syncedAt),
     lastRemoteUpdatedAt: normalizeIsoDateString(value.lastRemoteUpdatedAt),
@@ -8525,7 +8556,9 @@ function clampNumber(value, min, max, fallbackValue) {
 
 function saveState(options = {}) {
   if (!options.skipTouch) {
-    touchReviewDataSyncMetadata();
+    const timestamp = new Date().toISOString();
+    touchReviewDataSyncMetadata(timestamp);
+    touchPersonalDataSyncMetadata(timestamp);
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (!options.skipRemoteSync) {
@@ -8544,6 +8577,19 @@ function ensureReviewDataSyncMetadata() {
     state.sync.updatedAt = new Date().toISOString();
   }
   return state.sync;
+}
+
+function touchPersonalDataSyncMetadata(timestamp = new Date().toISOString()) {
+  state.personalSync = normalizePersonalDataSyncState(state.personalSync);
+  state.personalSync.updatedAt = normalizeIsoDateString(timestamp) || new Date().toISOString();
+}
+
+function ensurePersonalDataSyncMetadata() {
+  state.personalSync = normalizePersonalDataSyncState(state.personalSync);
+  if (!state.personalSync.updatedAt) {
+    state.personalSync.updatedAt = new Date().toISOString();
+  }
+  return state.personalSync;
 }
 
 function canSyncReviewDataToCloud() {
@@ -8591,17 +8637,47 @@ async function syncReviewDataWithCloud(options = {}) {
       return null;
     }
 
-    const remoteRecord = await fetchReviewDataFromCloud(token);
-    if (remoteRecord) {
-      return handleRemoteReviewDataRecord(token, remoteRecord, options);
+    const [remoteReviewRecord, remotePersonalRecord] = await Promise.all([
+      fetchReviewDataFromCloud(token),
+      fetchPersonalDataFromCloud(token),
+    ]);
+    const result = {
+      reviewData: null,
+      personalData: null,
+    };
+
+    if (remoteReviewRecord) {
+      const reviewResult = await handleRemoteReviewDataRecord(token, remoteReviewRecord, options);
+      result.reviewData = reviewResult?.reviewData || remoteReviewRecord;
+    } else {
+      ensureReviewDataSyncMetadata();
+      const saved = await saveReviewDataSnapshotToCloud(token, serializeReviewDataForCloud());
+      if (saved?.conflict && saved.reviewData) {
+        const conflictResult = await handleRemoteReviewDataRecord(token, saved.reviewData, { reason: "conflict" });
+        result.reviewData = conflictResult?.reviewData || saved.reviewData;
+      } else if (saved?.reviewData) {
+        applyReviewDataRemoteMetadata(saved.reviewData);
+        result.reviewData = saved.reviewData;
+      }
     }
 
-    ensureReviewDataSyncMetadata();
-    const saved = await saveReviewDataSnapshotToCloud(token, serializeReviewDataForCloud());
-    if (saved?.reviewData) {
-      applyReviewDataRemoteMetadata(saved.reviewData);
+    if (remotePersonalRecord) {
+      const personalResult = await handleRemotePersonalDataRecord(token, remotePersonalRecord, options);
+      result.personalData = personalResult?.personalData || remotePersonalRecord;
+    } else {
+      migratePersonalDataFromLegacyReviewData(remoteReviewRecord, options);
+      ensurePersonalDataSyncMetadata();
+      const saved = await savePersonalDataSnapshotToCloud(token, serializePersonalDataForCloud());
+      if (saved?.conflict && saved.personalData) {
+        const conflictResult = await handleRemotePersonalDataRecord(token, saved.personalData, { reason: "conflict" });
+        result.personalData = conflictResult?.personalData || saved.personalData;
+      } else if (saved?.personalData) {
+        applyPersonalDataRemoteMetadata(saved.personalData);
+        result.personalData = saved.personalData;
+      }
     }
-    return saved;
+
+    return result;
   })();
 
   try {
@@ -8636,14 +8712,33 @@ async function pushReviewDataToCloud() {
     }
 
     ensureReviewDataSyncMetadata();
-    const saved = await saveReviewDataSnapshotToCloud(token, serializeReviewDataForCloud());
-    if (saved?.conflict && saved.reviewData) {
-      return handleRemoteReviewDataRecord(token, saved.reviewData, { reason: "conflict" });
+    ensurePersonalDataSyncMetadata();
+    const result = {
+      reviewData: null,
+      personalData: null,
+    };
+
+    const savedReviewData = await saveReviewDataSnapshotToCloud(token, serializeReviewDataForCloud());
+    if (savedReviewData?.conflict && savedReviewData.reviewData) {
+      const conflictResult = await handleRemoteReviewDataRecord(token, savedReviewData.reviewData, { reason: "conflict" });
+      result.reviewData = conflictResult?.reviewData || savedReviewData.reviewData;
+    } else if (savedReviewData?.reviewData) {
+      applyReviewDataRemoteMetadata(savedReviewData.reviewData);
+      result.reviewData = savedReviewData.reviewData;
     }
-    if (saved?.reviewData) {
-      applyReviewDataRemoteMetadata(saved.reviewData);
+
+    const savedPersonalData = await savePersonalDataSnapshotToCloud(token, serializePersonalDataForCloud());
+    if (savedPersonalData?.conflict && savedPersonalData.personalData) {
+      const conflictResult = await handleRemotePersonalDataRecord(token, savedPersonalData.personalData, {
+        reason: "conflict",
+      });
+      result.personalData = conflictResult?.personalData || savedPersonalData.personalData;
+    } else if (savedPersonalData?.personalData) {
+      applyPersonalDataRemoteMetadata(savedPersonalData.personalData);
+      result.personalData = savedPersonalData.personalData;
     }
-    return saved;
+
+    return result;
   })();
 
   try {
@@ -8660,20 +8755,17 @@ async function pushReviewDataToCloud() {
 async function handleRemoteReviewDataRecord(token, remoteRecord, options = {}) {
   const remoteState = normalizePersistedState(remoteRecord.data);
   const localState = normalizePersistedState(state);
-  const mergedState = mergeReviewStates(localState, remoteState, remoteRecord);
-  const localChanged = !reviewStateContentEquals(localState, mergedState);
-  const remoteChanged = !reviewStateContentEquals(remoteState, mergedState);
+  const mergedState = mergeReviewDataStates(localState, remoteState, remoteRecord);
+  const localChanged = !reviewDataStateContentEquals(localState, mergedState);
+  const remoteChanged =
+    !reviewDataStateContentEquals(remoteState, mergedState) || reviewRecordContainsPersonalData(remoteRecord.data);
 
   if (localChanged) {
     applyReviewDataState(mergedState, { render: options.render !== false });
   }
 
   if (remoteChanged) {
-    const saved = await saveReviewDataSnapshotToCloud(token, {
-      storageKey: STORAGE_KEY,
-      clientUpdatedAt: mergedState.sync.updatedAt,
-      data: mergedState,
-    });
+    const saved = await saveReviewDataSnapshotToCloud(token, serializeReviewDataForCloud(mergedState));
     if (saved?.reviewData) {
       applyReviewDataRemoteMetadata(saved.reviewData);
     }
@@ -8683,6 +8775,31 @@ async function handleRemoteReviewDataRecord(token, remoteRecord, options = {}) {
   applyReviewDataRemoteMetadata(remoteRecord);
   return {
     reviewData: remoteRecord,
+  };
+}
+
+async function handleRemotePersonalDataRecord(token, remoteRecord, options = {}) {
+  const remoteState = normalizePersistedState(remoteRecord.data);
+  const localState = normalizePersistedState(state);
+  const mergedState = mergePersonalDataStates(localState, remoteState, remoteRecord);
+  const localChanged = !personalDataStateContentEquals(localState, mergedState);
+  const remoteChanged = !personalDataStateContentEquals(remoteState, mergedState);
+
+  if (localChanged) {
+    applyPersonalDataState(mergedState, { render: options.render !== false });
+  }
+
+  if (remoteChanged) {
+    const saved = await savePersonalDataSnapshotToCloud(token, serializePersonalDataForCloud(mergedState));
+    if (saved?.personalData) {
+      applyPersonalDataRemoteMetadata(saved.personalData);
+    }
+    return saved;
+  }
+
+  applyPersonalDataRemoteMetadata(remoteRecord);
+  return {
+    personalData: remoteRecord,
   };
 }
 
@@ -8702,6 +8819,26 @@ async function fetchReviewDataFromCloud(token) {
     return normalizeRemoteReviewDataRecord(payload?.reviewData);
   } catch (error) {
     console.warn("Failed to fetch Review Data:", error);
+    return null;
+  }
+}
+
+async function fetchPersonalDataFromCloud(token) {
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/me/personal-data`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      console.warn("Failed to fetch Personal Data:", response.status);
+      return null;
+    }
+    const payload = await response.json().catch(() => null);
+    return normalizeRemotePersonalDataRecord(payload?.personalData);
+  } catch (error) {
+    console.warn("Failed to fetch Personal Data:", error);
     return null;
   }
 }
@@ -8737,6 +8874,37 @@ async function saveReviewDataSnapshotToCloud(token, snapshot) {
   }
 }
 
+async function savePersonalDataSnapshotToCloud(token, snapshot) {
+  try {
+    const response = await fetch(`${REVIEW_API_BASE_URL}/me/personal-data`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(snapshot),
+    });
+    const payload = await response.json().catch(() => null);
+    if (response.status === 409 && payload?.conflict) {
+      return {
+        conflict: true,
+        personalData: normalizeRemotePersonalDataRecord(payload.personalData),
+      };
+    }
+    if (!response.ok) {
+      console.warn("Failed to save Personal Data:", response.status);
+      return null;
+    }
+    return {
+      personalData: normalizeRemotePersonalDataRecord(payload?.personalData),
+    };
+  } catch (error) {
+    console.warn("Failed to save Personal Data:", error);
+    return null;
+  }
+}
+
 async function deleteReviewDataFromCloud() {
   if (!canSyncReviewDataToCloud()) {
     return;
@@ -8763,16 +8931,77 @@ async function deleteReviewDataFromCloud() {
   }
 }
 
-function serializeReviewDataForCloud() {
-  const snapshot = normalizePersistedState(JSON.parse(JSON.stringify(state)));
+async function deletePersonalDataFromCloud() {
+  if (!canSyncReviewDataToCloud()) {
+    return;
+  }
+  const token = await withTimeout(
+    getAuth0AccessTokenForApi(),
+    MANAGER_ACCESS_TOKEN_TIMEOUT_MS,
+    null,
+    "Personal Data delete token"
+  );
+  if (!token) {
+    return;
+  }
+  try {
+    await fetch(`${REVIEW_API_BASE_URL}/me/personal-data`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to delete Personal Data:", error);
+  }
+}
+
+function serializeReviewDataForCloud(sourceState = state) {
+  const snapshot = createReviewDataStateSnapshot(sourceState);
   snapshot.sync = normalizeReviewDataSyncState(snapshot.sync);
   if (!snapshot.sync.updatedAt) {
     snapshot.sync.updatedAt = new Date().toISOString();
   }
   return {
-    storageKey: STORAGE_KEY,
+    storageKey: REVIEW_DATA_STORAGE_KEY,
     clientUpdatedAt: snapshot.sync.updatedAt,
     data: snapshot,
+  };
+}
+
+function serializePersonalDataForCloud(sourceState = state) {
+  const snapshot = createPersonalDataStateSnapshot(sourceState);
+  snapshot.personalSync = normalizePersonalDataSyncState(snapshot.personalSync);
+  if (!snapshot.personalSync.updatedAt) {
+    snapshot.personalSync.updatedAt = new Date().toISOString();
+  }
+  return {
+    storageKey: PERSONAL_DATA_STORAGE_KEY,
+    clientUpdatedAt: snapshot.personalSync.updatedAt,
+    data: snapshot,
+  };
+}
+
+function createReviewDataStateSnapshot(sourceState = state) {
+  const normalized = normalizePersistedState(JSON.parse(JSON.stringify(sourceState)));
+  return {
+    loginDays: normalized.loginDays,
+    dailyLoginRewardDays: normalized.dailyLoginRewardDays,
+    dailyTryRecords: normalized.dailyTryRecords,
+    sync: normalizeReviewDataSyncState(normalized.sync),
+  };
+}
+
+function createPersonalDataStateSnapshot(sourceState = state) {
+  const normalized = normalizePersistedState(JSON.parse(JSON.stringify(sourceState)));
+  return {
+    reviewCoin: normalized.reviewCoin,
+    coinGrant5000Applied: normalized.coinGrant5000Applied,
+    settings: normalized.settings,
+    auth: normalized.auth,
+    avater: normalized.avater,
+    personalSync: normalizePersonalDataSyncState(normalized.personalSync),
   };
 }
 
@@ -8781,8 +9010,29 @@ function normalizeRemoteReviewDataRecord(record) {
     return null;
   }
   const storageKey =
-    typeof record.storageKey === "string" && record.storageKey.trim() ? record.storageKey.trim() : STORAGE_KEY;
-  if (storageKey !== STORAGE_KEY) {
+    typeof record.storageKey === "string" && record.storageKey.trim() ? record.storageKey.trim() : REVIEW_DATA_STORAGE_KEY;
+  if (storageKey !== REVIEW_DATA_STORAGE_KEY) {
+    return null;
+  }
+  const data = record.data && typeof record.data === "object" && !Array.isArray(record.data) ? record.data : null;
+  if (!data) {
+    return null;
+  }
+  return {
+    storageKey,
+    data,
+    clientUpdatedAt: normalizeIsoDateString(record.clientUpdatedAt),
+    updatedAt: normalizeIsoDateString(record.updatedAt),
+  };
+}
+
+function normalizeRemotePersonalDataRecord(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    return null;
+  }
+  const storageKey =
+    typeof record.storageKey === "string" && record.storageKey.trim() ? record.storageKey.trim() : PERSONAL_DATA_STORAGE_KEY;
+  if (storageKey !== PERSONAL_DATA_STORAGE_KEY) {
     return null;
   }
   const data = record.data && typeof record.data === "object" && !Array.isArray(record.data) ? record.data : null;
@@ -8808,15 +9058,54 @@ function applyReviewDataRemoteMetadata(remoteRecord) {
   saveState({ skipTouch: true, skipRemoteSync: true });
 }
 
-function applyReviewDataState(nextState, options = {}) {
-  const previousAuth = normalizeAuthState(state.auth);
-  const normalizedNextState = normalizePersistedState(nextState);
-  if (previousAuth.isLoggedIn && previousAuth.provider !== "guest") {
-    normalizedNextState.auth = previousAuth;
+function applyPersonalDataRemoteMetadata(remoteRecord) {
+  const normalizedRecord = normalizeRemotePersonalDataRecord(remoteRecord);
+  if (!normalizedRecord) {
+    return;
   }
+  state.personalSync = normalizePersonalDataSyncState(state.personalSync);
+  state.personalSync.syncedAt = new Date().toISOString();
+  state.personalSync.lastRemoteUpdatedAt = normalizedRecord.updatedAt || normalizedRecord.clientUpdatedAt || "";
+  saveState({ skipTouch: true, skipRemoteSync: true });
+}
+
+function applyReviewDataState(nextState, options = {}) {
+  const currentState = normalizePersistedState(state);
+  const normalizedNextState = normalizePersistedState(nextState);
+  const mergedState = normalizePersistedState({
+    ...currentState,
+    loginDays: normalizedNextState.loginDays,
+    dailyLoginRewardDays: normalizedNextState.dailyLoginRewardDays,
+    dailyTryRecords: normalizedNextState.dailyTryRecords,
+    sync: normalizedNextState.sync,
+  });
   isApplyingRemoteReviewData = true;
   try {
-    replaceState(normalizedNextState);
+    replaceState(mergedState);
+    saveState({ skipTouch: true, skipRemoteSync: true });
+  } finally {
+    isApplyingRemoteReviewData = false;
+  }
+  if (options.render !== false) {
+    renderAfterReviewDataSync();
+  }
+}
+
+function applyPersonalDataState(nextState, options = {}) {
+  const currentState = normalizePersistedState(state);
+  const normalizedNextState = normalizePersistedState(nextState);
+  const mergedState = normalizePersistedState({
+    ...currentState,
+    reviewCoin: normalizedNextState.reviewCoin,
+    coinGrant5000Applied: normalizedNextState.coinGrant5000Applied,
+    settings: normalizedNextState.settings,
+    auth: mergeReviewAuth(currentState.auth, normalizedNextState.auth),
+    avater: normalizedNextState.avater,
+    personalSync: normalizedNextState.personalSync,
+  });
+  isApplyingRemoteReviewData = true;
+  try {
+    replaceState(mergedState);
     saveState({ skipTouch: true, skipRemoteSync: true });
   } finally {
     isApplyingRemoteReviewData = false;
@@ -8840,7 +9129,7 @@ function renderAfterReviewDataSync() {
   activateScreen(activeScreen);
 }
 
-function mergeReviewStates(localState, remoteState, remoteRecord = {}) {
+function mergeReviewDataStates(localState, remoteState, remoteRecord = {}) {
   const local = normalizePersistedState(localState);
   const remote = normalizePersistedState(remoteState);
   const localUpdatedAt = getReviewStateUpdatedTime(local);
@@ -8852,21 +9141,13 @@ function mergeReviewStates(localState, remoteState, remoteRecord = {}) {
   const preferRemote = remoteUpdatedAt > localUpdatedAt;
   const preferred = preferRemote ? remote : local;
   const merged = normalizePersistedState(preferred);
-  const bothStatesHaveSyncTimestamps = Boolean(local.sync?.updatedAt && remote.sync?.updatedAt);
 
-  merged.reviewCoin = bothStatesHaveSyncTimestamps
-    ? normalizeCoinAmount(preferred.reviewCoin)
-    : Math.max(normalizeCoinAmount(local.reviewCoin), normalizeCoinAmount(remote.reviewCoin));
-  merged.coinGrant5000Applied = Boolean(local.coinGrant5000Applied || remote.coinGrant5000Applied);
   merged.loginDays = mergeBooleanRecord(local.loginDays, remote.loginDays);
   merged.dailyLoginRewardDays = mergeNumberRecord(local.dailyLoginRewardDays, remote.dailyLoginRewardDays);
   merged.dailyTryRecords = mergeDailyTryRecordMap(local.dailyTryRecords, remote.dailyTryRecords, preferRemote);
-  merged.settings = mergeReviewSettings(local.settings, remote.settings, preferRemote);
-  merged.auth = mergeReviewAuth(local.auth, remote.auth);
-  merged.avater = mergeReviewAvater(local.avater, remote.avater, preferRemote);
 
-  const mergedEqualsLocal = reviewStateContentEquals(merged, local);
-  const mergedEqualsRemote = reviewStateContentEquals(merged, remote);
+  const mergedEqualsLocal = reviewDataStateContentEquals(merged, local);
+  const mergedEqualsRemote = reviewDataStateContentEquals(merged, remote);
   merged.sync = normalizeReviewDataSyncState(preferred.sync);
   if (!mergedEqualsLocal && !mergedEqualsRemote) {
     merged.sync.updatedAt = new Date().toISOString();
@@ -8885,6 +9166,52 @@ function mergeReviewStates(localState, remoteState, remoteRecord = {}) {
   }
   merged.sync.syncedAt = "";
   merged.sync.lastRemoteUpdatedAt = normalizeIsoDateString(remoteRecord.updatedAt || remoteRecord.clientUpdatedAt);
+
+  return normalizePersistedState(merged);
+}
+
+function mergePersonalDataStates(localState, remoteState, remoteRecord = {}) {
+  const local = normalizePersistedState(localState);
+  const remote = normalizePersistedState(remoteState);
+  const localUpdatedAt = getPersonalStateUpdatedTime(local);
+  const remoteUpdatedAt =
+    getPersonalStateUpdatedTime(remote) ||
+    Date.parse(remoteRecord.clientUpdatedAt || "") ||
+    Date.parse(remoteRecord.updatedAt || "") ||
+    0;
+  const preferRemote = remoteUpdatedAt > localUpdatedAt;
+  const preferred = preferRemote ? remote : local;
+  const merged = normalizePersistedState(preferred);
+  const bothStatesHaveSyncTimestamps = Boolean(local.personalSync?.updatedAt && remote.personalSync?.updatedAt);
+
+  merged.reviewCoin = bothStatesHaveSyncTimestamps
+    ? normalizeCoinAmount(preferred.reviewCoin)
+    : Math.max(normalizeCoinAmount(local.reviewCoin), normalizeCoinAmount(remote.reviewCoin));
+  merged.coinGrant5000Applied = Boolean(local.coinGrant5000Applied || remote.coinGrant5000Applied);
+  merged.settings = mergeReviewSettings(local.settings, remote.settings, preferRemote);
+  merged.auth = mergeReviewAuth(local.auth, remote.auth);
+  merged.avater = mergeReviewAvater(local.avater, remote.avater, preferRemote);
+
+  const mergedEqualsLocal = personalDataStateContentEquals(merged, local);
+  const mergedEqualsRemote = personalDataStateContentEquals(merged, remote);
+  merged.personalSync = normalizePersonalDataSyncState(preferred.personalSync);
+  if (!mergedEqualsLocal && !mergedEqualsRemote) {
+    merged.personalSync.updatedAt = new Date().toISOString();
+  } else if (mergedEqualsRemote) {
+    merged.personalSync.updatedAt =
+      normalizeIsoDateString(remote.personalSync?.updatedAt) ||
+      normalizeIsoDateString(remoteRecord.clientUpdatedAt) ||
+      normalizeIsoDateString(remoteRecord.updatedAt) ||
+      new Date().toISOString();
+  } else {
+    merged.personalSync.updatedAt =
+      normalizeIsoDateString(local.personalSync?.updatedAt) ||
+      normalizeIsoDateString(remoteRecord.clientUpdatedAt) ||
+      normalizeIsoDateString(remoteRecord.updatedAt) ||
+      new Date().toISOString();
+  }
+  merged.personalSync.syncedAt = "";
+  merged.personalSync.lastRemoteUpdatedAt = normalizeIsoDateString(remoteRecord.updatedAt || remoteRecord.clientUpdatedAt);
 
   return normalizePersistedState(merged);
 }
@@ -9007,22 +9334,64 @@ function getReviewStateUpdatedTime(value) {
   return timestamp ? Date.parse(timestamp) : 0;
 }
 
-function reviewStateContentEquals(a, b) {
-  return JSON.stringify(getReviewStateContentSnapshot(a)) === JSON.stringify(getReviewStateContentSnapshot(b));
+function getPersonalStateUpdatedTime(value) {
+  const timestamp = normalizeIsoDateString(value?.personalSync?.updatedAt);
+  return timestamp ? Date.parse(timestamp) : 0;
 }
 
-function getReviewStateContentSnapshot(value) {
+function reviewDataStateContentEquals(a, b) {
+  return JSON.stringify(getReviewDataStateContentSnapshot(a)) === JSON.stringify(getReviewDataStateContentSnapshot(b));
+}
+
+function personalDataStateContentEquals(a, b) {
+  return JSON.stringify(getPersonalDataStateContentSnapshot(a)) === JSON.stringify(getPersonalDataStateContentSnapshot(b));
+}
+
+function getReviewDataStateContentSnapshot(value) {
+  const normalized = normalizePersistedState(value);
+  return {
+    loginDays: normalized.loginDays,
+    dailyLoginRewardDays: normalized.dailyLoginRewardDays,
+    dailyTryRecords: normalized.dailyTryRecords,
+  };
+}
+
+function getPersonalDataStateContentSnapshot(value) {
   const normalized = normalizePersistedState(value);
   return {
     reviewCoin: normalized.reviewCoin,
     coinGrant5000Applied: normalized.coinGrant5000Applied,
-    loginDays: normalized.loginDays,
-    dailyLoginRewardDays: normalized.dailyLoginRewardDays,
-    dailyTryRecords: normalized.dailyTryRecords,
     settings: normalized.settings,
     auth: normalized.auth,
     avater: normalized.avater,
   };
+}
+
+function reviewRecordContainsPersonalData(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  return ["reviewCoin", "coinGrant5000Applied", "settings", "auth", "avater", "avatar"].some((key) =>
+    Object.prototype.hasOwnProperty.call(value, key)
+  );
+}
+
+function migratePersonalDataFromLegacyReviewData(remoteReviewRecord, options = {}) {
+  if (!remoteReviewRecord || !reviewRecordContainsPersonalData(remoteReviewRecord.data)) {
+    return;
+  }
+  const legacyState = normalizePersistedState(remoteReviewRecord.data);
+  if (!legacyState.personalSync.updatedAt) {
+    legacyState.personalSync.updatedAt =
+      normalizeIsoDateString(legacyState.sync?.updatedAt) ||
+      normalizeIsoDateString(remoteReviewRecord.clientUpdatedAt) ||
+      normalizeIsoDateString(remoteReviewRecord.updatedAt) ||
+      new Date().toISOString();
+  }
+  const mergedState = mergePersonalDataStates(state, legacyState, remoteReviewRecord);
+  if (!personalDataStateContentEquals(state, mergedState)) {
+    applyPersonalDataState(mergedState, { render: options.render !== false });
+  }
 }
 
 function getCurrentMonthStartDate() {

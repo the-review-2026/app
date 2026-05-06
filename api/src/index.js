@@ -43,6 +43,18 @@ export default {
       return deleteCurrentReviewData(request, env);
     }
 
+    if (pathname === "/me/personal-data" && request.method === "GET") {
+      return getCurrentPersonalData(request, env);
+    }
+
+    if (pathname === "/me/personal-data" && ["POST", "PUT", "PATCH"].includes(request.method)) {
+      return saveCurrentPersonalData(request, env);
+    }
+
+    if (pathname === "/me/personal-data" && request.method === "DELETE") {
+      return deleteCurrentPersonalData(request, env);
+    }
+
     if (pathname === "/education-codes/validate" && request.method === "POST") {
       return validateEducationCode(request, env);
     }
@@ -75,7 +87,9 @@ export default {
 const AUTH0_JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const auth0JwksCache = new Map();
 const REVIEW_DATA_STORAGE_KEY = "the-review-quest-v1";
+const PERSONAL_DATA_STORAGE_KEY = "the-review-personal-v1";
 const REVIEW_DATA_MAX_PAYLOAD_BYTES = 750 * 1024;
+const PERSONAL_DATA_MAX_PAYLOAD_BYTES = 750 * 1024;
 const MANAGER_USER_ROLE = "user";
 const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const MANAGER_ROLE_PERMISSIONS = {
@@ -422,6 +436,92 @@ async function deleteCurrentReviewData(request, env) {
   return json({ ok: true });
 }
 
+async function getCurrentPersonalData(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const personalDataResult = await getPersonalDataByUserId(context.supabase, context.user?.id);
+  if (!personalDataResult.ok) {
+    return json(personalDataResult.body, personalDataResult.status);
+  }
+
+  return json({
+    personalData: personalDataResult.personalData ? serializePersonalDataRow(personalDataResult.personalData) : null,
+  });
+}
+
+async function saveCurrentPersonalData(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const bodyResult = await readJsonBody(request);
+  if (!bodyResult.ok) {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const payloadResult = normalizePersonalDataPayload(bodyResult.value);
+  if (!payloadResult.ok) {
+    return json(
+      {
+        error: "Invalid Personal Data payload",
+        details: payloadResult.errors,
+      },
+      400
+    );
+  }
+
+  const existingResult = await getPersonalDataByUserId(context.supabase, context.user?.id);
+  if (!existingResult.ok) {
+    return json(existingResult.body, existingResult.status);
+  }
+  if (existingResult.personalData) {
+    const existingUpdatedAt = Date.parse(existingResult.personalData.client_updated_at || existingResult.personalData.updated_at || "");
+    const incomingUpdatedAt = Date.parse(payloadResult.value.client_updated_at);
+    if (Number.isFinite(existingUpdatedAt) && Number.isFinite(incomingUpdatedAt) && existingUpdatedAt > incomingUpdatedAt) {
+      return json(
+        {
+          error: "A newer Personal Data snapshot already exists.",
+          conflict: true,
+          personalData: serializePersonalDataRow(existingResult.personalData),
+        },
+        409
+      );
+    }
+  }
+
+  const savedResult = await upsertPersonalData(context.supabase, {
+    user_id: context.user.id,
+    storage_key: payloadResult.value.storage_key,
+    payload: payloadResult.value.payload,
+    client_updated_at: payloadResult.value.client_updated_at,
+  });
+  if (!savedResult.ok) {
+    return json(savedResult.body, savedResult.status);
+  }
+
+  return json({
+    personalData: serializePersonalDataRow(savedResult.personalData),
+  });
+}
+
+async function deleteCurrentPersonalData(request, env) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return json(context.body, context.status);
+  }
+
+  const deleteResult = await deletePersonalDataByUserId(context.supabase, context.user?.id);
+  if (!deleteResult.ok) {
+    return json(deleteResult.body, deleteResult.status);
+  }
+
+  return json({ ok: true });
+}
+
 async function validateEducationCode(request, env) {
   const body = await readJsonBody(request);
   if (body?.ok === false) {
@@ -646,6 +746,41 @@ function normalizeReviewDataPayload(body) {
   };
 }
 
+function normalizePersonalDataPayload(body) {
+  const errors = [];
+  const storageKey = normalizeSupabaseText(body?.storageKey ?? body?.storage_key) || PERSONAL_DATA_STORAGE_KEY;
+  const payload = body?.data ?? body?.payload;
+  const clientUpdatedAt = normalizeIsoTimestamp(body?.clientUpdatedAt ?? body?.client_updated_at) || new Date().toISOString();
+
+  if (storageKey !== PERSONAL_DATA_STORAGE_KEY) {
+    errors.push("storageKey is invalid");
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    errors.push("data must be an object");
+  } else {
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(payload)).length;
+    if (payloadBytes > PERSONAL_DATA_MAX_PAYLOAD_BYTES) {
+      errors.push("data is too large");
+    }
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errors,
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      storage_key: storageKey,
+      payload,
+      client_updated_at: clientUpdatedAt,
+    },
+  };
+}
+
 async function getOrCreateUserByAuth0Sub(supabase, claims) {
   const auth0Sub = normalizeSupabaseText(claims?.sub);
   if (!auth0Sub) {
@@ -834,6 +969,96 @@ function serializeReviewDataRow(row) {
   }
   return {
     storageKey: row.storage_key || REVIEW_DATA_STORAGE_KEY,
+    data: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
+    clientUpdatedAt: row.client_updated_at || null,
+    updatedAt: row.updated_at || null,
+  };
+}
+
+async function getPersonalDataByUserId(supabase, userId) {
+  const normalizedUserId = normalizeSupabaseText(userId);
+  if (!normalizedUserId) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Personal Data could not be resolved because the user record has no id.",
+      },
+    };
+  }
+
+  const response = await supabaseRequest(
+    supabase,
+    `/personal_data?user_id=eq.${encodeURIComponent(
+      normalizedUserId
+    )}&select=user_id,storage_key,payload,client_updated_at,created_at,updated_at&limit=1`
+  );
+  if (!response.ok) {
+    return supabaseError(response, "Failed to look up Personal Data in Supabase");
+  }
+
+  const rows = await response.json();
+  return {
+    ok: true,
+    personalData: Array.isArray(rows) ? rows[0] ?? null : null,
+  };
+}
+
+async function upsertPersonalData(supabase, personalData) {
+  const now = new Date().toISOString();
+  const response = await supabaseRequest(supabase, "/personal_data?on_conflict=user_id", {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify({
+      ...personalData,
+      updated_at: now,
+    }),
+  });
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to save Personal Data in Supabase");
+  }
+
+  const rows = await response.json();
+  return {
+    ok: true,
+    personalData: Array.isArray(rows) ? rows[0] ?? null : rows,
+  };
+}
+
+async function deletePersonalDataByUserId(supabase, userId) {
+  const normalizedUserId = normalizeSupabaseText(userId);
+  if (!normalizedUserId) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Personal Data could not be deleted because the user record has no id.",
+      },
+    };
+  }
+
+  const response = await supabaseRequest(supabase, `/personal_data?user_id=eq.${encodeURIComponent(normalizedUserId)}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    return supabaseError(response, "Failed to delete Personal Data in Supabase");
+  }
+
+  return {
+    ok: true,
+  };
+}
+
+function serializePersonalDataRow(row) {
+  if (!row) {
+    return null;
+  }
+  return {
+    storageKey: row.storage_key || PERSONAL_DATA_STORAGE_KEY,
     data: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
     clientUpdatedAt: row.client_updated_at || null,
     updatedAt: row.updated_at || null,
