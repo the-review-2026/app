@@ -2197,7 +2197,6 @@
           avaterItemImageData: null,
           activeStoreItemId: "",
           reviewDataSnapshot: null,
-          personalDataSnapshot: null,
         };
 
         const elements = {
@@ -2554,7 +2553,7 @@
             };
           }
           applyManagerProfileFromAccess(state.managerAccess);
-          await loadPersonalDataSnapshotFromApi(token);
+          await loadReviewDataSnapshotFromApi(token);
           renderManagerAccess();
         }
 
@@ -4550,17 +4549,14 @@
           renderProfile();
         }
 
-        async function loadPersonalDataSnapshotFromApi(token) {
+        async function loadReviewDataSnapshotFromApi(token) {
           if (!token) {
             return;
           }
-          const data =
-            (await fetchCloudDataSnapshot(token, "/me/personal-data", "personalData")) ||
-            (await fetchCloudDataSnapshot(token, "/me/review-data", "reviewData"));
+          const data = await fetchCloudDataSnapshot(token, "/me/review-data", "reviewData");
           if (!data || typeof data !== "object" || Array.isArray(data)) {
             return;
           }
-          state.personalDataSnapshot = data;
           state.reviewDataSnapshot = data;
           state.auth = createAuthSummaryFromAppState(data, state.auth);
           renderProfile();
@@ -4589,7 +4585,7 @@
         }
 
         function renderManagerAvaterPreview() {
-          const appState = state.personalDataSnapshot || state.reviewDataSnapshot || loadJson(APP_STATE_KEY, {});
+          const appState = state.reviewDataSnapshot || loadJson(APP_STATE_KEY, {});
           const avater = appState?.avater || {};
           const equipped = avater?.equipped && typeof avater.equipped === "object" ? avater.equipped : {};
           const itemOffsets = avater?.itemOffsets && typeof avater.itemOffsets === "object" ? avater.itemOffsets : {};

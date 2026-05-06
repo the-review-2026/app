@@ -43,24 +43,8 @@ export default {
       return deleteCurrentReviewData(request, env);
     }
 
-    if (pathname === "/me/personal-data" && request.method === "GET") {
-      return getCurrentPersonalData(request, env);
-    }
-
-    if (pathname === "/me/personal-data" && ["POST", "PUT", "PATCH"].includes(request.method)) {
-      return saveCurrentPersonalData(request, env);
-    }
-
-    if (pathname === "/me/personal-data" && request.method === "DELETE") {
-      return deleteCurrentPersonalData(request, env);
-    }
-
     if (pathname === "/education-codes/validate" && request.method === "POST") {
       return validateEducationCode(request, env);
-    }
-
-    if (pathname === "/me/answers" && request.method === "POST") {
-      return createAnswer(request, env);
     }
 
     if (pathname === "/manager/me" && request.method === "GET") {
@@ -87,9 +71,42 @@ export default {
 const AUTH0_JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const auth0JwksCache = new Map();
 const REVIEW_DATA_STORAGE_KEY = "the-review-quest-v1";
-const PERSONAL_DATA_STORAGE_KEY = "the-review-personal-v1";
 const REVIEW_DATA_MAX_PAYLOAD_BYTES = 750 * 1024;
-const PERSONAL_DATA_MAX_PAYLOAD_BYTES = 750 * 1024;
+const USER_SELECT_FIELDS = [
+  "id",
+  "auth0_sub",
+  "display_name",
+  "email",
+  "review_storage_key",
+  "review_payload",
+  "login_days",
+  "daily_login_reward_days",
+  "daily_try_records",
+  "learning_progress",
+  "login_status",
+  "is_logged_in",
+  "auth_provider",
+  "nickname",
+  "color_theme",
+  "high_contrast",
+  "monochrome",
+  "review_coin",
+  "coin_grant_5000_applied",
+  "has_unlimited_review_coins",
+  "settings",
+  "education_codes",
+  "avater",
+  "equipped_avater",
+  "review_client_updated_at",
+  "review_synced_at",
+  "review_remote_updated_at",
+  "manager_role",
+  "manager_status",
+  "manager_approved_at",
+  "manager_approved_by",
+  "created_at",
+  "updated_at",
+].join(",");
 const MANAGER_USER_ROLE = "user";
 const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const MANAGER_ROLE_PERMISSIONS = {
@@ -137,17 +154,7 @@ async function getManagerMe(request, env) {
     return json(context.body, context.status);
   }
 
-  const auth0Sub = normalizeSupabaseText(context.claims?.sub);
-  const auth0MemberResult = auth0Sub
-    ? await getManagerMemberByAuth0Sub(context.supabase, auth0Sub)
-    : { ok: true, member: null };
-  if (!auth0MemberResult.ok) {
-    return json(auth0MemberResult.body, auth0MemberResult.status);
-  }
-
-  const memberResult = auth0MemberResult.member
-    ? auth0MemberResult
-    : await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
+  const memberResult = await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
   if (!memberResult.ok) {
     return json(memberResult.body, memberResult.status);
   }
@@ -189,16 +196,14 @@ async function listManagerMembers(request, env) {
     return json(access.body, access.status);
   }
 
-  const response = await supabaseRequest(
-    access.supabase,
-    "/manager_members?select=id,user_id,auth0_sub,display_name,email,role,status,approved_at,approved_by,created_at,updated_at&order=created_at.desc"
-  );
+  const response = await supabaseRequest(access.supabase, `/users?select=${USER_SELECT_FIELDS}&order=created_at.desc`);
   if (!response.ok) {
     const error = await supabaseError(response, "Failed to list manager members");
     return json(error.body, error.status);
   }
 
-  return json(await response.json());
+  const users = await response.json();
+  return json(Array.isArray(users) ? users.map(serializeManagerMemberRow) : []);
 }
 
 async function updateManagerMember(request, env, memberId) {
@@ -221,21 +226,21 @@ async function updateManagerMember(request, env, memberId) {
     updated_at: new Date().toISOString(),
   };
   if (isUserRole) {
-    patch.role = null;
-    patch.status = "pending";
-    patch.approved_at = null;
-    patch.approved_by = null;
+    patch.manager_role = null;
+    patch.manager_status = "pending";
+    patch.manager_approved_at = null;
+    patch.manager_approved_by = null;
   } else if (role) {
-    patch.role = role;
-    patch.status = "approved";
-    patch.approved_at = new Date().toISOString();
-    patch.approved_by = access.member?.id ?? null;
+    patch.manager_role = role;
+    patch.manager_status = "approved";
+    patch.manager_approved_at = new Date().toISOString();
+    patch.manager_approved_by = access.member?.id ?? null;
   }
   if (!role && !isUserRole) {
     return json({ error: "role is required" }, 400);
   }
 
-  const response = await supabaseRequest(access.supabase, `/manager_members?id=eq.${encodeURIComponent(memberId)}`, {
+  const response = await supabaseRequest(access.supabase, `/users?id=eq.${encodeURIComponent(memberId)}`, {
     method: "PATCH",
     headers: {
       Prefer: "return=representation",
@@ -247,8 +252,9 @@ async function updateManagerMember(request, env, memberId) {
     return json(error.body, error.status);
   }
 
-  const members = await response.json();
-  return json(Array.isArray(members) ? members[0] ?? null : members);
+  const users = await response.json();
+  const user = Array.isArray(users) ? users[0] ?? null : users;
+  return json(serializeManagerMemberRow(user));
 }
 
 async function requireManagerOwner(request, env) {
@@ -393,7 +399,12 @@ async function saveCurrentReviewData(request, env) {
     return json(existingResult.body, existingResult.status);
   }
   if (existingResult.reviewData) {
-    const existingUpdatedAt = Date.parse(existingResult.reviewData.client_updated_at || existingResult.reviewData.updated_at || "");
+    const existingUpdatedAt = Date.parse(
+      existingResult.reviewData.review_client_updated_at ||
+        existingResult.reviewData.review_remote_updated_at ||
+        existingResult.reviewData.updated_at ||
+        ""
+    );
     const incomingUpdatedAt = Date.parse(payloadResult.value.client_updated_at);
     if (Number.isFinite(existingUpdatedAt) && Number.isFinite(incomingUpdatedAt) && existingUpdatedAt > incomingUpdatedAt) {
       return json(
@@ -437,93 +448,6 @@ async function deleteCurrentReviewData(request, env) {
   return json({ ok: true });
 }
 
-async function getCurrentPersonalData(request, env) {
-  const context = await getAuthenticatedSupabaseContext(request, env);
-  if (!context.ok) {
-    return json(context.body, context.status);
-  }
-
-  const personalDataResult = await getPersonalDataByUserId(context.supabase, context.user?.id);
-  if (!personalDataResult.ok) {
-    return json(personalDataResult.body, personalDataResult.status);
-  }
-
-  return json({
-    personalData: personalDataResult.personalData ? serializePersonalDataRow(personalDataResult.personalData) : null,
-  });
-}
-
-async function saveCurrentPersonalData(request, env) {
-  const context = await getAuthenticatedSupabaseContext(request, env);
-  if (!context.ok) {
-    return json(context.body, context.status);
-  }
-
-  const bodyResult = await readJsonBody(request);
-  if (!bodyResult.ok) {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-
-  const payloadResult = normalizePersonalDataPayload(bodyResult.value);
-  if (!payloadResult.ok) {
-    return json(
-      {
-        error: "Invalid Personal Data payload",
-        details: payloadResult.errors,
-      },
-      400
-    );
-  }
-
-  const existingResult = await getPersonalDataByUserId(context.supabase, context.user?.id);
-  if (!existingResult.ok) {
-    return json(existingResult.body, existingResult.status);
-  }
-  if (existingResult.personalData) {
-    const existingUpdatedAt = Date.parse(existingResult.personalData.client_updated_at || existingResult.personalData.updated_at || "");
-    const incomingUpdatedAt = Date.parse(payloadResult.value.client_updated_at);
-    if (Number.isFinite(existingUpdatedAt) && Number.isFinite(incomingUpdatedAt) && existingUpdatedAt > incomingUpdatedAt) {
-      return json(
-        {
-          error: "A newer Personal Data snapshot already exists.",
-          conflict: true,
-          personalData: serializePersonalDataRow(existingResult.personalData),
-        },
-        409
-      );
-    }
-  }
-
-  const savedResult = await upsertPersonalData(context.supabase, {
-    user_id: context.user.id,
-    storage_key: payloadResult.value.storage_key,
-    payload: payloadResult.value.payload,
-    client_updated_at: payloadResult.value.client_updated_at,
-    ...extractPersonalDataColumns(payloadResult.value.payload),
-  });
-  if (!savedResult.ok) {
-    return json(savedResult.body, savedResult.status);
-  }
-
-  return json({
-    personalData: serializePersonalDataRow(savedResult.personalData),
-  });
-}
-
-async function deleteCurrentPersonalData(request, env) {
-  const context = await getAuthenticatedSupabaseContext(request, env);
-  if (!context.ok) {
-    return json(context.body, context.status);
-  }
-
-  const deleteResult = await deletePersonalDataByUserId(context.supabase, context.user?.id);
-  if (!deleteResult.ok) {
-    return json(deleteResult.body, deleteResult.status);
-  }
-
-  return json({ ok: true });
-}
-
 async function validateEducationCode(request, env) {
   const body = await readJsonBody(request);
   if (body?.ok === false) {
@@ -551,60 +475,6 @@ async function validateEducationCode(request, env) {
     schoolName,
     message,
   });
-}
-
-async function createAnswer(request, env) {
-  const supabase = getSupabaseConfig(env);
-  if (!supabase) {
-    return json({ error: "Supabase is not configured. SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required." }, 500);
-  }
-
-  const authResult = await authenticateRequest(request, env);
-  if (!authResult.ok) {
-    return json(authResult.body, authResult.status);
-  }
-
-  const bodyResult = await readJsonBody(request);
-  if (!bodyResult.ok) {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-
-  const answerPayload = normalizeAnswerPayload(bodyResult.value);
-  if (!answerPayload.ok) {
-    return json(
-      {
-        error: "Invalid answer payload",
-        details: answerPayload.errors,
-      },
-      400
-    );
-  }
-
-  const userResult = await getOrCreateUserByAuth0Sub(supabase, authResult.claims);
-  if (!userResult.ok) {
-    return json(userResult.body, userResult.status);
-  }
-  if (!userResult.user?.id) {
-    return json(
-      {
-        error: "Answer could not be saved because the Auth0 user record has no id.",
-        auth0Sub: authResult.claims.sub,
-      },
-      500
-    );
-  }
-
-  const insertResult = await insertAnswer(supabase, {
-    user_id: userResult.user.id,
-    question_id: answerPayload.value.questionId,
-    answer_text: answerPayload.value.answerText,
-    is_correct: answerPayload.value.isCorrect,
-  });
-  if (!insertResult.ok) {
-    return json(insertResult.body, insertResult.status);
-  }
-
-  return json(insertResult.answer, 201);
 }
 
 async function authenticateRequest(request, env) {
@@ -680,39 +550,6 @@ function getAuth0Config(env) {
   };
 }
 
-function normalizeAnswerPayload(body) {
-  const errors = [];
-  const questionId = typeof body?.questionId === "string" ? body.questionId.trim() : "";
-  const answerText = typeof body?.answerText === "string" ? body.answerText : null;
-  const isCorrect = typeof body?.isCorrect === "boolean" ? body.isCorrect : null;
-
-  if (!questionId) {
-    errors.push("questionId is required");
-  }
-  if (answerText === null) {
-    errors.push("answerText must be a string");
-  }
-  if (isCorrect === null) {
-    errors.push("isCorrect must be a boolean");
-  }
-
-  if (errors.length > 0) {
-    return {
-      ok: false,
-      errors,
-    };
-  }
-
-  return {
-    ok: true,
-    value: {
-      questionId,
-      answerText,
-      isCorrect,
-    },
-  };
-}
-
 function normalizeReviewDataPayload(body) {
   const errors = [];
   const storageKey = normalizeSupabaseText(body?.storageKey ?? body?.storage_key) || REVIEW_DATA_STORAGE_KEY;
@@ -748,52 +585,40 @@ function normalizeReviewDataPayload(body) {
   };
 }
 
-function normalizePersonalDataPayload(body) {
-  const errors = [];
-  const storageKey = normalizeSupabaseText(body?.storageKey ?? body?.storage_key) || PERSONAL_DATA_STORAGE_KEY;
-  const payload = body?.data ?? body?.payload;
-  const clientUpdatedAt = normalizeIsoTimestamp(body?.clientUpdatedAt ?? body?.client_updated_at) || new Date().toISOString();
-
-  if (storageKey !== PERSONAL_DATA_STORAGE_KEY) {
-    errors.push("storageKey is invalid");
-  }
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    errors.push("data must be an object");
-  } else {
-    const payloadBytes = new TextEncoder().encode(JSON.stringify(payload)).length;
-    if (payloadBytes > PERSONAL_DATA_MAX_PAYLOAD_BYTES) {
-      errors.push("data is too large");
-    }
-  }
-
-  if (errors.length > 0) {
-    return {
-      ok: false,
-      errors,
-    };
-  }
-
-  return {
-    ok: true,
-    value: {
-      storage_key: storageKey,
-      payload,
-      client_updated_at: clientUpdatedAt,
-    },
-  };
-}
-
 function extractReviewDataColumns(payload) {
   const data = normalizeJsonObject(payload);
-  return {
-    login_days: normalizeJsonObject(data.loginDays),
-    daily_login_reward_days: normalizeJsonObject(data.dailyLoginRewardDays),
-    daily_try_records: normalizeJsonObject(data.dailyTryRecords),
-    learning_progress: normalizeJsonObject(data.learningProgress ?? data.progress ?? data.noteProgress),
-  };
+  const columns = {};
+  columns.review_storage_key = REVIEW_DATA_STORAGE_KEY;
+  columns.review_payload = data;
+  if (Object.prototype.hasOwnProperty.call(data, "loginDays")) {
+    columns.login_days = normalizeJsonObject(data.loginDays);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "dailyLoginRewardDays")) {
+    columns.daily_login_reward_days = normalizeJsonObject(data.dailyLoginRewardDays);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "dailyTryRecords")) {
+    columns.daily_try_records = normalizeJsonObject(data.dailyTryRecords);
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(data, "learningProgress") ||
+    Object.prototype.hasOwnProperty.call(data, "progress") ||
+    Object.prototype.hasOwnProperty.call(data, "noteProgress")
+  ) {
+    columns.learning_progress = normalizeJsonObject(data.learningProgress ?? data.progress ?? data.noteProgress);
+  }
+  if (reviewDataPayloadIncludesPersonalColumns(data)) {
+    Object.assign(columns, extractReviewPersonalColumns(data));
+  }
+  return columns;
 }
 
-function extractPersonalDataColumns(payload) {
+function reviewDataPayloadIncludesPersonalColumns(data) {
+  return ["reviewCoin", "coinGrant5000Applied", "hasUnlimitedReviewCoins", "settings", "auth", "avater", "avatar"].some((key) =>
+    Object.prototype.hasOwnProperty.call(data, key)
+  );
+}
+
+function extractReviewPersonalColumns(payload) {
   const data = normalizeJsonObject(payload);
   const settings = normalizeJsonObject(data.settings);
   const auth = normalizeJsonObject(data.auth);
@@ -821,6 +646,34 @@ function extractPersonalDataColumns(payload) {
     education_codes: Array.isArray(settings.educationCodes) ? settings.educationCodes : [],
     avater,
     equipped_avater: equippedAvater,
+  };
+}
+
+function createDefaultReviewDataColumns() {
+  return {
+    review_storage_key: REVIEW_DATA_STORAGE_KEY,
+    review_payload: {},
+    login_days: {},
+    daily_login_reward_days: {},
+    daily_try_records: {},
+    learning_progress: {},
+    login_status: "logged_out",
+    is_logged_in: false,
+    auth_provider: null,
+    nickname: null,
+    color_theme: null,
+    high_contrast: false,
+    monochrome: false,
+    review_coin: 0,
+    coin_grant_5000_applied: false,
+    has_unlimited_review_coins: false,
+    settings: {},
+    education_codes: [],
+    avater: {},
+    equipped_avater: {},
+    review_client_updated_at: null,
+    review_synced_at: null,
+    review_remote_updated_at: null,
   };
 }
 
@@ -854,6 +707,7 @@ async function getOrCreateUserByAuth0Sub(supabase, claims) {
   const createdUser = await createUser(supabase, {
     auth0_sub: auth0Sub,
     display_name: getDisplayNameFromClaims(claims),
+    email: normalizeSupabaseText(claims?.email) || null,
   });
   if (createdUser.ok) {
     return {
@@ -878,7 +732,7 @@ async function getOrCreateUserByAuth0Sub(supabase, claims) {
 async function getUserByAuth0Sub(supabase, auth0Sub) {
   const response = await supabaseRequest(
     supabase,
-    `/users?auth0_sub=eq.${encodeURIComponent(auth0Sub)}&select=id,auth0_sub,display_name&limit=1`
+    `/users?auth0_sub=eq.${encodeURIComponent(auth0Sub)}&select=${USER_SELECT_FIELDS}&limit=1`
   );
 
   if (!response.ok) {
@@ -946,36 +800,59 @@ async function getReviewDataByUserId(supabase, userId) {
 
   const response = await supabaseRequest(
     supabase,
-    `/review_data?user_id=eq.${encodeURIComponent(
-      normalizedUserId
-    )}&select=user_id,storage_key,payload,login_days,daily_login_reward_days,daily_try_records,learning_progress,client_updated_at,created_at,updated_at&limit=1`
+    `/users?id=eq.${encodeURIComponent(normalizedUserId)}&select=${USER_SELECT_FIELDS}&limit=1`
   );
   if (!response.ok) {
-    return supabaseError(response, "Failed to look up Review Data in Supabase");
+    return supabaseError(response, "Failed to look up Review Data on the Supabase user");
   }
 
   const rows = await response.json();
+  const user = Array.isArray(rows) ? rows[0] ?? null : null;
   return {
     ok: true,
-    reviewData: Array.isArray(rows) ? rows[0] ?? null : null,
+    reviewData: user,
   };
 }
 
 async function upsertReviewData(supabase, reviewData) {
   const now = new Date().toISOString();
-  const response = await supabaseRequest(supabase, "/review_data?on_conflict=user_id", {
-    method: "POST",
+  const userId = normalizeSupabaseText(reviewData?.user_id);
+  if (!userId) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Review Data could not be saved because the user record has no id.",
+      },
+    };
+  }
+
+  const {
+    user_id: _userId,
+    storage_key: storageKey,
+    payload,
+    client_updated_at: clientUpdatedAt,
+    ...columns
+  } = reviewData;
+  const patch = {
+    ...columns,
+    review_storage_key: normalizeSupabaseText(storageKey) || REVIEW_DATA_STORAGE_KEY,
+    review_payload: normalizeJsonObject(payload),
+    review_client_updated_at: normalizeIsoTimestamp(clientUpdatedAt),
+    review_remote_updated_at: now,
+    updated_at: now,
+  };
+
+  const response = await supabaseRequest(supabase, `/users?id=eq.${encodeURIComponent(userId)}`, {
+    method: "PATCH",
     headers: {
-      Prefer: "resolution=merge-duplicates,return=representation",
+      Prefer: "return=representation",
     },
-    body: JSON.stringify({
-      ...reviewData,
-      updated_at: now,
-    }),
+    body: JSON.stringify(patch),
   });
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to save Review Data in Supabase");
+    return supabaseError(response, "Failed to save Review Data on the Supabase user");
   }
 
   const rows = await response.json();
@@ -997,12 +874,19 @@ async function deleteReviewDataByUserId(supabase, userId) {
     };
   }
 
-  const response = await supabaseRequest(supabase, `/review_data?user_id=eq.${encodeURIComponent(normalizedUserId)}`, {
-    method: "DELETE",
+  const response = await supabaseRequest(supabase, `/users?id=eq.${encodeURIComponent(normalizedUserId)}`, {
+    method: "PATCH",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      ...createDefaultReviewDataColumns(),
+      updated_at: new Date().toISOString(),
+    }),
   });
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to delete Review Data in Supabase");
+    return supabaseError(response, "Failed to clear Review Data on the Supabase user");
   }
 
   return {
@@ -1015,8 +899,11 @@ function serializeReviewDataRow(row) {
     return null;
   }
   return {
-    storageKey: row.storage_key || REVIEW_DATA_STORAGE_KEY,
-    data: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
+    storageKey: row.review_storage_key || REVIEW_DATA_STORAGE_KEY,
+    data:
+      row.review_payload && typeof row.review_payload === "object" && !Array.isArray(row.review_payload)
+        ? row.review_payload
+        : {},
     loginDays: row.login_days && typeof row.login_days === "object" && !Array.isArray(row.login_days) ? row.login_days : {},
     dailyLoginRewardDays:
       row.daily_login_reward_days && typeof row.daily_login_reward_days === "object" && !Array.isArray(row.daily_login_reward_days)
@@ -1030,96 +917,6 @@ function serializeReviewDataRow(row) {
       row.learning_progress && typeof row.learning_progress === "object" && !Array.isArray(row.learning_progress)
         ? row.learning_progress
         : {},
-    clientUpdatedAt: row.client_updated_at || null,
-    updatedAt: row.updated_at || null,
-  };
-}
-
-async function getPersonalDataByUserId(supabase, userId) {
-  const normalizedUserId = normalizeSupabaseText(userId);
-  if (!normalizedUserId) {
-    return {
-      ok: false,
-      status: 500,
-      body: {
-        error: "Personal Data could not be resolved because the user record has no id.",
-      },
-    };
-  }
-
-  const response = await supabaseRequest(
-    supabase,
-    `/personal_data?user_id=eq.${encodeURIComponent(
-      normalizedUserId
-    )}&select=user_id,storage_key,payload,login_status,is_logged_in,auth_provider,display_name,nickname,email,color_theme,high_contrast,monochrome,review_coin,coin_grant_5000_applied,has_unlimited_review_coins,settings,education_codes,avater,equipped_avater,client_updated_at,created_at,updated_at&limit=1`
-  );
-  if (!response.ok) {
-    return supabaseError(response, "Failed to look up Personal Data in Supabase");
-  }
-
-  const rows = await response.json();
-  return {
-    ok: true,
-    personalData: Array.isArray(rows) ? rows[0] ?? null : null,
-  };
-}
-
-async function upsertPersonalData(supabase, personalData) {
-  const now = new Date().toISOString();
-  const response = await supabaseRequest(supabase, "/personal_data?on_conflict=user_id", {
-    method: "POST",
-    headers: {
-      Prefer: "resolution=merge-duplicates,return=representation",
-    },
-    body: JSON.stringify({
-      ...personalData,
-      updated_at: now,
-    }),
-  });
-
-  if (!response.ok) {
-    return supabaseError(response, "Failed to save Personal Data in Supabase");
-  }
-
-  const rows = await response.json();
-  return {
-    ok: true,
-    personalData: Array.isArray(rows) ? rows[0] ?? null : rows,
-  };
-}
-
-async function deletePersonalDataByUserId(supabase, userId) {
-  const normalizedUserId = normalizeSupabaseText(userId);
-  if (!normalizedUserId) {
-    return {
-      ok: false,
-      status: 500,
-      body: {
-        error: "Personal Data could not be deleted because the user record has no id.",
-      },
-    };
-  }
-
-  const response = await supabaseRequest(supabase, `/personal_data?user_id=eq.${encodeURIComponent(normalizedUserId)}`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    return supabaseError(response, "Failed to delete Personal Data in Supabase");
-  }
-
-  return {
-    ok: true,
-  };
-}
-
-function serializePersonalDataRow(row) {
-  if (!row) {
-    return null;
-  }
-  return {
-    storageKey: row.storage_key || PERSONAL_DATA_STORAGE_KEY,
-    data: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
     loginStatus: row.login_status || null,
     isLoggedIn: Boolean(row.is_logged_in),
     authProvider: row.auth_provider || null,
@@ -1139,28 +936,8 @@ function serializePersonalDataRow(row) {
       row.equipped_avater && typeof row.equipped_avater === "object" && !Array.isArray(row.equipped_avater)
         ? row.equipped_avater
         : {},
-    clientUpdatedAt: row.client_updated_at || null,
-    updatedAt: row.updated_at || null,
-  };
-}
-
-async function insertAnswer(supabase, answer) {
-  const response = await supabaseRequest(supabase, "/answers", {
-    method: "POST",
-    headers: {
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify(answer),
-  });
-
-  if (!response.ok) {
-    return supabaseError(response, "Failed to insert the answer into Supabase");
-  }
-
-  const savedAnswers = await response.json();
-  return {
-    ok: true,
-    answer: Array.isArray(savedAnswers) ? savedAnswers[0] ?? null : savedAnswers,
+    clientUpdatedAt: row.review_client_updated_at || null,
+    updatedAt: row.review_remote_updated_at || row.updated_at || null,
   };
 }
 
@@ -1200,9 +977,6 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
   const email = normalizeSupabaseText(profile?.email) || normalizeSupabaseText(claims?.email) || null;
   if (existing.member) {
     const patch = {};
-    if (!hasSeparateUserMember && existing.member.user_id !== user.id) {
-      patch.user_id = user.id;
-    }
     if (auth0Sub && existing.member.auth0_sub !== auth0Sub) {
       patch.auth0_sub = auth0Sub;
     }
@@ -1217,9 +991,9 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
     }
     if (shouldBootstrapOwner && (existing.member.role !== "owner" || existing.member.status !== "approved")) {
       Object.assign(patch, {
-        role: "owner",
-        status: "approved",
-        approved_at: new Date().toISOString(),
+        manager_role: "owner",
+        manager_status: "approved",
+        manager_approved_at: new Date().toISOString(),
       });
     }
     if (Object.keys(patch).length > 0) {
@@ -1243,59 +1017,81 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
 async function getManagerMemberByUserId(supabase, userId) {
   const response = await supabaseRequest(
     supabase,
-    `/manager_members?user_id=eq.${encodeURIComponent(userId)}&select=id,user_id,auth0_sub,display_name,email,role,status,approved_at,approved_by,created_at,updated_at&limit=1`
+    `/users?id=eq.${encodeURIComponent(userId)}&select=${USER_SELECT_FIELDS}&limit=1`
   );
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to look up the manager member in Supabase");
+    return supabaseError(response, "Failed to look up the manager member on the Supabase user");
   }
 
-  const members = await response.json();
+  const users = await response.json();
+  const user = Array.isArray(users) ? users[0] ?? null : null;
   return {
     ok: true,
-    member: Array.isArray(members) ? members[0] ?? null : null,
+    member: serializeManagerMemberRow(user),
   };
 }
 
 async function getManagerMemberByAuth0Sub(supabase, auth0Sub) {
   const response = await supabaseRequest(
     supabase,
-    `/manager_members?auth0_sub=eq.${encodeURIComponent(auth0Sub)}&select=id,user_id,auth0_sub,display_name,email,role,status,approved_at,approved_by,created_at,updated_at&limit=1`
+    `/users?auth0_sub=eq.${encodeURIComponent(auth0Sub)}&select=${USER_SELECT_FIELDS}&limit=1`
   );
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to look up the manager member in Supabase");
+    return supabaseError(response, "Failed to look up the manager member on the Supabase user");
   }
 
-  const members = await response.json();
+  const users = await response.json();
+  const user = Array.isArray(users) ? users[0] ?? null : null;
   return {
     ok: true,
-    member: Array.isArray(members) ? members[0] ?? null : null,
+    member: serializeManagerMemberRow(user),
   };
 }
 
 async function createManagerMember(supabase, member) {
-  const response = await supabaseRequest(supabase, "/manager_members", {
-    method: "POST",
+  const userId = normalizeSupabaseText(member?.user_id);
+  if (!userId) {
+    return {
+      ok: false,
+      status: 500,
+      body: {
+        error: "Manager member could not be created because the user record has no id.",
+      },
+    };
+  }
+
+  const response = await supabaseRequest(supabase, `/users?id=eq.${encodeURIComponent(userId)}`, {
+    method: "PATCH",
     headers: {
       Prefer: "return=representation",
     },
-    body: JSON.stringify(member),
+    body: JSON.stringify({
+      auth0_sub: member.auth0_sub || null,
+      display_name: member.display_name || null,
+      email: member.email || null,
+      manager_role: normalizeManagerRole(member.role),
+      manager_status: normalizeSupabaseText(member.status) || "pending",
+      manager_approved_at: member.approved_at || null,
+      updated_at: new Date().toISOString(),
+    }),
   });
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to create the manager member in Supabase");
+    return supabaseError(response, "Failed to create the manager member on the Supabase user");
   }
 
-  const members = await response.json();
+  const users = await response.json();
+  const user = Array.isArray(users) ? users[0] ?? null : users;
   return {
     ok: true,
-    member: Array.isArray(members) ? members[0] ?? null : members,
+    member: serializeManagerMemberRow(user),
   };
 }
 
 async function updateManagerMemberById(supabase, memberId, patch) {
-  const response = await supabaseRequest(supabase, `/manager_members?id=eq.${encodeURIComponent(memberId)}`, {
+  const response = await supabaseRequest(supabase, `/users?id=eq.${encodeURIComponent(memberId)}`, {
     method: "PATCH",
     headers: {
       Prefer: "return=representation",
@@ -1304,13 +1100,33 @@ async function updateManagerMemberById(supabase, memberId, patch) {
   });
 
   if (!response.ok) {
-    return supabaseError(response, "Failed to update the manager member in Supabase");
+    return supabaseError(response, "Failed to update the manager member on the Supabase user");
   }
 
-  const members = await response.json();
+  const users = await response.json();
+  const user = Array.isArray(users) ? users[0] ?? null : users;
   return {
     ok: true,
-    member: Array.isArray(members) ? members[0] ?? null : members,
+    member: serializeManagerMemberRow(user),
+  };
+}
+
+function serializeManagerMemberRow(user) {
+  if (!user) {
+    return null;
+  }
+  return {
+    id: user.id || "",
+    user_id: user.id || "",
+    auth0_sub: user.auth0_sub || "",
+    display_name: user.display_name || "",
+    email: user.email || null,
+    role: normalizeManagerRole(user.manager_role),
+    status: normalizeSupabaseText(user.manager_status) || "pending",
+    approved_at: user.manager_approved_at || null,
+    approved_by: user.manager_approved_by || null,
+    created_at: user.created_at || null,
+    updated_at: user.updated_at || null,
   };
 }
 

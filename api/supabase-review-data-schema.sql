@@ -1,57 +1,115 @@
--- The Review cross-device cloud sync.
--- Apply this in Supabase after the existing users table has been created.
+-- The Review users table cloud data.
+-- Apply this after public.users has been created.
+-- This migrates review_data, personal_data, and manager_members into users,
+-- then removes the old answers/review_schedules/review_data/manager_members tables.
 
 create extension if not exists pgcrypto;
 
-create table if not exists public.review_data (
-  user_id uuid primary key references public.users(id) on delete cascade,
-  storage_key text not null default 'the-review-quest-v1',
-  payload jsonb not null default '{}'::jsonb,
-  login_days jsonb not null default '{}'::jsonb,
-  daily_login_reward_days jsonb not null default '{}'::jsonb,
-  daily_try_records jsonb not null default '{}'::jsonb,
-  learning_progress jsonb not null default '{}'::jsonb,
-  client_updated_at timestamptz not null default now(),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.review_data
+alter table public.users
+  add column if not exists auth0_sub text,
+  add column if not exists display_name text,
+  add column if not exists email text,
+  add column if not exists review_storage_key text not null default 'the-review-quest-v1',
+  add column if not exists review_payload jsonb not null default '{}'::jsonb,
   add column if not exists login_days jsonb not null default '{}'::jsonb,
   add column if not exists daily_login_reward_days jsonb not null default '{}'::jsonb,
   add column if not exists daily_try_records jsonb not null default '{}'::jsonb,
-  add column if not exists learning_progress jsonb not null default '{}'::jsonb;
+  add column if not exists learning_progress jsonb not null default '{}'::jsonb,
+  add column if not exists login_status text not null default 'logged_out',
+  add column if not exists is_logged_in boolean not null default false,
+  add column if not exists auth_provider text,
+  add column if not exists nickname text,
+  add column if not exists color_theme text,
+  add column if not exists high_contrast boolean not null default false,
+  add column if not exists monochrome boolean not null default false,
+  add column if not exists review_coin integer not null default 0,
+  add column if not exists coin_grant_5000_applied boolean not null default false,
+  add column if not exists has_unlimited_review_coins boolean not null default false,
+  add column if not exists settings jsonb not null default '{}'::jsonb,
+  add column if not exists education_codes jsonb not null default '[]'::jsonb,
+  add column if not exists avater jsonb not null default '{}'::jsonb,
+  add column if not exists equipped_avater jsonb not null default '{}'::jsonb,
+  add column if not exists review_client_updated_at timestamptz,
+  add column if not exists review_synced_at timestamptz,
+  add column if not exists review_remote_updated_at timestamptz,
+  add column if not exists manager_role text,
+  add column if not exists manager_status text not null default 'pending',
+  add column if not exists manager_approved_at timestamptz,
+  add column if not exists manager_approved_by uuid,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
 
-create index if not exists review_data_client_updated_at_idx on public.review_data(client_updated_at);
+create index if not exists users_auth0_sub_idx on public.users(auth0_sub);
+create index if not exists users_review_client_updated_at_idx on public.users(review_client_updated_at);
+create index if not exists users_login_status_idx on public.users(login_status);
+create index if not exists users_color_theme_idx on public.users(color_theme);
+create index if not exists users_manager_status_idx on public.users(manager_status);
+create index if not exists users_manager_role_idx on public.users(manager_role);
 
-create table if not exists public.personal_data (
-  user_id uuid primary key references public.users(id) on delete cascade,
-  storage_key text not null default 'the-review-personal-v1',
-  payload jsonb not null default '{}'::jsonb,
-  login_status text not null default 'logged_out',
-  is_logged_in boolean not null default false,
-  auth_provider text,
-  display_name text,
-  nickname text,
-  email text,
-  color_theme text,
-  high_contrast boolean not null default false,
-  monochrome boolean not null default false,
-  review_coin integer not null default 0,
-  coin_grant_5000_applied boolean not null default false,
-  has_unlimited_review_coins boolean not null default false,
-  settings jsonb not null default '{}'::jsonb,
-  education_codes jsonb not null default '[]'::jsonb,
-  avater jsonb not null default '{}'::jsonb,
-  equipped_avater jsonb not null default '{}'::jsonb,
-  client_updated_at timestamptz not null default now(),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint personal_data_login_status_check check (login_status in ('logged_out', 'guest', 'logged_in')),
-  constraint personal_data_review_coin_check check (review_coin >= 0)
-);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.users'::regclass
+      and conname = 'users_login_status_check'
+  ) then
+    alter table public.users
+      add constraint users_login_status_check check (login_status in ('logged_out', 'guest', 'logged_in'));
+  end if;
 
-alter table public.personal_data
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.users'::regclass
+      and conname = 'users_review_coin_check'
+  ) then
+    alter table public.users
+      add constraint users_review_coin_check check (review_coin >= 0);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.users'::regclass
+      and conname = 'users_manager_role_check'
+  ) then
+    alter table public.users
+      add constraint users_manager_role_check check (
+        manager_role is null
+        or manager_role in ('owner', 'developer', 'checker', 'system_designer', 'character_designer')
+      );
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.users'::regclass
+      and conname = 'users_manager_status_check'
+  ) then
+    alter table public.users
+      add constraint users_manager_status_check check (manager_status in ('pending', 'approved', 'suspended'));
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.users'::regclass
+      and conname = 'users_manager_approved_by_fkey'
+  ) then
+    alter table public.users
+      add constraint users_manager_approved_by_fkey
+      foreign key (manager_approved_by) references public.users(id) on delete set null;
+  end if;
+end $$;
+
+alter table if exists public.review_data
+  add column if not exists storage_key text not null default 'the-review-quest-v1',
+  add column if not exists payload jsonb not null default '{}'::jsonb,
+  add column if not exists login_days jsonb not null default '{}'::jsonb,
+  add column if not exists daily_login_reward_days jsonb not null default '{}'::jsonb,
+  add column if not exists daily_try_records jsonb not null default '{}'::jsonb,
+  add column if not exists learning_progress jsonb not null default '{}'::jsonb,
   add column if not exists login_status text not null default 'logged_out',
   add column if not exists is_logged_in boolean not null default false,
   add column if not exists auth_provider text,
@@ -67,134 +125,204 @@ alter table public.personal_data
   add column if not exists settings jsonb not null default '{}'::jsonb,
   add column if not exists education_codes jsonb not null default '[]'::jsonb,
   add column if not exists avater jsonb not null default '{}'::jsonb,
-  add column if not exists equipped_avater jsonb not null default '{}'::jsonb;
+  add column if not exists equipped_avater jsonb not null default '{}'::jsonb,
+  add column if not exists client_updated_at timestamptz,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
 
-create index if not exists personal_data_client_updated_at_idx on public.personal_data(client_updated_at);
-
-update public.review_data
+do $$
+begin
+  if to_regclass('public.review_data') is not null then
+    execute $migration$
+update public.users as u
 set
-  login_days = case when jsonb_typeof(payload->'loginDays') = 'object' then payload->'loginDays' else '{}'::jsonb end,
-  daily_login_reward_days = case when jsonb_typeof(payload->'dailyLoginRewardDays') = 'object' then payload->'dailyLoginRewardDays' else '{}'::jsonb end,
-  daily_try_records = case when jsonb_typeof(payload->'dailyTryRecords') = 'object' then payload->'dailyTryRecords' else '{}'::jsonb end,
+  review_storage_key = coalesce(nullif(rd.storage_key, ''), u.review_storage_key, 'the-review-quest-v1'),
+  review_payload = case
+    when jsonb_typeof(rd.payload) = 'object' then rd.payload
+    else u.review_payload
+  end,
+  login_days = case
+    when jsonb_typeof(rd.login_days) = 'object' and rd.login_days <> '{}'::jsonb then rd.login_days
+    when jsonb_typeof(rd.payload->'loginDays') = 'object' then rd.payload->'loginDays'
+    else u.login_days
+  end,
+  daily_login_reward_days = case
+    when jsonb_typeof(rd.daily_login_reward_days) = 'object' and rd.daily_login_reward_days <> '{}'::jsonb then rd.daily_login_reward_days
+    when jsonb_typeof(rd.payload->'dailyLoginRewardDays') = 'object' then rd.payload->'dailyLoginRewardDays'
+    else u.daily_login_reward_days
+  end,
+  daily_try_records = case
+    when jsonb_typeof(rd.daily_try_records) = 'object' and rd.daily_try_records <> '{}'::jsonb then rd.daily_try_records
+    when jsonb_typeof(rd.payload->'dailyTryRecords') = 'object' then rd.payload->'dailyTryRecords'
+    else u.daily_try_records
+  end,
   learning_progress = case
-    when jsonb_typeof(payload->'learningProgress') = 'object' then payload->'learningProgress'
-    when jsonb_typeof(payload->'progress') = 'object' then payload->'progress'
-    when jsonb_typeof(payload->'noteProgress') = 'object' then payload->'noteProgress'
-    else '{}'::jsonb
-  end
-where payload ?| array['loginDays', 'dailyLoginRewardDays', 'dailyTryRecords', 'learningProgress', 'progress', 'noteProgress'];
-
-insert into public.personal_data (
-  user_id,
-  storage_key,
-  payload,
-  login_status,
-  is_logged_in,
-  auth_provider,
-  display_name,
-  nickname,
-  email,
-  color_theme,
-  high_contrast,
-  monochrome,
-  review_coin,
-  coin_grant_5000_applied,
-  has_unlimited_review_coins,
-  settings,
-  education_codes,
-  avater,
-  equipped_avater,
-  client_updated_at,
-  created_at,
-  updated_at
-)
-select
-  user_id,
-  'the-review-personal-v1',
-  jsonb_strip_nulls(
-    jsonb_build_object(
-      'reviewCoin', payload->'reviewCoin',
-      'coinGrant5000Applied', payload->'coinGrant5000Applied',
-      'settings', payload->'settings',
-      'auth', payload->'auth',
-      'avater', coalesce(payload->'avater', payload->'avatar'),
-      'personalSync', jsonb_build_object(
-        'version', 1,
-        'updatedAt', coalesce(payload #>> '{sync,updatedAt}', client_updated_at::text),
-        'syncedAt', '',
-        'lastRemoteUpdatedAt', updated_at::text
-      )
-    )
-  ),
-  case
-    when (payload #>> '{auth,isLoggedIn}') = 'true' and (payload #>> '{auth,provider}') = 'guest' then 'guest'
-    when (payload #>> '{auth,isLoggedIn}') = 'true' then 'logged_in'
-    else 'logged_out'
+    when jsonb_typeof(rd.learning_progress) = 'object' and rd.learning_progress <> '{}'::jsonb then rd.learning_progress
+    when jsonb_typeof(rd.payload->'learningProgress') = 'object' then rd.payload->'learningProgress'
+    when jsonb_typeof(rd.payload->'progress') = 'object' then rd.payload->'progress'
+    when jsonb_typeof(rd.payload->'noteProgress') = 'object' then rd.payload->'noteProgress'
+    else u.learning_progress
   end,
-  coalesce((payload #>> '{auth,isLoggedIn}') = 'true', false),
-  nullif(payload #>> '{auth,provider}', ''),
-  nullif(payload #>> '{auth,displayName}', ''),
-  nullif(payload #>> '{auth,nickname}', ''),
-  nullif(payload #>> '{auth,email}', ''),
-  nullif(payload #>> '{settings,theme}', ''),
-  coalesce((payload #>> '{settings,highContrast}') = 'true', false),
-  coalesce((payload #>> '{settings,monochrome}') = 'true', false),
-  case
-    when (payload->>'reviewCoin') ~ '^[0-9]+(\.[0-9]+)?$' then floor((payload->>'reviewCoin')::numeric)::integer
-    else 0
-  end,
-  coalesce((payload->>'coinGrant5000Applied') = 'true', false),
-  coalesce((payload->>'hasUnlimitedReviewCoins') = 'true', false),
-  case when jsonb_typeof(payload->'settings') = 'object' then payload->'settings' else '{}'::jsonb end,
-  case when jsonb_typeof(payload #> '{settings,educationCodes}') = 'array' then payload #> '{settings,educationCodes}' else '[]'::jsonb end,
-  case
-    when jsonb_typeof(payload->'avater') = 'object' then payload->'avater'
-    when jsonb_typeof(payload->'avatar') = 'object' then payload->'avatar'
-    else '{}'::jsonb
-  end,
-  case
-    when jsonb_typeof(payload #> '{avater,equipped}') = 'object' then payload #> '{avater,equipped}'
-    when jsonb_typeof(payload #> '{avatar,equipped}') = 'object' then payload #> '{avatar,equipped}'
-    else '{}'::jsonb
-  end,
-  client_updated_at,
-  created_at,
-  updated_at
-from public.review_data
-where payload ?| array['reviewCoin', 'coinGrant5000Applied', 'settings', 'auth', 'avater', 'avatar']
-on conflict (user_id) do nothing;
-
-update public.personal_data
-set
   login_status = case
-    when (payload #>> '{auth,isLoggedIn}') = 'true' and (payload #>> '{auth,provider}') = 'guest' then 'guest'
-    when (payload #>> '{auth,isLoggedIn}') = 'true' then 'logged_in'
-    else 'logged_out'
+    when rd.login_status in ('guest', 'logged_in') then rd.login_status
+    when (rd.payload #>> '{auth,isLoggedIn}') = 'true' and (rd.payload #>> '{auth,provider}') = 'guest' then 'guest'
+    when (rd.payload #>> '{auth,isLoggedIn}') = 'true' then 'logged_in'
+    else u.login_status
   end,
-  is_logged_in = coalesce((payload #>> '{auth,isLoggedIn}') = 'true', false),
-  auth_provider = nullif(payload #>> '{auth,provider}', ''),
-  display_name = nullif(payload #>> '{auth,displayName}', ''),
-  nickname = nullif(payload #>> '{auth,nickname}', ''),
-  email = nullif(payload #>> '{auth,email}', ''),
-  color_theme = nullif(payload #>> '{settings,theme}', ''),
-  high_contrast = coalesce((payload #>> '{settings,highContrast}') = 'true', false),
-  monochrome = coalesce((payload #>> '{settings,monochrome}') = 'true', false),
-  review_coin = case
-    when (payload->>'reviewCoin') ~ '^[0-9]+(\.[0-9]+)?$' then floor((payload->>'reviewCoin')::numeric)::integer
-    else 0
+  is_logged_in = coalesce(rd.is_logged_in, (rd.payload #>> '{auth,isLoggedIn}') = 'true', u.is_logged_in),
+  auth_provider = coalesce(nullif(rd.auth_provider, ''), nullif(rd.payload #>> '{auth,provider}', ''), u.auth_provider),
+  display_name = coalesce(nullif(rd.display_name, ''), nullif(rd.payload #>> '{auth,displayName}', ''), u.display_name),
+  nickname = coalesce(nullif(rd.nickname, ''), nullif(rd.payload #>> '{auth,nickname}', ''), u.nickname),
+  email = coalesce(nullif(rd.email, ''), nullif(rd.payload #>> '{auth,email}', ''), u.email),
+  color_theme = coalesce(nullif(rd.color_theme, ''), nullif(rd.payload #>> '{settings,theme}', ''), u.color_theme),
+  high_contrast = coalesce(rd.high_contrast, (rd.payload #>> '{settings,highContrast}') = 'true', u.high_contrast),
+  monochrome = coalesce(rd.monochrome, (rd.payload #>> '{settings,monochrome}') = 'true', u.monochrome),
+  review_coin = greatest(
+    0,
+    case
+      when rd.review_coin > 0 then rd.review_coin
+      when (rd.payload->>'reviewCoin') ~ '^[0-9]+(\.[0-9]+)?$' then floor((rd.payload->>'reviewCoin')::numeric)::integer
+      else u.review_coin
+    end
+  ),
+  coin_grant_5000_applied = coalesce(rd.coin_grant_5000_applied, false) or coalesce((rd.payload->>'coinGrant5000Applied') = 'true', false) or coalesce(u.coin_grant_5000_applied, false),
+  has_unlimited_review_coins = coalesce(rd.has_unlimited_review_coins, false) or coalesce((rd.payload->>'hasUnlimitedReviewCoins') = 'true', false) or coalesce(u.has_unlimited_review_coins, false),
+  settings = case
+    when jsonb_typeof(rd.settings) = 'object' and rd.settings <> '{}'::jsonb then rd.settings
+    when jsonb_typeof(rd.payload->'settings') = 'object' then rd.payload->'settings'
+    else u.settings
   end,
-  coin_grant_5000_applied = coalesce((payload->>'coinGrant5000Applied') = 'true', false),
-  has_unlimited_review_coins = coalesce((payload->>'hasUnlimitedReviewCoins') = 'true', false),
-  settings = case when jsonb_typeof(payload->'settings') = 'object' then payload->'settings' else '{}'::jsonb end,
-  education_codes = case when jsonb_typeof(payload #> '{settings,educationCodes}') = 'array' then payload #> '{settings,educationCodes}' else '[]'::jsonb end,
+  education_codes = case
+    when jsonb_typeof(rd.education_codes) = 'array' and jsonb_array_length(rd.education_codes) > 0 then rd.education_codes
+    when jsonb_typeof(rd.payload #> '{settings,educationCodes}') = 'array' then rd.payload #> '{settings,educationCodes}'
+    else u.education_codes
+  end,
   avater = case
-    when jsonb_typeof(payload->'avater') = 'object' then payload->'avater'
-    when jsonb_typeof(payload->'avatar') = 'object' then payload->'avatar'
-    else '{}'::jsonb
+    when jsonb_typeof(rd.avater) = 'object' and rd.avater <> '{}'::jsonb then rd.avater
+    when jsonb_typeof(rd.payload->'avater') = 'object' then rd.payload->'avater'
+    when jsonb_typeof(rd.payload->'avatar') = 'object' then rd.payload->'avatar'
+    else u.avater
   end,
   equipped_avater = case
-    when jsonb_typeof(payload #> '{avater,equipped}') = 'object' then payload #> '{avater,equipped}'
-    when jsonb_typeof(payload #> '{avatar,equipped}') = 'object' then payload #> '{avatar,equipped}'
-    else '{}'::jsonb
-  end
-where payload ?| array['reviewCoin', 'coinGrant5000Applied', 'settings', 'auth', 'avater', 'avatar'];
+    when jsonb_typeof(rd.equipped_avater) = 'object' and rd.equipped_avater <> '{}'::jsonb then rd.equipped_avater
+    when jsonb_typeof(rd.payload #> '{avater,equipped}') = 'object' then rd.payload #> '{avater,equipped}'
+    when jsonb_typeof(rd.payload #> '{avatar,equipped}') = 'object' then rd.payload #> '{avatar,equipped}'
+    else u.equipped_avater
+  end,
+  review_client_updated_at = coalesce(rd.client_updated_at, u.review_client_updated_at),
+  review_remote_updated_at = coalesce(rd.updated_at, u.review_remote_updated_at),
+  updated_at = coalesce(greatest(u.updated_at, rd.updated_at), u.updated_at, rd.updated_at, now())
+from public.review_data as rd
+where rd.user_id = u.id
+$migration$;
+  end if;
+end $$;
+
+alter table if exists public.personal_data
+  add column if not exists payload jsonb not null default '{}'::jsonb,
+  add column if not exists client_updated_at timestamptz,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+do $$
+begin
+  if to_regclass('public.personal_data') is not null then
+    execute $migration$
+update public.users as u
+set
+  review_payload = case
+    when jsonb_typeof(pd.payload) = 'object' then coalesce(u.review_payload, '{}'::jsonb) || pd.payload
+    else u.review_payload
+  end,
+  login_status = case
+    when (pd.payload #>> '{auth,isLoggedIn}') = 'true' and (pd.payload #>> '{auth,provider}') = 'guest' then 'guest'
+    when (pd.payload #>> '{auth,isLoggedIn}') = 'true' then 'logged_in'
+    else u.login_status
+  end,
+  is_logged_in = coalesce((pd.payload #>> '{auth,isLoggedIn}') = 'true', u.is_logged_in),
+  auth_provider = coalesce(nullif(pd.payload #>> '{auth,provider}', ''), u.auth_provider),
+  display_name = coalesce(nullif(pd.payload #>> '{auth,displayName}', ''), u.display_name),
+  nickname = coalesce(nullif(pd.payload #>> '{auth,nickname}', ''), u.nickname),
+  email = coalesce(nullif(pd.payload #>> '{auth,email}', ''), u.email),
+  color_theme = coalesce(nullif(pd.payload #>> '{settings,theme}', ''), u.color_theme),
+  high_contrast = coalesce((pd.payload #>> '{settings,highContrast}') = 'true', u.high_contrast),
+  monochrome = coalesce((pd.payload #>> '{settings,monochrome}') = 'true', u.monochrome),
+  review_coin = greatest(
+    0,
+    case
+      when (pd.payload->>'reviewCoin') ~ '^[0-9]+(\.[0-9]+)?$' then floor((pd.payload->>'reviewCoin')::numeric)::integer
+      else u.review_coin
+    end
+  ),
+  coin_grant_5000_applied = coalesce((pd.payload->>'coinGrant5000Applied') = 'true', false) or coalesce(u.coin_grant_5000_applied, false),
+  has_unlimited_review_coins = coalesce((pd.payload->>'hasUnlimitedReviewCoins') = 'true', false) or coalesce(u.has_unlimited_review_coins, false),
+  settings = case
+    when jsonb_typeof(pd.payload->'settings') = 'object' then pd.payload->'settings'
+    else u.settings
+  end,
+  education_codes = case
+    when jsonb_typeof(pd.payload #> '{settings,educationCodes}') = 'array' then pd.payload #> '{settings,educationCodes}'
+    else u.education_codes
+  end,
+  avater = case
+    when jsonb_typeof(pd.payload->'avater') = 'object' then pd.payload->'avater'
+    when jsonb_typeof(pd.payload->'avatar') = 'object' then pd.payload->'avatar'
+    else u.avater
+  end,
+  equipped_avater = case
+    when jsonb_typeof(pd.payload #> '{avater,equipped}') = 'object' then pd.payload #> '{avater,equipped}'
+    when jsonb_typeof(pd.payload #> '{avatar,equipped}') = 'object' then pd.payload #> '{avatar,equipped}'
+    else u.equipped_avater
+  end,
+  review_client_updated_at = coalesce(u.review_client_updated_at, pd.client_updated_at),
+  review_remote_updated_at = coalesce(u.review_remote_updated_at, pd.updated_at),
+  updated_at = coalesce(greatest(u.updated_at, pd.updated_at), u.updated_at, pd.updated_at, now())
+from public.personal_data as pd
+where pd.user_id = u.id
+$migration$;
+  end if;
+end $$;
+
+alter table if exists public.manager_members
+  add column if not exists auth0_sub text,
+  add column if not exists display_name text,
+  add column if not exists email text,
+  add column if not exists role text,
+  add column if not exists status text not null default 'pending',
+  add column if not exists approved_at timestamptz,
+  add column if not exists approved_by uuid,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+do $$
+begin
+  if to_regclass('public.manager_members') is not null then
+    execute $migration$
+update public.users as u
+set
+  auth0_sub = coalesce(nullif(mm.auth0_sub, ''), u.auth0_sub),
+  display_name = coalesce(nullif(mm.display_name, ''), u.display_name),
+  email = coalesce(nullif(mm.email, ''), u.email),
+  manager_role = case
+    when mm.role in ('owner', 'developer', 'checker', 'system_designer', 'character_designer') then mm.role
+    else u.manager_role
+  end,
+  manager_status = case
+    when mm.status in ('pending', 'approved', 'suspended') then mm.status
+    else u.manager_status
+  end,
+  manager_approved_at = coalesce(mm.approved_at, u.manager_approved_at),
+  manager_approved_by = coalesce(approver.user_id, u.manager_approved_by),
+  updated_at = coalesce(greatest(u.updated_at, mm.updated_at), u.updated_at, mm.updated_at, now())
+from public.manager_members as mm
+left join public.manager_members as approver on approver.id = mm.approved_by
+where mm.user_id = u.id
+$migration$;
+  end if;
+end $$;
+
+drop table if exists public.answers;
+drop table if exists public.review_schedules;
+drop table if exists public.review_data;
+drop table if exists public.personal_data;
+drop table if exists public.manager_members;

@@ -9724,3 +9724,149 @@ body.avater-scroll-locked {
   align-items: center;
   gap: 0.24rem;
 }
+
+/* ===== Flashcards: final tabbed index sheets ===== */
+
+.flashcard-note-library,
+.flashcard-note-surface,
+.flashcard-note-list {
+  overflow: visible;
+}
+
+.flashcard-note-list {
+  position: relative;
+}
+
+/* インデックス1枚分 */
+.flashcard-series-index {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  height: 760px;
+  margin: 0 0 -650px 0;
+  padding: 0;
+
+  overflow: visible;
+
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 右側のカラフルなタブは使わない */
+.flashcard-series-index::after {
+  content: none;
+}
+
+/* 台形の下にあるA判インデックス紙 */
+.flashcard-series-index::before {
+  content: "";
+  position: absolute;
+
+  left: 0;
+  top: 55px;
+  z-index: 1;
+
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1.414;
+
+  background: var(--primary);
+
+  border: none;
+  box-shadow:
+    0 5px 10px rgba(29, 29, 29, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* 台形タイトル */
+.flashcard-series-index span {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  z-index: 3;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  min-width: 186px;
+  height: 42px;
+  padding: 8px 34px 8px 22px;
+
+  overflow: visible;
+
+  background: var(--primary);
+  color: #ffffff;
+
+  font-family: "Noto Sans", "Noto Sans JP", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-align: left;
+
+  border: none;
+  border-radius: 8px 8px 0 0;
+
+  clip-path: polygon(
+    0 0,
+    88% 0,
+    100% 100%,
+    0 100%
+  );
+
+  box-shadow: none;
+}
+
+/* 以前作った台形下の薄い帯は使わない */
+.flashcard-series-index span::after {
+  content: none;
+}
+
+/* ノートをインデックス紙より前に出す */
+.flashcard-note {
+  position: relative;
+  z-index: 10;
+
+  box-shadow:
+    0 8px 14px rgba(29, 29, 29, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* インデックス直後のノート */
+.flashcard-series-index + .flashcard-note {
+  margin-top: 0;
+}
+
+/* ノート後の次インデックス */
+.flashcard-note + .flashcard-series-index {
+  margin-top: 0;
+}
+
+/* 判定前は一旦すべて隠す */
+.flashcard-series-index {
+  visibility: hidden;
+}
+
+/* 判定後、ノートがあるインデックスだけ表示 */
+.flashcard-series-index.is-ready-series {
+  visibility: visible;
+}
+
+/* ノートがないインデックスは非表示 */
+.flashcard-series-index.is-empty-series {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .flashcard-series-index {
+    height: 680px;
+    margin-bottom: -585px;
+  }
+
+  .flashcard-series-index span {
+    min-width: 170px;
+    padding-left: 20px;
+  }
+}

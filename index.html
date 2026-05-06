@@ -220,7 +220,7 @@
               <div id="flashcardBinderList" class="flashcard-note-library" aria-label="リビューする科目のノート一覧" data-flashcard-direct-notes="1">
                 <section class="flashcard-note-surface" aria-label="リビューする科目のノート">
                   <div class="flashcard-note-list">
-                  <article class="flashcard-series-index" aria-label="Reboot 1st Edition">
+                  <article class="flashcard-series-index index-reboot" aria-label="Reboot 1st Edition">
                     <span>Reboot 1st Edition</span>
                   </article>
                   <article class="flashcard-note note-red">
@@ -271,7 +271,7 @@
                     <p class="flashcard-note-jp">情報（工業情報数理）</p>
                     <p class="flashcard-note-en">Information Study</p>
                   </article>
-                  <article class="flashcard-series-index" aria-label="Refine 2nd Edition">
+                  <article class="flashcard-series-index index-refine" aria-label="Refine 2nd Edition">
                     <span>Refine 2nd Edition</span>
                   </article>
                   <article class="flashcard-note note-red">
@@ -334,7 +334,7 @@
                     <p class="flashcard-note-jp">ＳＳ科学技術理論Ⅰ（３分野）</p>
                     <p class="flashcard-note-en">3rd Field</p>
                   </article>
-                  <article class="flashcard-series-index" aria-label="On COLORFUL">
+                  <article class="flashcard-series-index index-colorful" aria-label="On COLORFUL">
                     <span>On COLORFUL</span>
                   </article>
                   <article class="flashcard-note note-theme">
@@ -654,7 +654,58 @@
 
     <script src="./auth0-config.js?v=20260426-1"></script>
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js"></script>
-    <script src="./app.js?v=20260506-3" charset="UTF-8"></script>
+    <script src="./app.js?v=20260506-5" charset="UTF-8"></script>
     <script src="./pwa.js?v=20260506-1" charset="UTF-8"></script>
+    <script>
+  function isElementActuallyVisible(element) {
+    if (!element) return false;
+
+    const style = window.getComputedStyle(element);
+
+    if (
+      element.hidden ||
+      style.display === "none" ||
+      style.visibility === "hidden" ||
+      style.opacity === "0"
+    ) {
+      return false;
+    }
+
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function updateEmptyFlashcardSeriesIndexes() {
+    const indexes = document.querySelectorAll(".flashcard-series-index");
+
+    indexes.forEach((index) => {
+      let hasVisibleNote = false;
+      let current = index.nextElementSibling;
+
+      while (current && !current.classList.contains("flashcard-series-index")) {
+        if (
+          current.classList.contains("flashcard-note") &&
+          isElementActuallyVisible(current)
+        ) {
+          hasVisibleNote = true;
+          break;
+        }
+
+        current = current.nextElementSibling;
+      }
+
+      index.classList.toggle("is-empty-series", !hasVisibleNote);
+      index.classList.toggle("is-ready-series", hasVisibleNote);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", updateEmptyFlashcardSeriesIndexes);
+
+  window.addEventListener("load", () => {
+    updateEmptyFlashcardSeriesIndexes();
+    setTimeout(updateEmptyFlashcardSeriesIndexes, 100);
+    setTimeout(updateEmptyFlashcardSeriesIndexes, 500);
+  });
+</script>
   </body>
 </html>
