@@ -75,23 +75,17 @@ const REVIEW_DATA_MAX_PAYLOAD_BYTES = 750 * 1024;
 const USER_SELECT_FIELDS = [
   "id",
   "auth0_sub",
-  "display_name",
+  "nickname",
   "email",
-  "review_storage_key",
-  "review_payload",
-  "login_days",
-  "daily_login_reward_days",
-  "daily_try_records",
-  "learning_progress",
+  "personal_data",
+  "review_period",
+  "todays_mission",
+  "review_data",
   "login_status",
   "is_logged_in",
   "auth_provider",
-  "nickname",
   "color_theme",
-  "high_contrast",
-  "monochrome",
   "review_coin",
-  "coin_grant_5000_applied",
   "has_unlimited_review_coins",
   "settings",
   "education_codes",
@@ -330,11 +324,11 @@ async function upsertCurrentReviewAccount(request, env) {
   const payload = body?.value && typeof body.value === "object" ? body.value : {};
   const hasNicknamePatch = request.method !== "GET" && Object.prototype.hasOwnProperty.call(payload, "nickname");
   const nickname = normalizeSupabaseText(payload.nickname);
-  const displayName = hasNicknamePatch && nickname ? nickname : normalizeSupabaseText(context.user?.display_name);
+  const displayName = hasNicknamePatch && nickname ? nickname : normalizeSupabaseText(context.user?.nickname);
   let user = context.user;
-  if (user?.id && hasNicknamePatch && nickname && nickname !== user.display_name) {
+  if (user?.id && hasNicknamePatch && nickname && nickname !== user.nickname) {
     const updatedUser = await updateUserById(context.supabase, user.id, {
-      display_name: nickname,
+      nickname,
     });
     if (updatedUser.ok && updatedUser.user) {
       user = updatedUser.user;
@@ -588,23 +582,25 @@ function normalizeReviewDataPayload(body) {
 function extractReviewDataColumns(payload) {
   const data = normalizeJsonObject(payload);
   const columns = {};
-  columns.review_storage_key = REVIEW_DATA_STORAGE_KEY;
-  columns.review_payload = data;
-  if (Object.prototype.hasOwnProperty.call(data, "loginDays")) {
-    columns.login_days = normalizeJsonObject(data.loginDays);
-  }
-  if (Object.prototype.hasOwnProperty.call(data, "dailyLoginRewardDays")) {
-    columns.daily_login_reward_days = normalizeJsonObject(data.dailyLoginRewardDays);
-  }
+  columns.personal_data = data;
   if (Object.prototype.hasOwnProperty.call(data, "dailyTryRecords")) {
-    columns.daily_try_records = normalizeJsonObject(data.dailyTryRecords);
+    columns.todays_mission = normalizeJsonObject(data.dailyTryRecords);
   }
   if (
     Object.prototype.hasOwnProperty.call(data, "learningProgress") ||
     Object.prototype.hasOwnProperty.call(data, "progress") ||
     Object.prototype.hasOwnProperty.call(data, "noteProgress")
   ) {
-    columns.learning_progress = normalizeJsonObject(data.learningProgress ?? data.progress ?? data.noteProgress);
+    columns.review_data = normalizeJsonObject(data.learningProgress ?? data.progress ?? data.noteProgress);
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(data, "loginDays") ||
+    Object.prototype.hasOwnProperty.call(data, "dailyLoginRewardDays")
+  ) {
+    columns.review_period = {
+      loginDays: normalizeJsonObject(data.loginDays),
+      dailyLoginRewardDays: normalizeJsonObject(data.dailyLoginRewardDays),
+    };
   }
   if (reviewDataPayloadIncludesPersonalColumns(data)) {
     Object.assign(columns, extractReviewPersonalColumns(data));
@@ -613,7 +609,7 @@ function extractReviewDataColumns(payload) {
 }
 
 function reviewDataPayloadIncludesPersonalColumns(data) {
-  return ["reviewCoin", "coinGrant5000Applied", "hasUnlimitedReviewCoins", "settings", "auth", "avater", "avatar"].some((key) =>
+  return ["reviewCoin", "hasUnlimitedReviewCoins", "settings", "auth", "avater", "avatar"].some((key) =>
     Object.prototype.hasOwnProperty.call(data, key)
   );
 }
@@ -624,6 +620,7 @@ function extractReviewPersonalColumns(payload) {
   const auth = normalizeJsonObject(data.auth);
   const avater = normalizeJsonObject(data.avater ?? data.avatar);
   const equippedAvater = normalizeJsonObject(avater.equipped);
+  const reviewSettings = normalizeReviewSettingsForSupabase(settings);
   const reviewCoin = Number(data.reviewCoin);
   const isLoggedIn = Boolean(auth.isLoggedIn);
   const provider = normalizeSupabaseText(auth.provider);
@@ -633,39 +630,42 @@ function extractReviewPersonalColumns(payload) {
     login_status: loginStatus,
     is_logged_in: isLoggedIn,
     auth_provider: provider || null,
-    display_name: normalizeSupabaseText(auth.displayName) || null,
-    nickname: normalizeSupabaseText(auth.nickname) || null,
+    nickname: normalizeSupabaseText(auth.nickname) || normalizeSupabaseText(auth.displayName) || null,
     email: normalizeSupabaseText(auth.email) || null,
     color_theme: normalizeSupabaseText(settings.theme) || null,
-    high_contrast: Boolean(settings.highContrast),
-    monochrome: Boolean(settings.monochrome),
     review_coin: Number.isFinite(reviewCoin) && reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
-    coin_grant_5000_applied: Boolean(data.coinGrant5000Applied),
     has_unlimited_review_coins: Boolean(data.hasUnlimitedReviewCoins),
-    settings,
-    education_codes: Array.isArray(settings.educationCodes) ? settings.educationCodes : [],
+    settings: reviewSettings,
+    education_codes: Array.isArray(reviewSettings.educationCodes) ? reviewSettings.educationCodes : [],
     avater,
     equipped_avater: equippedAvater,
   };
 }
 
+function normalizeReviewSettingsForSupabase(settings) {
+  const normalized = normalizeJsonObject(settings);
+  const sanitized = { ...normalized };
+  delete sanitized.highContrast;
+  delete sanitized.monochrome;
+  delete sanitized.text;
+  delete sanitized.notifications;
+  delete sanitized.notificationTimeMinutes;
+  delete sanitized.reviewPeriodNotifyMinutes;
+  return sanitized;
+}
+
 function createDefaultReviewDataColumns() {
   return {
-    review_storage_key: REVIEW_DATA_STORAGE_KEY,
-    review_payload: {},
-    login_days: {},
-    daily_login_reward_days: {},
-    daily_try_records: {},
-    learning_progress: {},
+    personal_data: {},
+    review_period: {},
+    todays_mission: {},
+    review_data: {},
     login_status: "logged_out",
     is_logged_in: false,
     auth_provider: null,
     nickname: null,
     color_theme: null,
-    high_contrast: false,
-    monochrome: false,
     review_coin: 0,
-    coin_grant_5000_applied: false,
     has_unlimited_review_coins: false,
     settings: {},
     education_codes: [],
@@ -706,7 +706,7 @@ async function getOrCreateUserByAuth0Sub(supabase, claims) {
 
   const createdUser = await createUser(supabase, {
     auth0_sub: auth0Sub,
-    display_name: getDisplayNameFromClaims(claims),
+    nickname: getDisplayNameFromClaims(claims),
     email: normalizeSupabaseText(claims?.email) || null,
   });
   if (createdUser.ok) {
@@ -829,15 +829,14 @@ async function upsertReviewData(supabase, reviewData) {
 
   const {
     user_id: _userId,
-    storage_key: storageKey,
+    storage_key: _storageKey,
     payload,
     client_updated_at: clientUpdatedAt,
     ...columns
   } = reviewData;
   const patch = {
     ...columns,
-    review_storage_key: normalizeSupabaseText(storageKey) || REVIEW_DATA_STORAGE_KEY,
-    review_payload: normalizeJsonObject(payload),
+    personal_data: normalizeJsonObject(payload),
     review_client_updated_at: normalizeIsoTimestamp(clientUpdatedAt),
     review_remote_updated_at: now,
     updated_at: now,
@@ -898,36 +897,39 @@ function serializeReviewDataRow(row) {
   if (!row) {
     return null;
   }
+  const reviewPeriod = normalizeJsonObject(row.review_period);
   return {
-    storageKey: row.review_storage_key || REVIEW_DATA_STORAGE_KEY,
+    storageKey: REVIEW_DATA_STORAGE_KEY,
     data:
-      row.review_payload && typeof row.review_payload === "object" && !Array.isArray(row.review_payload)
-        ? row.review_payload
+      row.personal_data && typeof row.personal_data === "object" && !Array.isArray(row.personal_data)
+        ? row.personal_data
         : {},
-    loginDays: row.login_days && typeof row.login_days === "object" && !Array.isArray(row.login_days) ? row.login_days : {},
+    loginDays:
+      reviewPeriod.loginDays && typeof reviewPeriod.loginDays === "object" && !Array.isArray(reviewPeriod.loginDays)
+        ? reviewPeriod.loginDays
+        : {},
     dailyLoginRewardDays:
-      row.daily_login_reward_days && typeof row.daily_login_reward_days === "object" && !Array.isArray(row.daily_login_reward_days)
-        ? row.daily_login_reward_days
+      reviewPeriod.dailyLoginRewardDays &&
+      typeof reviewPeriod.dailyLoginRewardDays === "object" &&
+      !Array.isArray(reviewPeriod.dailyLoginRewardDays)
+        ? reviewPeriod.dailyLoginRewardDays
         : {},
     dailyTryRecords:
-      row.daily_try_records && typeof row.daily_try_records === "object" && !Array.isArray(row.daily_try_records)
-        ? row.daily_try_records
+      row.todays_mission && typeof row.todays_mission === "object" && !Array.isArray(row.todays_mission)
+        ? row.todays_mission
         : {},
     learningProgress:
-      row.learning_progress && typeof row.learning_progress === "object" && !Array.isArray(row.learning_progress)
-        ? row.learning_progress
+      row.review_data && typeof row.review_data === "object" && !Array.isArray(row.review_data)
+        ? row.review_data
         : {},
     loginStatus: row.login_status || null,
     isLoggedIn: Boolean(row.is_logged_in),
     authProvider: row.auth_provider || null,
-    displayName: row.display_name || null,
+    displayName: row.nickname || null,
     nickname: row.nickname || null,
     email: row.email || null,
     colorTheme: row.color_theme || null,
-    highContrast: Boolean(row.high_contrast),
-    monochrome: Boolean(row.monochrome),
     reviewCoin: Number.isFinite(Number(row.review_coin)) ? Number(row.review_coin) : 0,
-    coinGrant5000Applied: Boolean(row.coin_grant_5000_applied),
     hasUnlimitedReviewCoins: Boolean(row.has_unlimited_review_coins),
     settings: row.settings && typeof row.settings === "object" && !Array.isArray(row.settings) ? row.settings : {},
     educationCodes: Array.isArray(row.education_codes) ? row.education_codes : [],
@@ -973,7 +975,7 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
   const profileDisplayName = normalizeSupabaseText(profile?.displayName);
   const shouldUpdateDisplayName = Boolean(profile?.updateDisplayName && profileDisplayName);
   const displayName =
-    profileDisplayName || normalizeSupabaseText(user?.display_name) || getDisplayNameFromClaims(claims);
+    profileDisplayName || normalizeSupabaseText(user?.nickname) || getDisplayNameFromClaims(claims);
   const email = normalizeSupabaseText(profile?.email) || normalizeSupabaseText(claims?.email) || null;
   if (existing.member) {
     const patch = {};
@@ -984,7 +986,7 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
       displayName &&
       (!existing.member.display_name || (shouldUpdateDisplayName && displayName !== existing.member.display_name))
     ) {
-      patch.display_name = displayName;
+      patch.nickname = displayName;
     }
     if (email !== (existing.member.email ?? null)) {
       patch.email = email;
@@ -1006,7 +1008,7 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
   return createManagerMember(supabase, {
     user_id: user.id,
     auth0_sub: auth0Sub,
-    display_name: displayName,
+    nickname: displayName,
     email,
     role: shouldBootstrapOwner ? "owner" : null,
     status: shouldBootstrapOwner ? "approved" : "pending",
@@ -1069,7 +1071,7 @@ async function createManagerMember(supabase, member) {
     },
     body: JSON.stringify({
       auth0_sub: member.auth0_sub || null,
-      display_name: member.display_name || null,
+      nickname: member.nickname || member.display_name || null,
       email: member.email || null,
       manager_role: normalizeManagerRole(member.role),
       manager_status: normalizeSupabaseText(member.status) || "pending",
@@ -1119,7 +1121,8 @@ function serializeManagerMemberRow(user) {
     id: user.id || "",
     user_id: user.id || "",
     auth0_sub: user.auth0_sub || "",
-    display_name: user.display_name || "",
+    display_name: user.nickname || "",
+    nickname: user.nickname || "",
     email: user.email || null,
     role: normalizeManagerRole(user.manager_role),
     status: normalizeSupabaseText(user.manager_status) || "pending",

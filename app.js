@@ -52,19 +52,6 @@ const MYPAGE_PAGE_IDS = ["top"];
 const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings"];
 const SETTINGS_TAB_IDS = ["account", "education-code", "review-data"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
-const DEFAULT_TEXT_SETTINGS = {
-  size: 100,
-  weight: 500,
-  spacing: 0,
-};
-const DEFAULT_NOTIFICATION_SETTINGS = {
-  dailyLogin: true,
-  dailyTry: true,
-  notice: true,
-};
-const DEFAULT_NOTIFICATION_TIME_MINUTES = 7 * 60;
-// App-wide values that should be easy to adjust without digging through UI code.
-const INITIAL_REVIEW_COIN_GRANT = 100;
 const DAILY_LOGIN_REWARD_RULES = Object.freeze({
   firstDay: 10,
   thirdDay: 20,
@@ -87,17 +74,9 @@ const REVIEW_DATA_SYNC_DEBOUNCE_MS = 1200;
 const REVIEW_DATA_SYNC_REFRESH_MIN_MS = 15 * 1000;
 const STORE_CONFIG_KEY = "the-review-store-config-v1";
 const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
-const INFO_NOTICE_READ_KEY = "the-review-info-notice-read-v1";
 const MANAGER_ACCESS_CACHE_KEY = "the-review-manager-access-v1";
 const MANAGER_ACCESS_TOKEN_TIMEOUT_MS = 7000;
 const MANAGER_REVIEW_COIN_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
-const INFO_MENU_NOTICES = [
-  {
-    id: "20260507",
-    title: "アプリの提供を開始しました！",
-    body: "現在はフラッシュカード機能を中心に提供していますが、今後はさらに多くの機能を追加していく予定です。ぜひご活用ください！",
-  },
-];
 const DEFAULT_STORE_CONFIG = {
   avatarStatus: "published",
   avatarMessage: "Avaterアイテムを選べます。",
@@ -355,8 +334,6 @@ const elements = {
   infoMenuPanel: document.getElementById("infoMenuPanel"),
   infoMenuUser: document.querySelector("#infoMenuPanel .info-menu-user"),
   infoMenuNickname: document.getElementById("infoMenuNickname"),
-  infoMenuNoticeBadge: document.getElementById("infoMenuNoticeBadge"),
-  infoMenuNoticeList: document.getElementById("infoMenuNoticeList"),
   managerMenuLink: document.getElementById("managerMenuLink"),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
@@ -407,17 +384,6 @@ const elements = {
   accountActionRow: document.getElementById("logoutBtn")?.closest(".setting-row") ?? null,
   themeCardList: document.getElementById("themeCardList"),
   themeCards: Array.from(document.querySelectorAll("[data-theme-choice]")),
-  highContrastToggle: document.getElementById("highContrastToggle"),
-  monochromeToggle: document.getElementById("monochromeToggle"),
-  textSizeRange: document.getElementById("textSizeRange"),
-  textSizeValue: document.getElementById("textSizeValue"),
-  textWeightRange: document.getElementById("textWeightRange"),
-  textWeightValue: document.getElementById("textWeightValue"),
-  textSpacingRange: document.getElementById("textSpacingRange"),
-  textSpacingValue: document.getElementById("textSpacingValue"),
-  notifyReviewPeriodToggle: document.getElementById("notifyReviewPeriodToggle"),
-  notifyTodaysMissionToggle: document.getElementById("notifyTodaysMissionToggle"),
-  notifyNoticeToggle: document.getElementById("notifyNoticeToggle"),
   reviewDataExportBtn: document.getElementById("reviewDataExportBtn"),
   reviewDataImportBtn: document.getElementById("reviewDataImportBtn"),
   reviewDataImportInput: document.getElementById("reviewDataImportInput"),
@@ -637,7 +603,6 @@ async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation
 }
 
 async function init() {
-  ensureInitialCoinGrant();
   const isAuthCallback = hasAuth0CallbackParams();
   const shouldWaitForAuth = isAuthCallback || !state.auth.isLoggedIn;
   const authInitialization = initializeAuth(shouldWaitForAuth ? {} : { preserveExistingSession: true });
@@ -676,14 +641,11 @@ async function init() {
   bindSharedDataAndGuestDialogEvents();
   bindReviewDataCloudRefreshEvents();
   applyTheme(state.settings.theme);
-  applyAccessibilityModes();
-  applyTypographySettings();
   injectTabScriptLabels();
   bindBeforeUnloadPrompt();
   markDailyLogin();
   bindEvents();
   startHomeGreetingTicker();
-  renderInfoMenuNotices();
   renderAll();
   activateScreen(activeScreen);
   void updateManagerMenuVisibility();
@@ -1219,15 +1181,6 @@ function hideAppLoader() {
   window.setTimeout(removeLoader, 500);
 }
 
-function ensureInitialCoinGrant() {
-  if (state.coinGrant5000Applied) {
-    return;
-  }
-  state.reviewCoin = Math.max(normalizeCoinAmount(state.reviewCoin), INITIAL_REVIEW_COIN_GRANT);
-  state.coinGrant5000Applied = true;
-  saveState();
-}
-
 function bindBeforeUnloadPrompt() {
   window.onbeforeunload = null;
 }
@@ -1550,9 +1503,6 @@ function bindEvents() {
 
   elements.themeCards.forEach((card) => {
     card.addEventListener("click", () => {
-      if (isModeThemeActive()) {
-        return;
-      }
       handleThemeCardClick(card.dataset.themeChoice);
     });
   });
@@ -1566,54 +1516,6 @@ function bindEvents() {
   elements.themeUnlockDialog?.addEventListener("cancel", () => {
     pendingThemeUnlockKey = null;
   });
-
-  if (elements.highContrastToggle) {
-    elements.highContrastToggle.addEventListener("change", () => {
-      updateAccessibilityMode("highContrast", elements.highContrastToggle.checked);
-    });
-  }
-
-  if (elements.monochromeToggle) {
-    elements.monochromeToggle.addEventListener("change", () => {
-      updateAccessibilityMode("monochrome", elements.monochromeToggle.checked);
-    });
-  }
-
-  if (elements.textSizeRange) {
-    elements.textSizeRange.addEventListener("input", () => {
-      updateTextSetting("size", elements.textSizeRange.value);
-    });
-  }
-
-  if (elements.textWeightRange) {
-    elements.textWeightRange.addEventListener("input", () => {
-      updateTextSetting("weight", elements.textWeightRange.value);
-    });
-  }
-
-  if (elements.textSpacingRange) {
-    elements.textSpacingRange.addEventListener("input", () => {
-      updateTextSetting("spacing", elements.textSpacingRange.value);
-    });
-  }
-
-  if (elements.notifyReviewPeriodToggle) {
-    elements.notifyReviewPeriodToggle.addEventListener("change", () => {
-      updateNotificationSetting("dailyLogin", elements.notifyReviewPeriodToggle.checked);
-    });
-  }
-
-  if (elements.notifyTodaysMissionToggle) {
-    elements.notifyTodaysMissionToggle.addEventListener("change", () => {
-      updateNotificationSetting("dailyTry", elements.notifyTodaysMissionToggle.checked);
-    });
-  }
-
-  if (elements.notifyNoticeToggle) {
-    elements.notifyNoticeToggle.addEventListener("change", () => {
-      updateNotificationSetting("notice", elements.notifyNoticeToggle.checked);
-    });
-  }
 
   if (elements.selfcheckTimerStartBtn) {
     elements.selfcheckTimerStartBtn.addEventListener("click", startSelfcheckTimer);
@@ -2414,7 +2316,7 @@ function applyReviewAccountProfilePayload(payload, options = {}) {
     return;
   }
   const requestedNickname = normalizeNicknameText(options.requestedNickname);
-  const serverNickname = normalizeNicknameText(payload?.user?.display_name || payload?.managerMember?.display_name);
+  const serverNickname = normalizeNicknameText(payload?.user?.nickname || payload?.managerMember?.nickname || payload?.managerMember?.display_name);
   const shouldUseServerNickname =
     serverNickname && !looksLikeAuth0Subject(serverNickname) && (requestedNickname || payload.isNewReviewAccount === false);
   const nextNickname = requestedNickname || (shouldUseServerNickname ? serverNickname : "");
@@ -6369,25 +6271,6 @@ function renderMypageSettings() {
     elements.accountActionRow.classList.toggle("is-guest-account-actions", isGuestMode);
   }
   renderThemeCardSelection();
-  updateThemeSelectionLockState();
-
-  if (elements.highContrastToggle) {
-    elements.highContrastToggle.checked = state.settings.highContrast;
-  }
-  if (elements.monochromeToggle) {
-    elements.monochromeToggle.checked = state.settings.monochrome;
-  }
-  if (elements.notifyReviewPeriodToggle) {
-    elements.notifyReviewPeriodToggle.checked = state.settings.notifications.dailyLogin;
-  }
-  if (elements.notifyTodaysMissionToggle) {
-    elements.notifyTodaysMissionToggle.checked = state.settings.notifications.dailyTry;
-  }
-  if (elements.notifyNoticeToggle) {
-    elements.notifyNoticeToggle.checked = state.settings.notifications.notice;
-  }
-
-  renderTextSettingIndicators();
   renderSettingsEducationCode();
 }
 
@@ -6960,22 +6843,6 @@ function renderThemeCardSelection() {
   });
 }
 
-function updateThemeSelectionLockState() {
-  const shouldLock = isModeThemeActive();
-  if (elements.themeCardList) {
-    elements.themeCardList.classList.toggle("is-disabled", shouldLock);
-    elements.themeCardList.setAttribute("aria-disabled", String(shouldLock));
-  }
-  elements.themeCards.forEach((card) => {
-    card.disabled = shouldLock;
-    card.setAttribute("aria-disabled", String(shouldLock));
-  });
-}
-
-function isModeThemeActive() {
-  return Boolean(state.settings.highContrast || state.settings.monochrome);
-}
-
 function isThemeUnlocked(themeKey) {
   if (!AVAILABLE_THEMES.includes(themeKey)) {
     return false;
@@ -7078,76 +6945,6 @@ function getThemeUnlockCost(themeKey) {
   return PREMIUM_THEME_COSTS[themeKey] ?? 0;
 }
 
-function updateAccessibilityMode(modeKey, enabled) {
-  if (modeKey !== "highContrast" && modeKey !== "monochrome") {
-    return;
-  }
-  const shouldEnable = Boolean(enabled);
-  if (shouldEnable) {
-    state.settings.highContrast = modeKey === "highContrast";
-    state.settings.monochrome = modeKey === "monochrome";
-  } else {
-    state.settings[modeKey] = false;
-  }
-  applyAccessibilityModes();
-  saveState();
-  renderMypageSettings();
-}
-
-function applyAccessibilityModes() {
-  document.body.classList.toggle("mode-high-contrast", Boolean(state.settings.highContrast));
-  document.body.classList.toggle("mode-monochrome", Boolean(state.settings.monochrome));
-}
-
-function updateTextSetting(settingKey, nextValue) {
-  const nextTextSettings = {
-    ...state.settings.text,
-    [settingKey]: Number(nextValue),
-  };
-  state.settings.text = normalizeTextSettings(nextTextSettings);
-  applyTypographySettings();
-  saveState();
-  renderTextSettingIndicators();
-}
-
-function applyTypographySettings() {
-  const root = document.documentElement;
-  const { size, weight, spacing } = state.settings.text;
-  root.style.setProperty("--app-font-scale", String(size / 100));
-  root.style.setProperty("--app-font-weight", String(weight));
-  root.style.setProperty("--app-letter-spacing", `${spacing.toFixed(2)}em`);
-}
-
-function renderTextSettingIndicators() {
-  const { size, weight, spacing } = state.settings.text;
-  if (elements.textSizeRange) {
-    elements.textSizeRange.value = String(size);
-  }
-  if (elements.textWeightRange) {
-    elements.textWeightRange.value = String(weight);
-  }
-  if (elements.textSpacingRange) {
-    elements.textSpacingRange.value = String(spacing);
-  }
-  if (elements.textSizeValue) {
-    elements.textSizeValue.textContent = `${size}%`;
-  }
-  if (elements.textWeightValue) {
-    elements.textWeightValue.textContent = String(weight);
-  }
-  if (elements.textSpacingValue) {
-    elements.textSpacingValue.textContent = `${spacing.toFixed(2)}em`;
-  }
-}
-
-function updateNotificationSetting(key, enabled) {
-  if (!(key in state.settings.notifications)) {
-    return;
-  }
-  state.settings.notifications[key] = Boolean(enabled);
-  saveState();
-}
-
 function exportReviewData() {
   const snapshot = JSON.parse(JSON.stringify(state));
   const plainJson = JSON.stringify(snapshot);
@@ -7243,8 +7040,6 @@ async function importReviewDataFromFile(file) {
   }
 
   applyTheme(state.settings.theme);
-  applyAccessibilityModes();
-  applyTypographySettings();
   dailyTryRun = createDailyTryRun();
   pauseSelfcheckTimer();
   selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
@@ -7294,7 +7089,7 @@ function isLikelyReviewState(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
-  const keys = ["reviewCoin", "coinGrant5000Applied", "loginDays", "dailyTryRecords", "learningProgress", "settings", "auth"];
+  const keys = ["reviewCoin", "loginDays", "dailyTryRecords", "learningProgress", "settings", "auth"];
   return keys.some((key) => key in value);
 }
 
@@ -7404,56 +7199,6 @@ function isInfoMenuOpen() {
   return Boolean(elements.infoMenuPanel?.classList.contains("is-open"));
 }
 
-function getReadInfoNoticeIds() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(INFO_NOTICE_READ_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function setReadInfoNoticeIds(ids) {
-  try {
-    window.localStorage.setItem(INFO_NOTICE_READ_KEY, JSON.stringify(Array.from(new Set(ids))));
-  } catch {
-    // noop
-  }
-}
-
-function getUnreadInfoNoticeCount() {
-  const readIds = new Set(getReadInfoNoticeIds());
-  return INFO_MENU_NOTICES.filter((notice) => !readIds.has(notice.id)).length;
-}
-
-function renderInfoMenuNotices() {
-  if (elements.infoMenuNoticeBadge) {
-    const unreadCount = getUnreadInfoNoticeCount();
-    elements.infoMenuNoticeBadge.textContent = String(unreadCount);
-    elements.infoMenuNoticeBadge.hidden = unreadCount === 0;
-    elements.infoMenuNoticeBadge.style.display = unreadCount === 0 ? "none" : "";
-  }
-  if (!elements.infoMenuNoticeList) {
-    return;
-  }
-  elements.infoMenuNoticeList.innerHTML = INFO_MENU_NOTICES.map(
-    (notice) => `
-      <button class="info-menu-notice-item" type="button" data-info-notice-id="${escapeHtml(notice.id)}">
-        <span class="material-symbols-rounded info-menu-item-icon" aria-hidden="true">notifications</span>
-        <span class="info-menu-notice-body">
-          <strong>${escapeHtml(notice.title)}</strong>
-          <span>${escapeHtml(notice.body)}</span>
-        </span>
-      </button>
-    `,
-  ).join("");
-}
-
-function markInfoMenuNoticesRead() {
-  setReadInfoNoticeIds(INFO_MENU_NOTICES.map((notice) => notice.id));
-  renderInfoMenuNotices();
-}
-
 function openInfoMenu() {
   if (!elements.infoMenuPanel || !elements.infoMenuTrigger) {
     return;
@@ -7467,7 +7212,6 @@ function openInfoMenu() {
     elements.infoMenuPanel?.classList.add("is-open");
   });
   elements.infoMenuTrigger.setAttribute("aria-expanded", "true");
-  markInfoMenuNoticesRead();
 }
 
 function closeInfoMenu() {
@@ -8240,7 +7984,6 @@ function loadState() {
 function createDefaultState() {
   return {
     reviewCoin: 0,
-    coinGrant5000Applied: false,
     loginDays: {},
     dailyLoginRewardDays: {},
     dailyTryRecords: {},
@@ -8249,14 +7992,9 @@ function createDefaultState() {
       theme: DEFAULT_THEME,
       unlockedThemes: createDefaultThemeUnlockState(),
       themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
-      highContrast: false,
-      monochrome: false,
       educationCode: "",
       educationCodes: [],
       educationCodeDetails: {},
-      text: { ...DEFAULT_TEXT_SETTINGS },
-      notifications: { ...DEFAULT_NOTIFICATION_SETTINGS },
-      notificationTimeMinutes: DEFAULT_NOTIFICATION_TIME_MINUTES,
     },
     auth: {
       isLoggedIn: false,
@@ -8279,7 +8017,6 @@ function normalizePersistedState(parsed) {
     ...fallback,
     reviewCoin:
       Number.isFinite(Number(parsed?.reviewCoin)) && Number(parsed.reviewCoin) >= 0 ? Number(parsed.reviewCoin) : 0,
-    coinGrant5000Applied: normalizeBoolean(parsed?.coinGrant5000Applied, false),
     loginDays: parsed?.loginDays && typeof parsed.loginDays === "object" ? parsed.loginDays : {},
     dailyLoginRewardDays: normalizeDailyLoginRewardDays(parsed?.dailyLoginRewardDays),
     dailyTryRecords: parsed?.dailyTryRecords && typeof parsed.dailyTryRecords === "object" ? parsed.dailyTryRecords : {},
@@ -8440,10 +8177,6 @@ function normalizeAvaterState(value) {
 }
 
 function normalizeSettingsState(value) {
-  const normalizedMode = normalizeModeThemeState({
-    highContrast: normalizeBoolean(value?.highContrast, false),
-    monochrome: normalizeBoolean(value?.monochrome, false),
-  });
   const storedTheme = normalizeTheme(value?.theme);
   const themeUnlockPolicyVersion = Number(value?.themeUnlockPolicyVersion);
   const preservePremiumUnlocks = themeUnlockPolicyVersion >= THEME_UNLOCK_POLICY_VERSION;
@@ -8459,47 +8192,15 @@ function normalizeSettingsState(value) {
     theme,
     unlockedThemes,
     themeUnlockPolicyVersion: THEME_UNLOCK_POLICY_VERSION,
-    highContrast: normalizedMode.highContrast,
-    monochrome: normalizedMode.monochrome,
     educationCode: educationCodes[0] || "",
     educationCodes,
     educationCodeDetails,
-    text: normalizeTextSettings(value?.text),
-    notifications: normalizeNotificationSettings(value?.notifications),
-    notificationTimeMinutes: normalizeNotificationTimeMinutes(
-      value?.notificationTimeMinutes ?? value?.reviewPeriodNotifyMinutes
-    ),
   };
 }
 
 function normalizeTheme(value) {
   const normalizedValue = LEGACY_THEME_ALIASES[value] ?? value;
   return AVAILABLE_THEMES.includes(normalizedValue) ? normalizedValue : DEFAULT_THEME;
-}
-
-function normalizeTextSettings(value) {
-  const size = Math.round(clampNumber(value?.size, 85, 130, DEFAULT_TEXT_SETTINGS.size));
-  const roundedWeight = Math.round(clampNumber(value?.weight, 400, 800, DEFAULT_TEXT_SETTINGS.weight) / 100) * 100;
-  const weight = clampNumber(roundedWeight, 400, 800, DEFAULT_TEXT_SETTINGS.weight);
-  const spacing = Number(clampNumber(value?.spacing, 0, 0.12, DEFAULT_TEXT_SETTINGS.spacing).toFixed(2));
-  return {
-    size,
-    weight,
-    spacing,
-  };
-}
-
-function normalizeNotificationSettings(value) {
-  return {
-    dailyLogin: normalizeBoolean(value?.dailyLogin, DEFAULT_NOTIFICATION_SETTINGS.dailyLogin),
-    dailyTry: normalizeBoolean(value?.dailyTry, DEFAULT_NOTIFICATION_SETTINGS.dailyTry),
-    notice: normalizeBoolean(value?.notice, DEFAULT_NOTIFICATION_SETTINGS.notice),
-  };
-}
-
-function normalizeNotificationTimeMinutes(value) {
-  const roundedMinutes = Math.round(clampNumber(value, 0, 1435, DEFAULT_NOTIFICATION_TIME_MINUTES) / 5) * 5;
-  return clampNumber(roundedMinutes, 0, 1435, DEFAULT_NOTIFICATION_TIME_MINUTES);
 }
 
 function createDefaultThemeUnlockState() {
@@ -8526,21 +8227,6 @@ function normalizeThemeUnlockState(value, options = {}) {
     }
   });
   return defaultState;
-}
-
-function normalizeModeThemeState(value) {
-  const highContrast = Boolean(value?.highContrast);
-  const monochrome = Boolean(value?.monochrome);
-  if (highContrast && monochrome) {
-    return {
-      highContrast: true,
-      monochrome: false,
-    };
-  }
-  return {
-    highContrast,
-    monochrome,
-  };
 }
 
 function normalizeAuthState(value) {
@@ -8875,7 +8561,6 @@ function createReviewDataStateSnapshot(sourceState = state) {
   const normalized = normalizePersistedState(JSON.parse(JSON.stringify(sourceState)));
   return {
     reviewCoin: normalized.reviewCoin,
-    coinGrant5000Applied: normalized.coinGrant5000Applied,
     hasUnlimitedReviewCoins: hasUnlimitedReviewCoins(),
     loginDays: normalized.loginDays,
     dailyLoginRewardDays: normalized.dailyLoginRewardDays,
@@ -8941,8 +8626,6 @@ function renderAfterReviewDataSync() {
     return;
   }
   applyTheme(state.settings.theme);
-  applyAccessibilityModes();
-  applyTypographySettings();
   dailyTryRun = createDailyTryRun();
   renderAll();
   activateScreen(activeScreen);
@@ -8965,7 +8648,6 @@ function mergeReviewDataStates(localState, remoteState, remoteRecord = {}) {
   merged.reviewCoin = bothStatesHaveSyncTimestamps
     ? normalizeCoinAmount(preferred.reviewCoin)
     : Math.max(normalizeCoinAmount(local.reviewCoin), normalizeCoinAmount(remote.reviewCoin));
-  merged.coinGrant5000Applied = Boolean(local.coinGrant5000Applied || remote.coinGrant5000Applied);
   merged.loginDays = mergeBooleanRecord(local.loginDays, remote.loginDays);
   merged.dailyLoginRewardDays = mergeNumberRecord(local.dailyLoginRewardDays, remote.dailyLoginRewardDays);
   merged.dailyTryRecords = mergeDailyTryRecordMap(local.dailyTryRecords, remote.dailyTryRecords, preferRemote);
@@ -9154,7 +8836,6 @@ function getReviewDataStateContentSnapshot(value) {
   const normalized = normalizePersistedState(value);
   return {
     reviewCoin: normalized.reviewCoin,
-    coinGrant5000Applied: normalized.coinGrant5000Applied,
     loginDays: normalized.loginDays,
     dailyLoginRewardDays: normalized.dailyLoginRewardDays,
     dailyTryRecords: normalized.dailyTryRecords,
@@ -9384,11 +9065,6 @@ async function validateEducationCodeValue(value) {
   const educationCodeScanner = document.getElementById("educationCodeScanner");
   const educationCodeVideo = document.getElementById("educationCodeVideo");
   const avatarInputs = Array.from(document.querySelectorAll('input[name="avatarPreset"]'));
-  const loginNotifyReviewPeriodToggle = document.getElementById("loginNotifyReviewPeriodToggle");
-  const loginNotifyCommonTimeDescription = document.getElementById("loginNotifyCommonTimeDescription");
-  const loginNotifyCommonTimeInput = document.getElementById("loginNotifyCommonTimeInput");
-  const loginNotifyTodaysMissionToggle = document.getElementById("loginNotifyTodaysMissionToggle");
-  const loginNotifyNoticeToggle = document.getElementById("loginNotifyNoticeToggle");
   const onboardingSaveBtn = document.getElementById("onboardingSaveBtn");
   const onboardingSavedNote = document.getElementById("onboardingSavedNote");
   const onboardingFixedProgress = document.getElementById("onboardingFixedProgress");
@@ -9504,102 +9180,6 @@ async function validateEducationCodeValue(value) {
     return normalizeNicknameText(nicknameInput?.value);
   }
 
-  function formatNotificationTime(minutes) {
-    const normalized = normalizeNotificationTimeMinutes(minutes);
-    const hours = String(Math.floor(normalized / 60)).padStart(2, "0");
-    const mins = String(normalized % 60).padStart(2, "0");
-    return `${hours}:${mins}`;
-  }
-
-  function parseTimeTextToMinutes(value, fallbackMinutes = DEFAULT_NOTIFICATION_TIME_MINUTES) {
-    const text = typeof value === "string" ? value.trim() : "";
-    const match = text.match(/^(\d{1,2}):(\d{2})$/);
-    if (!match) {
-      return normalizeNotificationTimeMinutes(fallbackMinutes);
-    }
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-      return normalizeNotificationTimeMinutes(fallbackMinutes);
-    }
-    return normalizeNotificationTimeMinutes(hours * 60 + minutes);
-  }
-
-  function getOnboardingNotificationTimeMinutes() {
-    const fallbackMinutes = state.settings?.notificationTimeMinutes ?? DEFAULT_NOTIFICATION_TIME_MINUTES;
-    if (!loginNotifyCommonTimeInput) {
-      return normalizeNotificationTimeMinutes(fallbackMinutes);
-    }
-    return parseTimeTextToMinutes(loginNotifyCommonTimeInput.value, fallbackMinutes);
-  }
-
-  function renderOnboardingNotificationTimeDescription(minutes = getOnboardingNotificationTimeMinutes()) {
-    const timeText = formatNotificationTime(minutes);
-    if (loginNotifyCommonTimeDescription) {
-      loginNotifyCommonTimeDescription.textContent = `${timeText}に毎日アプリをご利用できるよう通知を送信します`;
-    }
-  }
-
-  function applyOnboardingNotificationTimeMinutes(value) {
-    const normalized = normalizeNotificationTimeMinutes(value);
-    const timeText = formatNotificationTime(normalized);
-    if (loginNotifyCommonTimeInput) {
-      loginNotifyCommonTimeInput.value = timeText;
-    }
-    renderOnboardingNotificationTimeDescription(normalized);
-  }
-
-  function getOnboardingNotificationSettingsFromToggles() {
-    if (!loginNotifyReviewPeriodToggle && !loginNotifyTodaysMissionToggle && !loginNotifyNoticeToggle) {
-      return normalizeNotificationSettings(state.settings?.notifications);
-    }
-    return {
-      dailyLogin: loginNotifyReviewPeriodToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.dailyLogin,
-      dailyTry: loginNotifyTodaysMissionToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.dailyTry,
-      notice: loginNotifyNoticeToggle?.checked ?? DEFAULT_NOTIFICATION_SETTINGS.notice,
-    };
-  }
-
-  function applyOnboardingNotificationSettingsToToggles(settings) {
-    const normalized = normalizeNotificationSettings(settings);
-    if (loginNotifyReviewPeriodToggle) {
-      loginNotifyReviewPeriodToggle.checked = normalized.dailyLogin;
-    }
-    if (loginNotifyTodaysMissionToggle) {
-      loginNotifyTodaysMissionToggle.checked = normalized.dailyTry;
-    }
-    if (loginNotifyNoticeToggle) {
-      loginNotifyNoticeToggle.checked = normalized.notice;
-    }
-  }
-
-  function commitOnboardingNotificationSettings(
-    settings,
-    notificationTimeMinutes = getOnboardingNotificationTimeMinutes()
-  ) {
-    state.settings.notifications = normalizeNotificationSettings(settings);
-    state.settings.notificationTimeMinutes = normalizeNotificationTimeMinutes(notificationTimeMinutes);
-    saveState();
-  }
-
-  function handleOnboardingNotificationToggleChange() {
-    const nextSettings = getOnboardingNotificationSettingsFromToggles();
-    commitOnboardingNotificationSettings(nextSettings);
-    saveDraft();
-  }
-
-  function handleOnboardingNotificationTimeInput() {
-    renderOnboardingNotificationTimeDescription();
-    saveDraft();
-  }
-
-  function handleOnboardingNotificationTimeChange() {
-    const nextSettings = getOnboardingNotificationSettingsFromToggles();
-    const notificationTimeMinutes = getOnboardingNotificationTimeMinutes();
-    commitOnboardingNotificationSettings(nextSettings, notificationTimeMinutes);
-    saveDraft();
-  }
-
   function loadDraft() {
     try {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -9622,8 +9202,6 @@ async function validateEducationCodeValue(value) {
       nickname: getOnboardingNickname(),
       educationCode: getEducationCodeValue(),
       avatarPreset: getSelectedValue(avatarInputs),
-      notifications: getOnboardingNotificationSettingsFromToggles(),
-      notificationTimeMinutes: getOnboardingNotificationTimeMinutes(),
     };
     localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
   }
@@ -9931,33 +9509,6 @@ async function validateEducationCodeValue(value) {
         avatarInput.checked = true;
       }
     }
-    if (initialDraft.notifications && typeof initialDraft.notifications === "object") {
-      applyOnboardingNotificationSettingsToToggles(initialDraft.notifications);
-    } else if (typeof initialDraft.notifyPreference === "string" && initialDraft.notifyPreference.trim()) {
-      const normalizedPreference = initialDraft.notifyPreference.trim().toLowerCase();
-      if (normalizedPreference === "disabled") {
-        applyOnboardingNotificationSettingsToToggles({
-          dailyLogin: false,
-          dailyTry: false,
-          notice: false,
-        });
-      } else {
-        applyOnboardingNotificationSettingsToToggles({
-          dailyLogin: true,
-          dailyTry: true,
-          notice: true,
-        });
-      }
-    } else {
-      applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
-    }
-    if ("notificationTimeMinutes" in initialDraft) {
-      applyOnboardingNotificationTimeMinutes(initialDraft.notificationTimeMinutes);
-    } else if ("reviewPeriodNotifyMinutes" in initialDraft) {
-      applyOnboardingNotificationTimeMinutes(initialDraft.reviewPeriodNotifyMinutes);
-    } else {
-      applyOnboardingNotificationTimeMinutes(state.settings.notificationTimeMinutes);
-    }
   } else {
     if (nicknameInput && state.auth?.nickname) {
       nicknameInput.value = normalizeNicknameText(state.auth.nickname);
@@ -9966,8 +9517,6 @@ async function validateEducationCodeValue(value) {
     if (educationCodeInput && savedEducationCode) {
       educationCodeInput.value = normalizeEducationCodeValue(savedEducationCode);
     }
-    applyOnboardingNotificationSettingsToToggles(state.settings.notifications);
-    applyOnboardingNotificationTimeMinutes(state.settings.notificationTimeMinutes);
   }
   syncNicknameInputLock();
 
@@ -10016,12 +9565,6 @@ async function validateEducationCodeValue(value) {
   avatarInputs.forEach((input) => {
     input.addEventListener("change", saveDraft);
   });
-
-  loginNotifyCommonTimeInput?.addEventListener("input", handleOnboardingNotificationTimeInput);
-  loginNotifyCommonTimeInput?.addEventListener("change", handleOnboardingNotificationTimeChange);
-  loginNotifyReviewPeriodToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
-  loginNotifyTodaysMissionToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
-  loginNotifyNoticeToggle?.addEventListener("change", handleOnboardingNotificationToggleChange);
 
   window.addEventListener("the-review-login-onboarding-step", (event) => {
     if (setActiveStepByName(event.detail?.step)) {

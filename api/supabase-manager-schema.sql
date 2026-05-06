@@ -6,13 +6,16 @@ create extension if not exists pgcrypto;
 
 alter table public.users
   add column if not exists auth0_sub text,
-  add column if not exists display_name text,
+  add column if not exists nickname text,
   add column if not exists email text,
   add column if not exists manager_role text,
   add column if not exists manager_status text not null default 'pending',
   add column if not exists manager_approved_at timestamptz,
   add column if not exists manager_approved_by uuid,
   add column if not exists updated_at timestamptz not null default now();
+
+alter table public.users
+  add column if not exists display_name text;
 
 create index if not exists users_manager_status_idx on public.users(manager_status);
 create index if not exists users_manager_role_idx on public.users(manager_role);
@@ -54,6 +57,11 @@ begin
   end if;
 end $$;
 
+update public.users
+set
+  nickname = coalesce(nullif(nickname, ''), nullif(display_name, '')),
+  updated_at = coalesce(updated_at, now());
+
 alter table if exists public.manager_members
   add column if not exists auth0_sub text,
   add column if not exists display_name text,
@@ -72,7 +80,7 @@ begin
 update public.users as u
 set
   auth0_sub = coalesce(nullif(mm.auth0_sub, ''), u.auth0_sub),
-  display_name = coalesce(nullif(mm.display_name, ''), u.display_name),
+  nickname = coalesce(nullif(mm.display_name, ''), u.nickname),
   email = coalesce(nullif(mm.email, ''), u.email),
   manager_role = case
     when mm.role in ('owner', 'developer', 'checker', 'system_designer', 'character_designer') then mm.role
@@ -91,5 +99,8 @@ where mm.user_id = u.id
 $migration$;
   end if;
 end $$;
+
+alter table public.users
+  drop column if exists display_name;
 
 drop table if exists public.manager_members;
