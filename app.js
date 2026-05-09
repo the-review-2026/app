@@ -337,8 +337,8 @@ const elements = {
   infoMenuUser: document.querySelector("#infoMenuPanel .info-menu-user"),
   infoMenuNickname: document.getElementById("infoMenuNickname"),
   managerMenuLink: document.getElementById("managerMenuLink"),
-  managerNavButton: document.getElementById("managerNavButton"),
-  managerFrame: document.getElementById("managerFrame"),
+  managerMount: document.getElementById("managerMount"),
+  learnActionButtons: Array.from(document.querySelectorAll("[data-learn-action]")),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
@@ -493,6 +493,7 @@ let isLearnPopoverOpen = false;
 let pendingGuestModeAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
+let managerMigrationPromise = null;
 let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
 let isSavingAccountEditNickname = false;
@@ -1291,6 +1292,12 @@ function bindEvents() {
     });
   });
 
+  elements.learnActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      handleLearnMenuAction(button.dataset.learnAction);
+    });
+  });
+
   elements.settingsTabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       setSettingsTab(button.dataset.settingsTab);
@@ -1713,6 +1720,118 @@ function closeLearnPopover() {
   });
 }
 
+function handleLearnMenuAction(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "settings") {
+    closeLearnPopover();
+    activateScreen("settings");
+    return;
+  }
+  if (normalizedAction === "manager") {
+    closeLearnPopover();
+    if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+      promptLoginForMypage();
+      return;
+    }
+    activateScreen("manager");
+  }
+}
+
+function createManagerDocumentFacade(root) {
+  const scopedGetElementById = (id) => root.querySelector(`#${cssEscape(id)}`);
+  const scopedQuerySelector = (selector) => root.querySelector(selector);
+  const scopedQuerySelectorAll = (selector) => root.querySelectorAll(selector);
+  return new Proxy(document, {
+    get(target, property) {
+      if (property === "body") {
+        return root;
+      }
+      if (property === "getElementById") {
+        return scopedGetElementById;
+      }
+      if (property === "querySelector") {
+        return scopedQuerySelector;
+      }
+      if (property === "querySelectorAll") {
+        return scopedQuerySelectorAll;
+      }
+      if (property === "addEventListener") {
+        return root.addEventListener.bind(root);
+      }
+      if (property === "removeEventListener") {
+        return root.removeEventListener.bind(root);
+      }
+      if (property === "activeElement") {
+        return root.contains(target.activeElement) ? target.activeElement : null;
+      }
+      const value = target[property];
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
+function getManagerMigratedStyleText(parsedDocument) {
+  return Array.from(parsedDocument.querySelectorAll("style"))
+    .map((style) => style.textContent || "")
+    .join("\n")
+    .replaceAll("body.manager-page", ".manager-migrated-root");
+}
+
+function getManagerMainScript(parsedDocument) {
+  return Array.from(parsedDocument.querySelectorAll("body > script:not([src])"))
+    .map((script) => script.textContent || "")
+    .sort((a, b) => b.length - a.length)[0] || "";
+}
+
+async function loadMigratedManager() {
+  if (!elements.managerMount) {
+    return;
+  }
+  if (managerMigrationPromise) {
+    return managerMigrationPromise;
+  }
+  managerMigrationPromise = (async () => {
+    elements.managerMount.innerHTML = '<p class="hint-text">制作チーム用管理プログラムを読み込んでいます。</p>';
+    const response = await fetch("./manager.html?migrated=1&v=20260509-9", { cache: "no-cache" });
+    if (!response.ok) {
+      throw new Error("Failed to load manager source.");
+    }
+    const html = await response.text();
+    const parsedDocument = new DOMParser().parseFromString(html, "text/html");
+
+    if (!document.getElementById("managerMigratedStyle")) {
+      const style = document.createElement("style");
+      style.id = "managerMigratedStyle";
+      style.textContent = getManagerMigratedStyleText(parsedDocument);
+      document.head.append(style);
+    }
+
+    const root = document.createElement("section");
+    root.className = "manager-migrated-root manager-page is-embedded-manager";
+    root.dataset.theme = "manager";
+    Array.from(parsedDocument.body.children).forEach((child) => {
+      if (child.tagName.toLowerCase() === "script") {
+        return;
+      }
+      root.append(document.importNode(child, true));
+    });
+
+    elements.managerMount.replaceChildren(root);
+    const scriptText = getManagerMainScript(parsedDocument);
+    if (scriptText) {
+      await loadAuth0Sdk();
+      const managerDocument = createManagerDocumentFacade(root);
+      new Function("document", "window", scriptText)(managerDocument, window);
+    }
+  })().catch((error) => {
+    console.error("Failed to migrate The Review Manager:", error);
+    managerMigrationPromise = null;
+    elements.managerMount.innerHTML =
+      '<p class="feedback is-invalid">制作チーム用管理プログラムを読み込めませんでした。</p>';
+  });
+  return managerMigrationPromise;
+}
+
 function openLearnTimerPage() {
   closeLearnPopover();
   document.body.classList.add("learn-timer-page-open");
@@ -1776,17 +1895,9 @@ function activateScreen(screen) {
     setSettingsTab(activeSettingsTab);
   }
   if (normalizedScreen === "manager") {
-    ensureManagerFrameLoaded();
+    void loadMigratedManager();
   }
   renderFlashcardFocusMode();
-}
-
-function ensureManagerFrameLoaded() {
-  if (!elements.managerFrame || elements.managerFrame.dataset.loaded === "1") {
-    return;
-  }
-  elements.managerFrame.src = "./manager.html?embedded=1&v=20260509-8";
-  elements.managerFrame.dataset.loaded = "1";
 }
 
 function promptLoginForMypage() {
@@ -2491,9 +2602,6 @@ function updateManagerMenuVisibilityFromAccess(access) {
   }
   if (elements.managerMenuLink) {
     elements.managerMenuLink.hidden = !hasManagerRole;
-  }
-  if (elements.managerNavButton) {
-    elements.managerNavButton.classList.toggle("has-manager-access", hasManagerRole);
   }
   renderCoinBoard();
   renderMypageCoin();
