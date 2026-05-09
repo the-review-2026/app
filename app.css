@@ -9438,6 +9438,7 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 /* 2026-05-09 page alignment, bottom clearance, daily counter, and dark settings refinements. */
 body {
   --screen-end-clearance: clamp(11rem, 28dvh, 15rem);
+  --page-title-script-left-offset: 0.16rem;
 }
 
 #screen-home,
@@ -9446,6 +9447,12 @@ body {
 #screen-notice,
 #screen-settings {
   padding-bottom: var(--screen-end-clearance);
+}
+
+#screen-home .home-greeting-hero,
+#screen-notice > .page-title-row,
+#screen-settings > .page-title-row {
+  padding-left: var(--page-title-script-left-offset);
 }
 
 #screen-home .home-greeting-hero .page-script-title,
@@ -9614,6 +9621,7 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 @media (max-width: 760px) {
   body {
     --screen-end-clearance: clamp(11.4rem, 32dvh, 15.2rem);
+    --page-title-script-left-offset: 0.16rem;
   }
 
   body:has(#screen-notice.is-active) .top-nav-character,
@@ -9631,6 +9639,18 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
     margin-bottom: 0.58rem;
     padding-top: 0.48rem;
     padding-bottom: 0.92rem;
+  }
+
+  #screen-home .home-greeting-hero .page-script-title,
+  #screen-notice > .page-title-row .page-script-title,
+  #screen-settings > .page-title-row .page-script-title {
+    text-indent: -0.34rem;
+  }
+
+  #screen-home .page-script-title::after,
+  #screen-notice .page-script-title::after,
+  #screen-settings .page-script-title::after {
+    text-indent: 0;
   }
 
   #screen-settings > .settings-tab-panel {
