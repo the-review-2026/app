@@ -9412,7 +9412,7 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 
 /* 2026-05-09 page alignment, bottom clearance, daily counter, and dark settings refinements. */
 body {
-  --screen-end-clearance: clamp(9.4rem, 22dvh, 12.2rem);
+  --screen-end-clearance: clamp(11rem, 28dvh, 15rem);
 }
 
 #screen-home,
@@ -9426,18 +9426,68 @@ body {
 #screen-home .home-greeting-hero .page-script-title,
 #screen-notice > .page-title-row .page-script-title,
 #screen-settings > .page-title-row .page-script-title {
-  width: 100vw;
-  max-width: none;
-  margin-left: calc(50% - 50vw);
-  padding-inline: clamp(1.58rem, 4.8vw, 2.15rem);
-  text-indent: -0.26rem;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  padding-inline: 0;
+  text-indent: -0.16rem;
 }
 
 #screen-home .page-script-title::after,
 #screen-notice .page-script-title::after,
 #screen-settings .page-script-title::after {
-  right: clamp(1.58rem, 4.8vw, 2.15rem);
+  right: 0.82rem;
   text-indent: 0;
+}
+
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character {
+  transform: translate(-50%, 28%);
+}
+
+@media (min-width: 761px) and (max-height: 940px) {
+  .settings-page.is-active {
+    gap: 0.58rem;
+  }
+
+  #screen-settings > .page-title-row {
+    min-height: clamp(3.85rem, 10vw, 4.8rem);
+    margin-bottom: 0.58rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.98rem;
+  }
+
+  #screen-settings > .settings-tab-panel {
+    padding: 0.78rem;
+  }
+
+  #screen-settings .settings-section-content {
+    margin-top: 0.48rem;
+  }
+
+  #screen-settings .setting-row,
+  #screen-settings .education-code-chip {
+    padding: 0.46rem 0.58rem;
+  }
+
+  #screen-settings .account-icon-button,
+  #screen-settings .review-data-action,
+  #screen-settings .education-code-add-btn {
+    min-height: 2.48rem;
+  }
+
+  #screen-settings .account-action-row,
+  #screen-settings .review-data-actions,
+  #screen-settings .education-code-setting-content,
+  #screen-settings .education-code-list {
+    gap: 0.38rem;
+  }
+
+  #screen-settings .tab-script {
+    font-size: clamp(1.65rem, 3.4vw, 2.3rem);
+    transform: translateY(0.52rem);
+  }
 }
 
 .daily-login-progress-area::after {
@@ -9538,7 +9588,55 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
 
 @media (max-width: 760px) {
   body {
-    --screen-end-clearance: clamp(9.8rem, 27dvh, 12.4rem);
+    --screen-end-clearance: clamp(11.4rem, 32dvh, 15.2rem);
+  }
+
+  body:has(#screen-notice.is-active) .top-nav-character,
+  body:has(#screen-settings.is-active) .top-nav-character,
+  body:has(#screen-mypage.is-active) .top-nav-character {
+    transform: translate(-50%, 22%);
+  }
+
+  .settings-page.is-active {
+    gap: 0.58rem;
+  }
+
+  #screen-settings > .page-title-row {
+    min-height: clamp(3.75rem, 11vw, 4.65rem);
+    margin-bottom: 0.58rem;
+    padding-top: 0.48rem;
+    padding-bottom: 0.92rem;
+  }
+
+  #screen-settings > .settings-tab-panel {
+    padding: 0.72rem;
+  }
+
+  #screen-settings .settings-section-content {
+    margin-top: 0.44rem;
+  }
+
+  #screen-settings .setting-row,
+  #screen-settings .education-code-chip {
+    padding: 0.42rem 0.54rem;
+  }
+
+  #screen-settings .account-icon-button,
+  #screen-settings .review-data-action,
+  #screen-settings .education-code-add-btn {
+    min-height: 2.42rem;
+  }
+
+  #screen-settings .account-action-row,
+  #screen-settings .review-data-actions,
+  #screen-settings .education-code-setting-content,
+  #screen-settings .education-code-list {
+    gap: 0.36rem;
+  }
+
+  #screen-settings .tab-script {
+    font-size: clamp(1.55rem, 5vw, 2.2rem);
+    transform: translateY(0.48rem);
   }
 }
 
