@@ -78,7 +78,27 @@ const STORE_CONFIG_KEY = "the-review-store-config-v1";
 const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
 const MANAGER_ACCESS_CACHE_KEY = "the-review-manager-access-v1";
 const MANAGER_ACCESS_TOKEN_TIMEOUT_MS = 7000;
+const MANAGER_ACCESS_CACHE_TTL_MS = 5 * 60 * 1000;
 const MANAGER_REVIEW_COIN_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
+const MANAGER_REVIEW_COIN_ROLE_ALIASES = {
+  admin: "owner",
+  administrator: "owner",
+  manager: "owner",
+  owner: "owner",
+  "オーナー": "owner",
+  developer: "developer",
+  dev: "developer",
+  "デベロッパー": "developer",
+  checker: "checker",
+  reviewer: "checker",
+  "チェッカー": "checker",
+  system_designer: "system_designer",
+  systemdesigner: "system_designer",
+  "システムデザイナー": "system_designer",
+  character_designer: "character_designer",
+  characterdesigner: "character_designer",
+  "キャラクターデザイナー": "character_designer",
+};
 const DEFAULT_STORE_CONFIG = {
   avatarStatus: "published",
   avatarMessage: "Avaterアイテムを選べます。",
@@ -1812,33 +1832,20 @@ async function loadMigratedManager() {
   }
   managerMigrationPromise = (async () => {
     elements.managerMount.innerHTML = '<p class="hint-text">制作チーム用管理プログラムを読み込んでいます。</p>';
-    const response = await fetch("./manager.html?migrated=1&v=20260509-11", { cache: "no-cache" });
-    if (!response.ok) {
-      throw new Error("Failed to load manager source.");
-    }
-    const html = await response.text();
-    const parsedDocument = new DOMParser().parseFromString(html, "text/html");
-
-    if (!document.getElementById("managerMigratedStyle")) {
-      const style = document.createElement("style");
-      style.id = "managerMigratedStyle";
-      style.textContent = getManagerMigratedStyleText(parsedDocument);
-      document.head.append(style);
+    const template = document.getElementById("managerMigratedTemplate");
+    const scriptElement = document.getElementById("managerMigratedScript");
+    if (!(template instanceof HTMLTemplateElement) || !scriptElement?.textContent) {
+      throw new Error("Manager source is not embedded in index.html.");
     }
 
     const root = document.createElement("section");
     root.className = "manager-migrated-root manager-page is-embedded-manager";
     root.dataset.theme = "manager";
-    Array.from(parsedDocument.body.children).forEach((child) => {
-      if (child.tagName.toLowerCase() === "script") {
-        return;
-      }
-      root.append(document.importNode(child, true));
-    });
+    root.append(document.importNode(template.content, true));
 
     elements.managerMount.replaceChildren(root);
     publishManagerAccessForMigratedManager();
-    const scriptText = getManagerMainScript(parsedDocument);
+    const scriptText = scriptElement.textContent;
     if (scriptText) {
       await loadAuth0Sdk();
       const managerDocument = createManagerDocumentFacade(root);
@@ -2635,11 +2642,59 @@ function clearManagerAccessCache() {
 }
 
 function saveManagerAccessCache(access) {
-  // Manager権限はオーナー側でいつでも外せるため、古いキャッシュで表示しない。
+  try {
+    window.sessionStorage.setItem(
+      MANAGER_ACCESS_CACHE_KEY,
+      JSON.stringify({
+        savedAt: Date.now(),
+        access,
+      })
+    );
+  } catch {
+    // noop
+  }
 }
 
 function loadManagerAccessCache() {
-  return null;
+  try {
+    const raw = window.sessionStorage.getItem(MANAGER_ACCESS_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || Date.now() - Number(parsed.savedAt || 0) > MANAGER_ACCESS_CACHE_TTL_MS) {
+      window.sessionStorage.removeItem(MANAGER_ACCESS_CACHE_KEY);
+      return null;
+    }
+    const access = normalizeManagerAccessPayload(parsed.access);
+    return access && getManagerAccessRole(access) ? access : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchManagerAccessWithToken(accessToken) {
+  const endpoints = ["/manager/access", "/manager/me"];
+  let fallbackAccess = null;
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(`${REVIEW_API_BASE_URL}${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+      if (!response.ok) {
+        continue;
+      }
+      const payload = await response.json().catch(() => null);
+      const access = normalizeManagerAccessPayload(payload);
+      if (access && getManagerAccessRole(access)) {
+        return access;
+      }
+      fallbackAccess = fallbackAccess || access;
+    } catch (error) {
+      console.warn(`Failed to check The Review Manager access at ${endpoint}:`, error);
+    }
+  }
+  return fallbackAccess;
 }
 
 async function updateManagerMenuVisibility() {
@@ -2665,38 +2720,21 @@ async function updateManagerMenuVisibility() {
   }
 
   try {
-    const response = await fetch(`${REVIEW_API_BASE_URL}/manager/access`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    });
-    if (!response.ok) {
-      const fallbackAccess = createManagerAccessFromProfilePayload(lastReviewAccountProfileSync);
-      if (fallbackAccess) {
-        updateManagerMenuVisibilityFromAccess(fallbackAccess);
-      } else if (!managerAccessState) {
-        await syncReviewAccountProfileToApi({ skipTouch: true });
-        if (!managerAccessState) {
-          updateManagerMenuVisibilityFromAccess(null);
-        }
-      }
+    const access = await fetchManagerAccessWithToken(accessToken);
+    if (access && getManagerAccessRole(access)) {
+      updateManagerMenuVisibilityFromAccess(access);
       return;
     }
-    const access = await response.json();
-    const normalizedAccess = normalizeManagerAccessPayload(access);
-    if (normalizedAccess && getManagerAccessRole(normalizedAccess)) {
-      updateManagerMenuVisibilityFromAccess(normalizedAccess);
-      return;
-    }
+
     const fallbackAccess = createManagerAccessFromProfilePayload(lastReviewAccountProfileSync);
     if (fallbackAccess) {
       updateManagerMenuVisibilityFromAccess(fallbackAccess);
       return;
     }
+
     await syncReviewAccountProfileToApi({ skipTouch: true });
     if (!managerAccessState) {
-      updateManagerMenuVisibilityFromAccess(normalizedAccess);
+      updateManagerMenuVisibilityFromAccess(access);
     }
   } catch (error) {
     console.warn("Failed to check The Review Manager access:", error);
@@ -6047,8 +6085,9 @@ function normalizeManagerRoleValue(value) {
   if (typeof value !== "string") {
     return "";
   }
-  const normalized = value.trim().toLowerCase().replace(/-/g, "_");
-  return MANAGER_REVIEW_COIN_ROLES.includes(normalized) ? normalized : "";
+  const normalized = value.trim().toLowerCase().replace(/[\s-]/g, "_");
+  const compact = normalized.replace(/_/g, "");
+  return MANAGER_REVIEW_COIN_ROLE_ALIASES[normalized] || MANAGER_REVIEW_COIN_ROLE_ALIASES[compact] || "";
 }
 
 function getManagerAccessMember(access) {
@@ -6069,6 +6108,24 @@ function getManagerRoleFromValue(value) {
   if (Array.isArray(value)) {
     return value.map(getManagerRoleFromValue).find(Boolean) || "";
   }
+  if (value && typeof value === "object") {
+    const directRole = [
+      value.role,
+      value.managerRole,
+      value.manager_role,
+      value.roleName,
+      value.role_name,
+      value.roles,
+      value.managerRoles,
+      value.manager_roles,
+    ]
+      .map(getManagerRoleFromValue)
+      .find(Boolean);
+    if (directRole) {
+      return directRole;
+    }
+    return MANAGER_REVIEW_COIN_ROLES.find((role) => value[role] === true || value[role] === "true") || "";
+  }
   return normalizeManagerRoleValue(value);
 }
 
@@ -6078,13 +6135,27 @@ function getManagerAccessRole(access) {
     access?.role,
     access?.managerRole,
     access?.manager_role,
+    access?.roleName,
+    access?.role_name,
+    access?.roles,
+    access?.managerRoles,
+    access?.manager_roles,
+    access?.status,
+    access?.app_metadata,
     access?.permissions?.role,
     access?.permissions?.managerRole,
+    access?.permissions,
     member?.role,
     member?.managerRole,
     member?.manager_role,
+    member?.roleName,
+    member?.role_name,
     member?.roles,
+    member?.managerRoles,
+    member?.manager_roles,
+    member?.app_metadata,
     member?.permissions?.role,
+    member?.permissions,
   ];
   return candidates.map(getManagerRoleFromValue).find(Boolean) || "";
 }
@@ -6102,7 +6173,7 @@ function normalizeManagerAccessPayload(access) {
     status: access.status || (role ? "member" : "user"),
     role,
     ...(normalizedMember ? { member: normalizedMember } : {}),
-    permissions: access.permissions && typeof access.permissions === "object" ? access.permissions : managerAccessState?.permissions ?? {},
+    permissions: access.permissions && typeof access.permissions === "object" ? access.permissions : {},
   };
 }
 
