@@ -1,6 +1,8 @@
 ﻿const STORAGE_KEY = "the-review-quest-v1";
 const HOME_GREETING_REFRESH_MS = 60 * 1000;
 const AUTH_INIT_TIMEOUT_MS = 8000;
+const AUTH0_SDK_URL = "https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js";
+const AUTH0_SDK_LOAD_TIMEOUT_MS = 4500;
 const FLASHCARD_INIT_TIMEOUT_MS = 5000;
 const FLASHCARD_QUESTIONS_FETCH_TIMEOUT_MS = 4500;
 const JP_HOLIDAY_CACHE = new Map();
@@ -468,6 +470,7 @@ let selfcheckTimerRemainingSeconds = SELFCHECK_DEFAULT_TIMER_SECONDS;
 let selfcheckTimerIntervalId = null;
 let calendarViewDate = getCurrentMonthStartDate();
 let auth0Client = null;
+let auth0SdkLoadPromise = null;
 let reviewCoinAnimationFrameId = null;
 let homeCardScrollAnimationFrameId = null;
 let infoMenuCloseTimerId = null;
@@ -2113,10 +2116,70 @@ function performLogoutAccount() {
   redirectToLoginPage();
 }
 
+function getAuth0SdkScriptElement() {
+  const targetSrc = new URL(AUTH0_SDK_URL, window.location.href).href;
+  return Array.from(document.scripts).find((script) => script.src === targetSrc) || null;
+}
+
+function loadAuth0Sdk() {
+  if (isAuth0SdkAvailable()) {
+    return Promise.resolve(true);
+  }
+  if (auth0SdkLoadPromise) {
+    return auth0SdkLoadPromise;
+  }
+
+  auth0SdkLoadPromise = new Promise((resolve) => {
+    const existingScript = getAuth0SdkScriptElement();
+    const script = existingScript || document.createElement("script");
+    let settled = false;
+    let timeoutId = 0;
+
+    const finish = (loaded) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      window.clearTimeout(timeoutId);
+      const isReady = Boolean(loaded && isAuth0SdkAvailable());
+      if (!isReady) {
+        auth0SdkLoadPromise = null;
+        if (!existingScript) {
+          script.remove();
+        }
+      }
+      resolve(isReady);
+    };
+
+    timeoutId = window.setTimeout(() => {
+      console.warn(`Auth0 SDK load timed out after ${AUTH0_SDK_LOAD_TIMEOUT_MS}ms`);
+      finish(false);
+    }, AUTH0_SDK_LOAD_TIMEOUT_MS);
+
+    script.addEventListener("load", () => finish(true), { once: true });
+    script.addEventListener(
+      "error",
+      (error) => {
+        console.warn("Auth0 SDK failed to load:", error);
+        finish(false);
+      },
+      { once: true }
+    );
+
+    if (!existingScript) {
+      script.src = AUTH0_SDK_URL;
+      script.async = true;
+      document.head.append(script);
+    }
+  });
+
+  return auth0SdkLoadPromise;
+}
+
 async function initializeAuth(options = {}) {
   const shouldPreserveGuest = state.auth.isLoggedIn && state.auth.provider === "guest";
   const shouldPreserveExistingSession = Boolean(options.preserveExistingSession && state.auth.isLoggedIn);
-  if (!isAuth0SdkAvailable()) {
+  if (!isAuth0Configured()) {
     auth0Client = null;
     if (!shouldPreserveGuest && !shouldPreserveExistingSession) {
       setLoggedOutAuthState();
@@ -2124,7 +2187,7 @@ async function initializeAuth(options = {}) {
     }
     return;
   }
-  if (!isAuth0Configured()) {
+  if (!(await loadAuth0Sdk())) {
     auth0Client = null;
     if (!shouldPreserveGuest && !shouldPreserveExistingSession) {
       setLoggedOutAuthState();
@@ -2172,7 +2235,10 @@ async function ensureAuth0Client() {
   if (auth0Client) {
     return auth0Client;
   }
-  if (!isAuth0SdkAvailable() || !isAuth0Configured()) {
+  if (!isAuth0Configured()) {
+    return null;
+  }
+  if (!isAuth0SdkAvailable() && !(await loadAuth0Sdk())) {
     return null;
   }
   auth0Client = await window.auth0.createAuth0Client({
@@ -6764,8 +6830,8 @@ function syncSettingsEducationCodeScannerAvailability() {
 }
 
 function renderAuthPanel() {
-  const canCreateAuth0Client = isAuth0SdkAvailable() && isAuth0Configured();
-  const canLogin = Boolean(auth0Client) || canCreateAuth0Client;
+  const canUseAuth0Config = isAuth0Configured();
+  const canLogin = Boolean(auth0Client) || canUseAuth0Config;
   const isLoggedIn = state.auth.isLoggedIn;
   const currentProvider = state.auth.provider;
   elements.authLoginButtons.forEach((button) => {
@@ -6788,7 +6854,7 @@ function renderAuthPanel() {
     button.textContent = isCurrentProvider ? "Review Account利用中" : IS_LOGIN_PAGE ? "ログインする" : "Review Accountを作成する";
   });
   if (elements.authConfigHint) {
-    elements.authConfigHint.hidden = canCreateAuth0Client;
+    elements.authConfigHint.hidden = canUseAuth0Config;
   }
 }
 
