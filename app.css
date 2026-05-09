@@ -10159,3 +10159,161 @@ body:has(#screen-mypage.is-active) .top-nav-character {
     grid-template-columns: 1fr;
   }
 }
+
+/* 2026-05-09 final navigation, spacing, and Manager access alignment fixes. */
+#screen-home {
+  padding-bottom: 0 !important;
+}
+
+#screen-home .home-top-row {
+  margin-bottom: 0.28rem;
+}
+
+#screen-home .home-card-carousel {
+  margin-top: 0.86rem;
+}
+
+#screen-home .home-greeting-hero,
+#screen-notice > .page-title-row,
+#screen-settings > .page-title-row,
+#screen-manager > .page-title-row {
+  margin-bottom: 0.74rem !important;
+}
+
+#screen-home.is-active ~ #screen-mypage {
+  margin-top: 0 !important;
+  padding-bottom: var(--screen-end-clearance) !important;
+}
+
+#screen-home.is-active ~ #screen-mypage .mypage-top-page {
+  padding-bottom: var(--screen-end-clearance) !important;
+}
+
+#screen-home.is-active ~ #screen-mypage .mypage-flashcard-panel {
+  margin-top: 0;
+}
+
+.app-header > .header-info-block {
+  display: none !important;
+}
+
+.top-nav {
+  display: flex !important;
+  align-items: end !important;
+  justify-content: space-between;
+  gap: clamp(0.42rem, 2vw, 0.7rem);
+  padding: 0.78rem 0.68rem 0.86rem;
+}
+
+.top-nav-item,
+.top-nav-item[data-screen="home"],
+.top-nav-item[data-screen="learn"],
+.top-nav-item[data-screen="notice"],
+.top-nav-item[data-screen="settings"],
+.top-nav-item[data-screen="manager"],
+.top-nav-item[data-screen="store"] {
+  width: clamp(82px, 29%, 220px);
+  min-height: 64px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.top-nav-item:hover {
+  filter: brightness(1.12);
+}
+
+.top-nav-item[data-screen="learn"],
+.top-nav-item[data-screen="learn"].is-active {
+  background: transparent !important;
+  color: #ffffff;
+}
+
+.top-nav-item.is-active:not([data-screen="learn"]) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.top-nav-item.is-active:not([data-screen="learn"]) .top-nav-icon {
+  color: color-mix(in srgb, var(--primary) 70%, #ffffff);
+}
+
+.top-nav-item.is-active:not([data-screen="learn"]) > span:not(.top-nav-icon) {
+  color: transparent;
+  background:
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--primary) 58%, #ffffff) 46%,
+      var(--primary) 100%
+    );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.top-nav-character,
+.top-nav .top-nav-character,
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-manager.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: max(0.18rem, env(safe-area-inset-bottom)) !important;
+  width: clamp(138px, 28vw, 172px) !important;
+  transform: translateX(-50%) !important;
+}
+
+body.learn-popover-open #screen-learn {
+  width: min(380px, calc(100vw - 1.4rem));
+  min-height: 15.8rem;
+}
+
+.learn-menu-actions {
+  grid-template-columns: 1fr;
+}
+
+.learn-menu-action {
+  min-height: 2.74rem;
+}
+
+@media (max-width: 760px) {
+  #screen-home .home-top-row {
+    margin-bottom: 0.18rem;
+  }
+
+  #screen-home .home-greeting-hero,
+  #screen-notice > .page-title-row,
+  #screen-settings > .page-title-row,
+  #screen-manager > .page-title-row {
+    margin-bottom: 0.66rem !important;
+  }
+
+  .top-nav {
+    padding: 0.66rem 0.5rem 0.74rem;
+  }
+
+  .top-nav-item,
+  .top-nav-item[data-screen="home"],
+  .top-nav-item[data-screen="learn"],
+  .top-nav-item[data-screen="notice"] {
+    width: clamp(72px, 29%, 170px);
+    min-height: 58px;
+  }
+
+  .top-nav-character,
+  .top-nav .top-nav-character,
+  body:has(#screen-notice.is-active) .top-nav-character,
+  body:has(#screen-settings.is-active) .top-nav-character,
+  body:has(#screen-manager.is-active) .top-nav-character,
+  body:has(#screen-mypage.is-active) .top-nav-character {
+    width: clamp(130px, 33vw, 148px) !important;
+  }
+
+  body.learn-popover-open #screen-learn {
+    min-height: 15.4rem;
+  }
+}

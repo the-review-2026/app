@@ -11,7 +11,7 @@
         if (params.has("code") && params.has("state")) {
           return;
         }
-        const isEmbedded = params.has("embedded");
+        const isEmbedded = params.has("embedded") || params.has("migrated");
         try {
           const raw = window.localStorage.getItem("the-review-quest-v1");
           const saved = raw ? JSON.parse(raw) : null;
@@ -44,7 +44,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260506-2" />
+    <link rel="stylesheet" href="./app.css?v=20260509-11" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
     <style>
       body.manager-page {
@@ -2174,6 +2174,7 @@
           system_designer: "システムデザイナー",
           character_designer: "キャラクターデザイナー",
         };
+        const MANAGER_ROLE_IDS = Object.freeze(Object.keys(MANAGER_ROLE_LABELS).filter((role) => role !== "user"));
         const MANAGER_AVATER_CATEGORY_LABELS = {
           clothes: "うわぎ",
           glasses: "めがね",
@@ -2365,6 +2366,16 @@
           initializeStoreSettings();
           renderStoreSettings();
           renderManagerAccess();
+          window.addEventListener("the-review-manager-access", (event) => {
+            if (!applyManagerAccess(event.detail) && !event.detail) {
+              state.managerAccess = {
+                canAccess: false,
+                status: "user",
+                role: null,
+              };
+              renderManagerAccess();
+            }
+          });
           void initializeManagerAccess();
           pruneSeedDrafts();
           initializePublishedFilters();
@@ -2575,7 +2586,89 @@
           });
         }
 
+        function normalizeManagerRoleValue(value) {
+          if (typeof value !== "string") {
+            return "";
+          }
+          const normalized = value.trim().toLowerCase().replace(/-/g, "_");
+          return MANAGER_ROLE_IDS.includes(normalized) ? normalized : "";
+        }
+
+        function getManagerRoleFromValue(value) {
+          if (Array.isArray(value)) {
+            return value.map(getManagerRoleFromValue).find(Boolean) || "";
+          }
+          return normalizeManagerRoleValue(value);
+        }
+
+        function getManagerAccessMember(access) {
+          if (!access || typeof access !== "object" || Array.isArray(access)) {
+            return null;
+          }
+          const candidates = [
+            access.member,
+            access.managerMember,
+            access.manager_member,
+            access.profile,
+            access.user,
+          ];
+          return candidates.find((candidate) => candidate && typeof candidate === "object" && !Array.isArray(candidate)) || null;
+        }
+
+        function getManagerAccessRole(access) {
+          const member = getManagerAccessMember(access);
+          const candidates = [
+            access?.role,
+            access?.managerRole,
+            access?.manager_role,
+            access?.permissions?.role,
+            access?.permissions?.managerRole,
+            member?.role,
+            member?.managerRole,
+            member?.manager_role,
+            member?.roles,
+            member?.permissions?.role,
+          ];
+          return candidates.map(getManagerRoleFromValue).find(Boolean) || "";
+        }
+
+        function normalizeManagerAccessPayload(access) {
+          if (!access || typeof access !== "object" || Array.isArray(access)) {
+            return null;
+          }
+          const role = getManagerAccessRole(access);
+          const member = getManagerAccessMember(access);
+          const normalizedMember = member || role ? { ...(member || {}), role: role || member?.role || "" } : null;
+          return {
+            ...access,
+            canAccess: access.canAccess === false ? false : Boolean(role),
+            status: access.status || (role ? "member" : "user"),
+            role,
+            ...(normalizedMember ? { member: normalizedMember } : {}),
+          };
+        }
+
+        function getSeededManagerAccess() {
+          return normalizeManagerAccessPayload(window.__THE_REVIEW_MANAGER_ACCESS__);
+        }
+
+        function applyManagerAccess(access) {
+          const normalizedAccess = normalizeManagerAccessPayload(access);
+          if (!normalizedAccess || !getManagerAccessRole(normalizedAccess)) {
+            return false;
+          }
+          state.managerAccess = normalizedAccess;
+          applyManagerProfileFromAccess(normalizedAccess);
+          renderManagerAccess();
+          return true;
+        }
+
         async function initializeManagerAccess() {
+          const seededAccess = getSeededManagerAccess();
+          if (seededAccess) {
+            applyManagerAccess(seededAccess);
+          }
+
           let token = null;
           try {
             token = await getAuth0AccessToken();
@@ -2583,6 +2676,9 @@
             token = null;
           }
           if (!token) {
+            if (seededAccess) {
+              return;
+            }
             state.managerAccess = {
               canAccess: false,
               status: "local",
@@ -2600,15 +2696,16 @@
               },
             });
             const json = await response.json().catch(() => null);
-            state.managerAccess = response.ok
-              ? json
-              : {
-                  canAccess: false,
-                  status: "error",
-                  role: null,
-                };
+            state.managerAccess =
+              normalizeManagerAccessPayload(response.ok ? json : null) ||
+              seededAccess ||
+              {
+                canAccess: false,
+                status: "error",
+                role: null,
+              };
           } catch {
-            state.managerAccess = {
+            state.managerAccess = seededAccess || {
               canAccess: false,
               status: "offline",
               role: null,
@@ -2621,7 +2718,7 @@
 
         function renderManagerAccess() {
           const access = state.managerAccess;
-          const role = access?.member?.role || access?.role || null;
+          const role = getManagerAccessRole(access);
           if (elements.profileRoleValue) {
             elements.profileRoleValue.textContent = !access
               ? "確認中"
@@ -2636,6 +2733,7 @@
           if (role === "owner" && access?.canAccess === true) {
             void loadManagerMembers();
           }
+          document.querySelector("#screen-home .manager-access-note")?.remove();
 
           const shouldRestrict = !access || access.canAccess === false;
           const allowedScreens = new Set(["home", "profile"]);
@@ -2661,7 +2759,7 @@
         }
 
         function canManageManagerMembers() {
-          return state.managerAccess?.canAccess === true && state.managerAccess?.member?.role === "owner";
+          return state.managerAccess?.canAccess === true && getManagerAccessRole(state.managerAccess) === "owner";
         }
 
         function loadStoreConfig() {
@@ -4272,7 +4370,12 @@
             if (!authenticated) {
               return null;
             }
-            return await state.auth0Client.getTokenSilently();
+            return await state.auth0Client.getTokenSilently({
+              authorizationParams: {
+                audience: config.audience || DEFAULT_API_BASE,
+                scope: config.scope || "openid profile email",
+              },
+            });
           } catch {
             return null;
           }
@@ -4867,6 +4970,6 @@
         }
       })();
     </script>
-    <script src="./pwa.js?v=20260506-1" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260509-11" charset="UTF-8"></script>
   </body>
 </html>

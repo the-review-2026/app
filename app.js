@@ -1722,6 +1722,16 @@ function closeLearnPopover() {
 
 function handleLearnMenuAction(action) {
   const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "mypage") {
+    closeLearnPopover();
+    if (!state.auth.isLoggedIn) {
+      promptLoginForMypage();
+      return;
+    }
+    activateScreen("mypage");
+    setMypagePage("top");
+    return;
+  }
   if (normalizedAction === "settings") {
     closeLearnPopover();
     activateScreen("settings");
@@ -1770,6 +1780,16 @@ function createManagerDocumentFacade(root) {
   });
 }
 
+function publishManagerAccessForMigratedManager() {
+  const access = managerAccessState ? normalizeManagerAccessPayload(managerAccessState) : null;
+  window.__THE_REVIEW_MANAGER_ACCESS__ = access;
+  try {
+    window.dispatchEvent(new CustomEvent("the-review-manager-access", { detail: access }));
+  } catch {
+    // noop
+  }
+}
+
 function getManagerMigratedStyleText(parsedDocument) {
   return Array.from(parsedDocument.querySelectorAll("style"))
     .map((style) => style.textContent || "")
@@ -1792,7 +1812,7 @@ async function loadMigratedManager() {
   }
   managerMigrationPromise = (async () => {
     elements.managerMount.innerHTML = '<p class="hint-text">制作チーム用管理プログラムを読み込んでいます。</p>';
-    const response = await fetch("./manager.html?migrated=1&v=20260509-9", { cache: "no-cache" });
+    const response = await fetch("./manager.html?migrated=1&v=20260509-11", { cache: "no-cache" });
     if (!response.ok) {
       throw new Error("Failed to load manager source.");
     }
@@ -1817,6 +1837,7 @@ async function loadMigratedManager() {
     });
 
     elements.managerMount.replaceChildren(root);
+    publishManagerAccessForMigratedManager();
     const scriptText = getManagerMainScript(parsedDocument);
     if (scriptText) {
       await loadAuth0Sdk();
@@ -2547,15 +2568,8 @@ async function syncReviewAccountProfileToApi(options = {}) {
     const payload = await response.json().catch(() => null);
     lastReviewAccountProfileSync = payload;
     applyReviewAccountProfilePayload(payload, { requestedNickname, skipTouch: Boolean(options.skipTouch) });
-    if (payload?.managerMember) {
-      const member = payload.managerMember;
-      const role = getManagerAccessRole({ member });
-      const access = {
-        canAccess: Boolean(role),
-        status: role ? "member" : "user",
-        member,
-        permissions: managerAccessState?.permissions ?? {},
-      };
+    const access = createManagerAccessFromProfilePayload(payload);
+    if (access) {
       updateManagerMenuVisibilityFromAccess(access);
     }
     return payload;
@@ -2592,11 +2606,12 @@ function applyReviewAccountProfilePayload(payload, options = {}) {
 }
 
 function updateManagerMenuVisibilityFromAccess(access) {
-  const role = getManagerAccessRole(access);
-  const hasManagerRole = access?.canAccess !== false && Boolean(role);
-  managerAccessState = hasManagerRole ? access : null;
+  const normalizedAccess = normalizeManagerAccessPayload(access);
+  const role = getManagerAccessRole(normalizedAccess);
+  const hasManagerRole = normalizedAccess?.canAccess !== false && Boolean(role);
+  managerAccessState = hasManagerRole ? normalizedAccess : null;
   if (hasManagerRole) {
-    saveManagerAccessCache(access);
+    saveManagerAccessCache(normalizedAccess);
   } else {
     clearManagerAccessCache();
   }
@@ -2607,6 +2622,7 @@ function updateManagerMenuVisibilityFromAccess(access) {
   renderMypageCoin();
   renderThemeCardSelection();
   renderAvaterItemList(elements.storeAvatarHint, { storeMode: true });
+  publishManagerAccessForMigratedManager();
 }
 
 function clearManagerAccessCache() {
@@ -2656,16 +2672,38 @@ async function updateManagerMenuVisibility() {
       },
     });
     if (!response.ok) {
-      if (!managerAccessState) {
-        updateManagerMenuVisibilityFromAccess(null);
+      const fallbackAccess = createManagerAccessFromProfilePayload(lastReviewAccountProfileSync);
+      if (fallbackAccess) {
+        updateManagerMenuVisibilityFromAccess(fallbackAccess);
+      } else if (!managerAccessState) {
+        await syncReviewAccountProfileToApi({ skipTouch: true });
+        if (!managerAccessState) {
+          updateManagerMenuVisibilityFromAccess(null);
+        }
       }
       return;
     }
     const access = await response.json();
-    updateManagerMenuVisibilityFromAccess(access);
+    const normalizedAccess = normalizeManagerAccessPayload(access);
+    if (normalizedAccess && getManagerAccessRole(normalizedAccess)) {
+      updateManagerMenuVisibilityFromAccess(normalizedAccess);
+      return;
+    }
+    const fallbackAccess = createManagerAccessFromProfilePayload(lastReviewAccountProfileSync);
+    if (fallbackAccess) {
+      updateManagerMenuVisibilityFromAccess(fallbackAccess);
+      return;
+    }
+    await syncReviewAccountProfileToApi({ skipTouch: true });
+    if (!managerAccessState) {
+      updateManagerMenuVisibilityFromAccess(normalizedAccess);
+    }
   } catch (error) {
     console.warn("Failed to check The Review Manager access:", error);
-    if (!managerAccessState) {
+    const fallbackAccess = createManagerAccessFromProfilePayload(lastReviewAccountProfileSync);
+    if (fallbackAccess) {
+      updateManagerMenuVisibilityFromAccess(fallbackAccess);
+    } else if (!managerAccessState) {
       updateManagerMenuVisibilityFromAccess(null);
     }
   }
@@ -6005,9 +6043,87 @@ function hasUnlimitedReviewCoins() {
   return managerAccessState.canAccess !== false && MANAGER_REVIEW_COIN_ROLES.includes(role);
 }
 
+function normalizeManagerRoleValue(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  const normalized = value.trim().toLowerCase().replace(/-/g, "_");
+  return MANAGER_REVIEW_COIN_ROLES.includes(normalized) ? normalized : "";
+}
+
+function getManagerAccessMember(access) {
+  if (!access || typeof access !== "object" || Array.isArray(access)) {
+    return null;
+  }
+  const candidates = [
+    access.member,
+    access.managerMember,
+    access.manager_member,
+    access.profile,
+    access.user,
+  ];
+  return candidates.find((candidate) => candidate && typeof candidate === "object" && !Array.isArray(candidate)) || null;
+}
+
+function getManagerRoleFromValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(getManagerRoleFromValue).find(Boolean) || "";
+  }
+  return normalizeManagerRoleValue(value);
+}
+
 function getManagerAccessRole(access) {
-  const role = typeof access?.member?.role === "string" ? access.member.role.trim() : "";
-  return MANAGER_REVIEW_COIN_ROLES.includes(role) ? role : "";
+  const member = getManagerAccessMember(access);
+  const candidates = [
+    access?.role,
+    access?.managerRole,
+    access?.manager_role,
+    access?.permissions?.role,
+    access?.permissions?.managerRole,
+    member?.role,
+    member?.managerRole,
+    member?.manager_role,
+    member?.roles,
+    member?.permissions?.role,
+  ];
+  return candidates.map(getManagerRoleFromValue).find(Boolean) || "";
+}
+
+function normalizeManagerAccessPayload(access) {
+  if (!access || typeof access !== "object" || Array.isArray(access)) {
+    return null;
+  }
+  const role = getManagerAccessRole(access);
+  const member = getManagerAccessMember(access);
+  const normalizedMember = member || role ? { ...(member || {}), role: role || member?.role || "" } : null;
+  return {
+    ...access,
+    canAccess: access.canAccess === false ? false : Boolean(role),
+    status: access.status || (role ? "member" : "user"),
+    role,
+    ...(normalizedMember ? { member: normalizedMember } : {}),
+    permissions: access.permissions && typeof access.permissions === "object" ? access.permissions : managerAccessState?.permissions ?? {},
+  };
+}
+
+function createManagerAccessFromProfilePayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  const managerAccess = normalizeManagerAccessPayload(payload.managerAccess);
+  if (managerAccess && getManagerAccessRole(managerAccess)) {
+    return managerAccess;
+  }
+  const member = payload.managerMember || payload.manager_member;
+  if (!member || typeof member !== "object" || Array.isArray(member)) {
+    return null;
+  }
+  return normalizeManagerAccessPayload({
+    canAccess: true,
+    status: "member",
+    member,
+    permissions: payload.permissions ?? managerAccessState?.permissions ?? {},
+  });
 }
 
 function loadStoreConfig() {
