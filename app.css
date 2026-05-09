@@ -5262,7 +5262,7 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 
 .education-code-setting-input-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
@@ -5280,6 +5280,25 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
 .education-code-save-btn .material-symbols-rounded {
   font-size: 1.14rem;
   line-height: 1;
+}
+
+.education-code-action-btn[hidden] {
+  display: none;
+}
+
+.education-code-dialog-actions {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.text-reset-dialog.education-code-dialog .education-code-save-btn.primary:enabled {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(90deg, #2c9d64, #47bfd1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 9px 18px rgba(23, 128, 92, 0.24);
+}
+
+.text-reset-dialog.education-code-dialog .education-code-save-btn.primary:hover:enabled {
+  filter: brightness(1.05);
 }
 
 .account-edit-row {
@@ -6786,7 +6805,7 @@ body.login-page .aurora {
 }
 
 .education-code-feedback.is-valid {
-  color: #9de7b5;
+  color: #2c9d64;
 }
 
 .education-code-feedback.is-invalid {
