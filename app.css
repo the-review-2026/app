@@ -8364,6 +8364,11 @@ body.flashcard-binder-global-focus .top-nav-character {
   padding-right: 0.62rem;
 }
 
+.flashcard-note-library.is-loading-data .flashcard-note,
+.flashcard-note-library.is-loading-data .flashcard-series-index {
+  display: none;
+}
+
 .flashcard-note-library .flashcard-note-surface.flashcard-binder {
   display: block;
   width: 100%;

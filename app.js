@@ -744,10 +744,54 @@ function completeLoginPageAuthInitialization(options = {}) {
 }
 
 async function initializeFlashcardsAfterFirstPaint() {
+  setFlashcardNoteLibraryLoadingState(true);
   await new Promise((resolve) => window.requestAnimationFrame(resolve));
-  await withTimeout(initializeFlashcards(), FLASHCARD_INIT_TIMEOUT_MS, undefined, "Flashcard initialization");
+  const initialization = initializeFlashcards();
+  const didInitialize = await withTimeout(
+    initialization
+      .then(() => true)
+      .catch((error) => {
+        console.warn("Flashcard initialization failed:", error);
+        return true;
+      }),
+    FLASHCARD_INIT_TIMEOUT_MS,
+    false,
+    "Flashcard initialization"
+  );
+  finishFlashcardInitialization();
+  if (!didInitialize) {
+    initialization
+      .then(() => {
+        finishFlashcardInitialization({ preserveScroll: true });
+      })
+      .catch((error) => {
+        console.warn("Background flashcard initialization failed:", error);
+      });
+  }
+}
+
+function setFlashcardNoteLibraryLoadingState(isLoading) {
+  const binderList = elements.flashcardBinderList;
+  if (!binderList) {
+    return;
+  }
+  binderList.classList.toggle("is-loading-data", Boolean(isLoading));
+  if (!isLoading) {
+    return;
+  }
+  Array.from(binderList.querySelectorAll(".flashcard-note, .flashcard-series-index")).forEach((item) => {
+    item.hidden = true;
+    item.setAttribute("aria-hidden", "true");
+  });
+}
+
+function finishFlashcardInitialization(options = {}) {
+  setFlashcardNoteLibraryLoadingState(false);
   initializeFlashcardNoteBinder();
-  resetFlashcardBinderScroll();
+  refreshFlashcardNoteBinderMetrics();
+  if (!options.preserveScroll) {
+    resetFlashcardBinderScroll();
+  }
   renderFlashcardPanel();
 }
 
@@ -2744,6 +2788,7 @@ async function performDeleteAccountAndResetProgress() {
 function renderAll() {
   renderInfoMenuNotices();
   renderCoinBoard({ fromZero: true });
+  renderDailyLogin();
   renderMypageCoin();
   renderStoreConfig();
   renderAvater();
@@ -2756,10 +2801,13 @@ function renderAll() {
   updateSelfcheckTimerButtons();
   renderHomeGreeting();
   renderLearnOverview();
-  renderDailyLogin();
   renderDailyTryPanel();
   updateHomeCardCarouselControls();
   setSettingsTab(activeSettingsTab);
+}
+
+function renderInfoMenuNotices() {
+  // The current info menu has no dynamic notice list, but older render flow still calls this hook.
 }
 
 function createInitialFlashcardState() {
@@ -3114,7 +3162,22 @@ function refreshFlashcardNoteBinderMetrics() {
 
 function syncFlashcardNoteLibraryVisibility() {
   const binderList = elements.flashcardBinderList;
-  if (!binderList || !Array.isArray(flashcardState?.decks) || flashcardState.decks.length === 0) {
+  if (!binderList) {
+    return;
+  }
+  if (!Array.isArray(flashcardState?.decks) || flashcardState.decks.length === 0) {
+    Array.from(binderList.querySelectorAll(".flashcard-note")).forEach((note) => {
+      note.hidden = true;
+      note.classList.add("is-hidden-by-data");
+      note.setAttribute("aria-hidden", "true");
+    });
+    Array.from(binderList.querySelectorAll(".flashcard-series-index")).forEach((index) => {
+      index.hidden = true;
+      index.classList.add("is-empty-series");
+      index.classList.remove("is-ready-series");
+      index.setAttribute("aria-hidden", "true");
+    });
+    syncFlashcardVisibleStackClasses(binderList);
     return;
   }
 
@@ -3158,7 +3221,11 @@ function syncFlashcardSeriesIndexVisibility(binderList) {
       const hasVisibleSeriesNote = seriesChildren.some(
         (candidate) => candidate.classList?.contains("flashcard-note") && !candidate.hidden
       );
-      child.hidden = !(hasVisibleSeriesNote || (nextIndex < 0 && hasVisibleNote));
+      const shouldShow = hasVisibleSeriesNote || (nextIndex < 0 && hasVisibleNote);
+      child.hidden = !shouldShow;
+      child.classList.toggle("is-empty-series", !shouldShow);
+      child.classList.toggle("is-ready-series", shouldShow);
+      child.setAttribute("aria-hidden", String(!shouldShow));
     });
   });
 }
@@ -8786,6 +8853,8 @@ function renderAfterReviewDataSync() {
     renderAvater();
     return;
   }
+  markDailyLogin();
+  renderDailyLogin();
   applyTheme(state.settings.theme);
   dailyTryRun = createDailyTryRun();
   renderAll();
