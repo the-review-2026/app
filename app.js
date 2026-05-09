@@ -51,7 +51,7 @@ const LEGACY_THEME_ALIASES = {
 const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
 const MYPAGE_PAGE_IDS = ["top"];
-const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings"];
+const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings", "manager"];
 const SETTINGS_TAB_IDS = ["account", "education-code", "review-data"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const DAILY_LOGIN_REWARD_RULES = Object.freeze({
@@ -337,6 +337,8 @@ const elements = {
   infoMenuUser: document.querySelector("#infoMenuPanel .info-menu-user"),
   infoMenuNickname: document.getElementById("infoMenuNickname"),
   managerMenuLink: document.getElementById("managerMenuLink"),
+  managerNavButton: document.getElementById("managerNavButton"),
+  managerFrame: document.getElementById("managerFrame"),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
@@ -1278,6 +1280,10 @@ function bindEvents() {
         promptLoginForMypage();
         return;
       }
+      if (screen === "manager" && (!state.auth.isLoggedIn || state.auth.provider === "guest")) {
+        promptLoginForMypage();
+        return;
+      }
       activateScreen(screen);
       if (screen === "mypage") {
         setMypagePage("top");
@@ -1769,7 +1775,18 @@ function activateScreen(screen) {
   if (normalizedScreen === "settings") {
     setSettingsTab(activeSettingsTab);
   }
+  if (normalizedScreen === "manager") {
+    ensureManagerFrameLoaded();
+  }
   renderFlashcardFocusMode();
+}
+
+function ensureManagerFrameLoaded() {
+  if (!elements.managerFrame || elements.managerFrame.dataset.loaded === "1") {
+    return;
+  }
+  elements.managerFrame.src = "./manager.html?embedded=1&v=20260509-8";
+  elements.managerFrame.dataset.loaded = "1";
 }
 
 function promptLoginForMypage() {
@@ -2474,6 +2491,9 @@ function updateManagerMenuVisibilityFromAccess(access) {
   }
   if (elements.managerMenuLink) {
     elements.managerMenuLink.hidden = !hasManagerRole;
+  }
+  if (elements.managerNavButton) {
+    elements.managerNavButton.classList.toggle("has-manager-access", hasManagerRole);
   }
   renderCoinBoard();
   renderMypageCoin();
