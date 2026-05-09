@@ -371,6 +371,11 @@ const elements = {
   settingsEducationCodeScanner: document.getElementById("settingsEducationCodeScanner"),
   settingsEducationCodeVideo: document.getElementById("settingsEducationCodeVideo"),
   settingsEducationCodeActionButtons: Array.from(document.querySelectorAll("[data-settings-education-code-action]")),
+  settingsEducationCodeRemoveDialog: document.getElementById("settingsEducationCodeRemoveDialog"),
+  settingsEducationCodeRemoveDialogMessage: document.getElementById("settingsEducationCodeRemoveDialogMessage"),
+  settingsEducationCodeRemoveActionButtons: Array.from(
+    document.querySelectorAll("[data-settings-education-code-remove-action]")
+  ),
   authLoginButtons: Array.from(document.querySelectorAll("[data-auth-provider]")),
   authConfigHint: document.getElementById("authConfigHint"),
   accountEditBtn: document.getElementById("accountEditBtn"),
@@ -490,6 +495,7 @@ let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
 let isSavingAccountEditNickname = false;
 let settingsEducationCodeEditingCode = "";
+let pendingSettingsEducationCodeRemovalCode = "";
 let settingsEducationCodeScanStream = null;
 let settingsEducationCodeScanFrameId = 0;
 let settingsEducationCodeScanActive = false;
@@ -1306,7 +1312,7 @@ function bindEvents() {
     const removeTarget = source.closest("[data-education-code-remove]");
     if (removeTarget) {
       closeSettingsEducationCodeMenus();
-      removeSettingsEducationCode(removeTarget.dataset.educationCodeRemove || "");
+      requestRemoveSettingsEducationCode(removeTarget.dataset.educationCodeRemove || "");
     }
   });
   document.addEventListener("click", (event) => {
@@ -1333,6 +1339,17 @@ function bindEvents() {
         closeSettingsEducationCodeDialog();
       }
     });
+  });
+  elements.settingsEducationCodeRemoveActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      handleSettingsEducationCodeRemoveDialogAction(button.dataset.settingsEducationCodeRemoveAction);
+    });
+  });
+  elements.settingsEducationCodeRemoveDialog?.addEventListener("cancel", () => {
+    pendingSettingsEducationCodeRemovalCode = "";
+  });
+  elements.settingsEducationCodeRemoveDialog?.addEventListener("close", () => {
+    pendingSettingsEducationCodeRemovalCode = "";
   });
   elements.settingsEducationCodeDialog?.addEventListener("cancel", handleSettingsEducationCodeDialogClose);
   elements.settingsEducationCodeDialog?.addEventListener("close", handleSettingsEducationCodeDialogClose);
@@ -6733,6 +6750,56 @@ function removeSettingsEducationCode(code) {
   const nextCodes = getSavedEducationCodes().filter((savedCode) => savedCode !== normalizedCode);
   commitSettingsEducationCodes(nextCodes);
   renderSettingsEducationCode();
+}
+
+function requestRemoveSettingsEducationCode(code) {
+  const normalizedCode = normalizeEducationCodeValue(code);
+  if (!getSavedEducationCodes().includes(normalizedCode)) {
+    return;
+  }
+
+  const detail = getEducationCodeDetail(normalizedCode);
+  const displayName = detail?.schoolName || normalizedCode;
+  const message = `${displayName}のEducation Codeを削除しますか？`;
+  pendingSettingsEducationCodeRemovalCode = normalizedCode;
+
+  if (!elements.settingsEducationCodeRemoveDialog || typeof elements.settingsEducationCodeRemoveDialog.showModal !== "function") {
+    const shouldRemove = window.confirm(message);
+    if (shouldRemove) {
+      removeSettingsEducationCode(normalizedCode);
+    }
+    pendingSettingsEducationCodeRemovalCode = "";
+    return;
+  }
+
+  if (elements.settingsEducationCodeRemoveDialogMessage) {
+    elements.settingsEducationCodeRemoveDialogMessage.textContent = message;
+  }
+  if (!elements.settingsEducationCodeRemoveDialog.open) {
+    elements.settingsEducationCodeRemoveDialog.showModal();
+  }
+}
+
+function closeSettingsEducationCodeRemoveDialog() {
+  if (elements.settingsEducationCodeRemoveDialog?.open) {
+    elements.settingsEducationCodeRemoveDialog.close();
+  }
+  pendingSettingsEducationCodeRemovalCode = "";
+}
+
+function handleSettingsEducationCodeRemoveDialogAction(action) {
+  const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+  if (normalizedAction === "cancel") {
+    closeSettingsEducationCodeRemoveDialog();
+    return;
+  }
+  if (normalizedAction !== "confirm") {
+    return;
+  }
+
+  const codeToRemove = pendingSettingsEducationCodeRemovalCode;
+  closeSettingsEducationCodeRemoveDialog();
+  removeSettingsEducationCode(codeToRemove);
 }
 
 function openSettingsEducationCodeDialog(options = {}) {

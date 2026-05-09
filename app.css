@@ -5286,14 +5286,14 @@ body:not(:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aoj
   display: none;
 }
 
-.education-code-dialog-actions {
+.education-code-dialog-actions,
+.education-code-remove-actions {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .text-reset-dialog.education-code-dialog .education-code-save-btn.primary:enabled {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 42%),
-    linear-gradient(90deg, #2c9d64, #47bfd1);
+  background: var(--band-tab-background);
+  background-blend-mode: var(--band-tab-background-blend);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 9px 18px rgba(23, 128, 92, 0.24);
 }
 
@@ -5953,6 +5953,12 @@ body:is([data-theme="midnight"], [data-theme="blueberry"], [data-theme="aojiru"]
   .theme-unlock-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.guest-mode-actions.education-code-dialog-actions,
+.guest-mode-actions.education-code-remove-actions {
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 select,

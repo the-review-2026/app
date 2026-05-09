@@ -29,7 +29,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260509-5" />
+    <link rel="stylesheet" href="./app.css?v=20260509-6" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -600,6 +600,17 @@
       </form>
     </dialog>
 
+    <dialog id="settingsEducationCodeRemoveDialog" class="text-reset-dialog education-code-remove-dialog" aria-labelledby="settingsEducationCodeRemoveDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="settingsEducationCodeRemoveDialogTitle">Education Codeを削除する</h3>
+        <p id="settingsEducationCodeRemoveDialogMessage">このEducation Codeを削除しますか？</p>
+        <div class="guest-mode-actions education-code-remove-actions">
+          <button class="secondary" type="button" data-settings-education-code-remove-action="cancel">キャンセル</button>
+          <button class="primary danger" type="button" data-settings-education-code-remove-action="confirm">削除する</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="accountActionDialog" class="text-reset-dialog" aria-labelledby="accountActionDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="accountActionDialogTitle">ログアウト</h3>
@@ -645,8 +656,8 @@
     <p class="pc-use-notice">※ 本アプリはスマートフォンまたはタブレット縦向きでのご利用を想定しております。</p>
 
     <script src="./auth0-config.js?v=20260426-1"></script>
-    <script src="./app.js?v=20260509-5" charset="UTF-8"></script>
-    <script src="./pwa.js?v=20260509-5" charset="UTF-8"></script>
+    <script src="./app.js?v=20260509-6" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260509-6" charset="UTF-8"></script>
     <script>
   function isElementActuallyVisible(element) {
     if (!element) return false;
