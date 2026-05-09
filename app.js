@@ -7738,7 +7738,6 @@ function renderDailyLogin() {
   const lineStartPercent = dailyLoginSlotToPercent(lineStartSlot.index, windowSize);
   const lineEndPercent = dailyLoginSlotToPercent(lineEndSlot.index, windowSize);
   const currentPercent = dailyLoginSlotToPercent(currentSlot, windowSize);
-  const progressWidth = Math.max(0, currentPercent - lineStartPercent);
 
   if (elements.dailyLoginCount) {
     elements.dailyLoginCount.textContent = String(displayCount);
@@ -7762,12 +7761,13 @@ function renderDailyLogin() {
   if (elements.dailyLoginTrack) {
     elements.dailyLoginTrack.style.setProperty("--daily-login-track-start", `${lineStartPercent}%`);
     elements.dailyLoginTrack.style.setProperty("--daily-login-track-end", `${lineEndPercent}%`);
+    elements.dailyLoginTrack.style.setProperty("--daily-login-current-percent", `${currentPercent}%`);
     elements.dailyLoginTrack.classList.toggle("is-digit-one", isCurrentDayOne);
   }
 
   if (elements.dailyLoginProgressFill) {
-    elements.dailyLoginProgressFill.style.left = `${lineStartPercent}%`;
-    elements.dailyLoginProgressFill.style.width = `${progressWidth}%`;
+    elements.dailyLoginProgressFill.style.left = "-100vw";
+    elements.dailyLoginProgressFill.style.width = `calc(100vw + ${currentPercent}%)`;
   }
 
   if (elements.dailyLoginCurrentNode) {
