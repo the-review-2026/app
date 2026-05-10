@@ -251,6 +251,50 @@ async function updateManagerMember(request, env, memberId) {
     };
     hasReviewDataPatch = true;
   }
+  if (Object.prototype.hasOwnProperty.call(body, "email")) {
+    patch.email = normalizeSupabaseText(body.email) || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "loginStatus")) {
+    const loginStatus = normalizeManagerLoginStatus(body.loginStatus);
+    patch.login_status = loginStatus;
+    patch.is_logged_in = loginStatus !== "logged_out";
+    if (loginStatus === "guest") {
+      patch.auth_provider = "guest";
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "educationCodes")) {
+    patch.education_codes = normalizeManagerEducationCodes(body.educationCodes);
+    hasReviewDataPatch = true;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "colorTheme")) {
+    patch.color_theme = normalizeSupabaseText(body.colorTheme) || null;
+    hasReviewDataPatch = true;
+  }
+  const settingsPatch = readOptionalManagerJsonObjectPatch(body, ["settings"], "settings");
+  if (!settingsPatch.ok) {
+    return json({ error: settingsPatch.error }, 400);
+  }
+  if (settingsPatch.has) {
+    patch.settings = settingsPatch.value;
+    hasReviewDataPatch = true;
+  }
+  const avaterPatch = readOptionalManagerJsonObjectPatch(body, ["avater", "avatar"], "avater");
+  if (!avaterPatch.ok) {
+    return json({ error: avaterPatch.error }, 400);
+  }
+  if (avaterPatch.has) {
+    patch.avater = avaterPatch.value;
+    patch.equipped_avater = normalizeJsonObject(avaterPatch.value.equipped);
+    hasReviewDataPatch = true;
+  }
+  const reviewDataPatch = readOptionalManagerJsonObjectPatch(body, ["reviewData", "review_data"], "reviewData");
+  if (!reviewDataPatch.ok) {
+    return json({ error: reviewDataPatch.error }, 400);
+  }
+  if (reviewDataPatch.has) {
+    patch.review_data = reviewDataPatch.value;
+    hasReviewDataPatch = true;
+  }
   if (hasReviewDataPatch) {
     patch.review_remote_updated_at = now;
     patch.review_synced_at = now;
@@ -1182,8 +1226,10 @@ function serializeManagerMemberRow(user) {
   const reviewPeriod = normalizeJsonObject(user.review_period);
   const loginDays = normalizeJsonObject(reviewPeriod.loginDays ?? personalData.loginDays);
   const dailyLoginRewardDays = normalizeJsonObject(reviewPeriod.dailyLoginRewardDays ?? personalData.dailyLoginRewardDays);
+  const settings = normalizeJsonObject(user.settings ?? personalData.settings);
   const avater = normalizeJsonObject(user.avater ?? personalData.avater ?? personalData.avatar);
   const equippedAvater = normalizeJsonObject(user.equipped_avater ?? avater.equipped);
+  const reviewData = normalizeJsonObject(user.review_data ?? personalData.learningProgress ?? personalData.progress ?? personalData.noteProgress);
   const reviewCoin = Number.isFinite(Number(user.review_coin)) ? Number(user.review_coin) : 0;
   return {
     id: user.id || "",
@@ -1192,6 +1238,10 @@ function serializeManagerMemberRow(user) {
     display_name: user.nickname || "",
     nickname: user.nickname || "",
     email: user.email || null,
+    loginStatus: user.login_status || null,
+    isLoggedIn: Boolean(user.is_logged_in),
+    authProvider: user.auth_provider || null,
+    colorTheme: user.color_theme || null,
     role: normalizeManagerRole(user.manager_role),
     status: normalizeSupabaseText(user.manager_status) || "pending",
     reviewCoin: reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
@@ -1199,11 +1249,14 @@ function serializeManagerMemberRow(user) {
     reviewDays: Object.keys(loginDays).length,
     loginDays,
     dailyLoginRewardDays,
+    settings,
+    educationCodes: Array.isArray(user.education_codes) ? user.education_codes : [],
     avater: {
       ...avater,
       equipped: equippedAvater,
     },
     equippedAvater,
+    reviewData,
     approved_at: user.manager_approved_at || null,
     approved_by: user.manager_approved_by || null,
     created_at: user.created_at || null,
@@ -1247,6 +1300,54 @@ function normalizeSupabaseText(value) {
 function normalizeNonNegativeInteger(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? Math.floor(number) : fallback;
+}
+
+function normalizeManagerLoginStatus(value) {
+  const status = normalizeSupabaseText(value);
+  return ["logged_in", "guest", "logged_out"].includes(status) ? status : "logged_out";
+}
+
+function normalizeManagerEducationCodes(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeEducationCode).filter(Boolean);
+  }
+  const text = normalizeSupabaseText(value);
+  if (!text) {
+    return [];
+  }
+  if (text.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(text);
+      return Array.isArray(parsed) ? parsed.map(normalizeEducationCode).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+  return text.split(/[,\n]/).map(normalizeEducationCode).filter(Boolean);
+}
+
+function readOptionalManagerJsonObjectPatch(body, keys, label) {
+  const key = keys.find((candidate) => Object.prototype.hasOwnProperty.call(body, candidate));
+  if (!key) {
+    return { ok: true, has: false, value: {} };
+  }
+  const raw = body[key];
+  let value = raw;
+  if (typeof raw === "string") {
+    if (!raw.trim()) {
+      value = {};
+    } else {
+      try {
+        value = JSON.parse(raw);
+      } catch {
+        return { ok: false, error: `${label} must be valid JSON` };
+      }
+    }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, error: `${label} must be a JSON object` };
+  }
+  return { ok: true, has: true, value: normalizeJsonObject(value) };
 }
 
 function createRecentLoginDaysRecord(dayCount) {

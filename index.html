@@ -511,7 +511,7 @@
     <dialog id="guestModeDialog" class="text-reset-dialog" aria-labelledby="guestModeDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="guestModeDialogTitle">Guest Mode</h3>
-        <p>データはサーバー上に保存されず、お持ちのデバイスに保存されます。よろしいですか？</p>
+        <p>リビューデータはサーバー上に保存されず、お持ちのデバイスに保存されます。よろしいですか？</p>
         <div class="guest-mode-actions">
           <button class="secondary" type="button" data-guest-mode-action="cancel">キャンセル</button>
           <button class="secondary" type="button" data-guest-mode-action="import">データをインポートする</button>
@@ -2157,9 +2157,27 @@
         gap: 0.64rem;
       }
 
+      .manager-migrated-root .manager-member-identity {
+        display: grid;
+        grid-template-columns: minmax(7.2rem, auto) minmax(0, 1fr);
+        gap: 0.6rem;
+        align-items: start;
+      }
+
       .manager-migrated-root .manager-member-meta {
         display: grid;
         gap: 0.16rem;
+      }
+
+      .manager-migrated-root .manager-member-role-select {
+        width: 100%;
+        min-width: 0;
+        align-self: start;
+        border-color: rgba(29, 29, 29, 0.24);
+        border-radius: 8px;
+        background: #f7f7f7;
+        color: #1d1d1d;
+        font-weight: 800;
       }
 
       .manager-migrated-root .manager-member-name {
@@ -2177,13 +2195,9 @@
 
       .manager-migrated-root .manager-member-actions {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 0.65fr) minmax(5.5rem, 0.5fr);
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.52rem;
         align-items: center;
-      }
-
-      .manager-migrated-root .manager-member-actions select {
-        min-width: 0;
       }
 
       .manager-migrated-root .manager-member-actions button {
@@ -2192,6 +2206,10 @@
 
       .manager-migrated-root .manager-member-detail-toggle {
         width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.34rem;
       }
 
       .manager-migrated-root .manager-member-detail {
@@ -2224,6 +2242,24 @@
         width: 100%;
       }
 
+      .manager-migrated-root .manager-member-detail-field select,
+      .manager-migrated-root .manager-member-detail-field textarea {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .manager-migrated-root .manager-member-detail-field textarea {
+        min-height: 7.4rem;
+        resize: vertical;
+        font-family: "Noto Sans", "Noto Sans JP", monospace;
+        font-size: 0.78rem;
+        line-height: 1.45;
+      }
+
+      .manager-migrated-root .manager-member-detail-field.is-wide {
+        grid-column: 1 / -1;
+      }
+
       .manager-migrated-root .manager-member-unlimited-field {
         grid-template-columns: auto minmax(0, 1fr);
         align-items: center;
@@ -2231,6 +2267,19 @@
 
       .manager-migrated-root .manager-member-unlimited-field input {
         width: auto;
+      }
+
+      .manager-migrated-root .manager-member-detail-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .manager-migrated-root .manager-member-detail-actions button {
+        min-width: min(10rem, 100%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.34rem;
       }
 
       @media (max-width: 760px) {
@@ -2263,6 +2312,10 @@
 
         .manager-migrated-root .manager-member-card {
           grid-template-columns: 4.9rem minmax(0, 1fr);
+        }
+
+        .manager-migrated-root .manager-member-identity {
+          grid-template-columns: 1fr;
         }
 
         .manager-migrated-root .manager-member-detail-grid {
@@ -2617,21 +2670,13 @@
                 <div class="problem-form-main">
                   <fieldset class="problem-fieldset">
                     <legend>問題の種別わけ</legend>
-                    <div class="problem-field-row">
-                      <div class="field-block">
-                        <label class="field-label-row" for="binderSelect">
-                          <span>バインダー</span>
-                          <span class="field-badge">必須</span>
-                        </label>
-                        <select id="binderSelect" name="binder" required></select>
-                      </div>
-                      <div class="field-block">
-                        <label class="field-label-row" for="noteSelect">
-                          <span>ノート</span>
-                          <span class="field-badge">必須</span>
-                        </label>
-                        <select id="noteSelect" name="note" required></select>
-                      </div>
+                    <div class="field-block">
+                      <select id="binderSelect" name="binder" hidden></select>
+                      <label class="field-label-row" for="noteSelect">
+                        <span>ノート</span>
+                        <span class="field-badge">必須</span>
+                      </label>
+                      <select id="noteSelect" name="note" required></select>
                     </div>
                   </fieldset>
 
@@ -2895,8 +2940,6 @@
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="problemConfirmDialogTitle">問題の確認</h3>
         <dl class="manager-dialog-summary">
-          <dt>バインダー</dt>
-          <dd id="confirmProblemBinder">-</dd>
           <dt>ノート</dt>
           <dd id="confirmProblemNote">-</dd>
         </dl>
@@ -3068,7 +3111,6 @@
           problemResetDialog: document.getElementById("problemResetDialog"),
           resetDialogButtons: Array.from(document.querySelectorAll("[data-reset-dialog-action]")),
           problemConfirmDialog: document.getElementById("problemConfirmDialog"),
-          confirmProblemBinder: document.getElementById("confirmProblemBinder"),
           confirmProblemNote: document.getElementById("confirmProblemNote"),
           confirmProblemChapter: document.getElementById("confirmProblemChapter"),
           confirmProblemImage: document.getElementById("confirmProblemImage"),
@@ -4005,16 +4047,18 @@
                     <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
                   </div>
                   <div class="manager-member-main">
-                    <div class="manager-member-meta">
-                      <p class="manager-member-name">${escapeHtml(name)}</p>
-                      <p class="manager-member-sub">${escapeHtml(sub)}</p>
+                    <div class="manager-member-identity">
+                      <select class="manager-member-role-select" data-manager-member-role aria-label="役割">${roleOptions}</select>
+                      <div class="manager-member-meta">
+                        <p class="manager-member-name">${escapeHtml(name)}</p>
+                        <p class="manager-member-sub">${escapeHtml(sub)}</p>
+                      </div>
                     </div>
                     <div class="manager-member-actions">
-                      <select data-manager-member-role aria-label="役割">${roleOptions}</select>
                       <button class="secondary white-button manager-member-detail-toggle" type="button" data-manager-member-detail-toggle aria-expanded="false">
-                        リビュー情報
+                        <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+                        <span>リビューデータを編集する</span>
                       </button>
-                      <button class="primary" type="button" data-manager-member-save>保存</button>
                     </div>
                   </div>
                   <div class="manager-member-detail" data-manager-member-detail hidden>
@@ -4031,6 +4075,42 @@
                         <input data-manager-member-unlimited-coins type="checkbox" ${hasUnlimitedCoins ? "checked" : ""} />
                         <span>リビューコインを無制限にする</span>
                       </label>
+                      <label class="manager-member-detail-field">
+                        <span>e-mail</span>
+                        <input data-manager-member-email type="email" value="${escapeHtml(getManagerMemberEmail(member))}" />
+                      </label>
+                      <label class="manager-member-detail-field">
+                        <span>ログイン状況</span>
+                        <select data-manager-member-login-status>
+                          ${renderManagerLoginStatusOptions(getManagerMemberLoginStatus(member))}
+                        </select>
+                      </label>
+                      <label class="manager-member-detail-field">
+                        <span>Education Code</span>
+                        <input data-manager-member-education-codes type="text" value="${escapeHtml(getManagerMemberEducationCodesText(member))}" />
+                      </label>
+                      <label class="manager-member-detail-field">
+                        <span>カラーテーマ</span>
+                        <input data-manager-member-color-theme type="text" value="${escapeHtml(getManagerMemberColorTheme(member))}" />
+                      </label>
+                      <label class="manager-member-detail-field is-wide">
+                        <span>設定（JSON）</span>
+                        <textarea data-manager-member-settings-json spellcheck="false">${escapeHtml(stringifyManagerJson(getManagerMemberSettings(member)))}</textarea>
+                      </label>
+                      <label class="manager-member-detail-field is-wide">
+                        <span>Avater（JSON）</span>
+                        <textarea data-manager-member-avater-json spellcheck="false">${escapeHtml(stringifyManagerJson(getManagerMemberAvaterState(member).avater))}</textarea>
+                      </label>
+                      <label class="manager-member-detail-field is-wide">
+                        <span>リビューデータ（JSON）</span>
+                        <textarea data-manager-member-review-data-json spellcheck="false">${escapeHtml(stringifyManagerJson(getManagerMemberReviewData(member)))}</textarea>
+                      </label>
+                    </div>
+                    <div class="manager-member-detail-actions">
+                      <button class="primary" type="button" data-manager-member-save>
+                        <span class="material-symbols-rounded" aria-hidden="true">save</span>
+                        <span>保存する</span>
+                      </button>
                     </div>
                   </div>
                 </article>
@@ -4084,6 +4164,90 @@
           return Boolean(member?.hasUnlimitedReviewCoins ?? member?.has_unlimited_review_coins ?? member?.data?.hasUnlimitedReviewCoins);
         }
 
+        function getManagerMemberEmail(member) {
+          return String(member?.email ?? member?.data?.auth?.email ?? "");
+        }
+
+        function getManagerMemberLoginStatus(member) {
+          const status = String(member?.loginStatus ?? member?.login_status ?? "").trim();
+          if (["logged_in", "guest", "logged_out"].includes(status)) {
+            return status;
+          }
+          if (member?.isLoggedIn === true || member?.is_logged_in === true) {
+            return member?.authProvider === "guest" || member?.auth_provider === "guest" ? "guest" : "logged_in";
+          }
+          return "logged_out";
+        }
+
+        function renderManagerLoginStatusOptions(selectedValue) {
+          const labels = {
+            logged_in: "ログイン中",
+            guest: "Guest Mode",
+            logged_out: "ログアウト",
+          };
+          return Object.entries(labels)
+            .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
+            .join("");
+        }
+
+        function getManagerMemberEducationCodes(member) {
+          const candidates = [
+            member?.educationCodes,
+            member?.education_codes,
+            member?.settings?.educationCodes,
+            member?.data?.settings?.educationCodes,
+          ];
+          const found = candidates.find((value) => Array.isArray(value));
+          return found || [];
+        }
+
+        function getManagerMemberEducationCodesText(member) {
+          return getManagerMemberEducationCodes(member).map((value) => String(value || "").trim()).filter(Boolean).join(", ");
+        }
+
+        function getManagerMemberColorTheme(member) {
+          return String(member?.colorTheme ?? member?.color_theme ?? member?.settings?.theme ?? member?.data?.settings?.theme ?? "");
+        }
+
+        function getManagerMemberSettings(member) {
+          return getPlainManagerObject(member?.settings ?? member?.data?.settings);
+        }
+
+        function getManagerMemberReviewData(member) {
+          return getPlainManagerObject(member?.reviewData ?? member?.review_data ?? member?.learningProgress ?? member?.data?.learningProgress);
+        }
+
+        function getPlainManagerObject(value) {
+          return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        }
+
+        function stringifyManagerJson(value) {
+          return JSON.stringify(getPlainManagerObject(value), null, 2);
+        }
+
+        function parseEducationCodesText(value) {
+          return String(value || "")
+            .split(/[,\n]/)
+            .map((code) => code.trim())
+            .filter(Boolean);
+        }
+
+        function readManagerJsonField(card, selector, label) {
+          const raw = card?.querySelector(selector)?.value || "";
+          if (!raw.trim()) {
+            return {};
+          }
+          try {
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+              throw new Error("object-required");
+            }
+            return parsed;
+          } catch {
+            throw new Error(`${label}のJSONを確認してください。`);
+          }
+        }
+
         function toggleManagerMemberDetail(card) {
           const detail = card?.querySelector("[data-manager-member-detail]");
           const button = card?.querySelector("[data-manager-member-detail-toggle]");
@@ -4103,7 +4267,7 @@
             (value) => value && typeof value === "object" && !Array.isArray(value),
           ) || {};
           const itemOffsets = avater?.itemOffsets && typeof avater.itemOffsets === "object" ? avater.itemOffsets : {};
-          return { equipped, itemOffsets };
+          return { avater: { ...avater, equipped }, equipped, itemOffsets };
         }
 
         function renderManagerMemberAvaterPreviews(members) {
@@ -4162,11 +4326,30 @@
           const reviewCoin = Number(card?.querySelector("[data-manager-member-review-coin]")?.value || 0);
           const reviewDays = Number(card?.querySelector("[data-manager-member-review-days]")?.value || 0);
           const hasUnlimitedReviewCoins = Boolean(card?.querySelector("[data-manager-member-unlimited-coins]")?.checked);
+          const email = card?.querySelector("[data-manager-member-email]")?.value.trim() || "";
+          const loginStatus = card?.querySelector("[data-manager-member-login-status]")?.value || "logged_out";
+          const educationCodes = parseEducationCodesText(card?.querySelector("[data-manager-member-education-codes]")?.value || "");
+          const colorTheme = card?.querySelector("[data-manager-member-color-theme]")?.value.trim() || "";
           const saveButton = card?.querySelector("[data-manager-member-save]");
           if (saveButton) {
             saveButton.disabled = true;
           }
           elements.managerMembersStatus.textContent = "保存中です。";
+
+          let settings;
+          let avater;
+          let reviewData;
+          try {
+            settings = readManagerJsonField(card, "[data-manager-member-settings-json]", "設定");
+            avater = readManagerJsonField(card, "[data-manager-member-avater-json]", "Avater");
+            reviewData = readManagerJsonField(card, "[data-manager-member-review-data-json]", "リビューデータ");
+          } catch (error) {
+            elements.managerMembersStatus.textContent = error?.message || "JSONを確認してください。";
+            if (saveButton) {
+              saveButton.disabled = false;
+            }
+            return;
+          }
 
           const token = await getAuth0AccessToken();
           if (!token) {
@@ -4190,6 +4373,13 @@
                 reviewCoin: Number.isFinite(reviewCoin) && reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
                 reviewDays: Number.isFinite(reviewDays) && reviewDays >= 0 ? Math.floor(reviewDays) : 0,
                 hasUnlimitedReviewCoins,
+                email,
+                loginStatus,
+                educationCodes,
+                colorTheme,
+                settings,
+                avater,
+                reviewData,
               }),
             });
             if (!response.ok) {
@@ -4337,12 +4527,13 @@
           populateBinderOptions();
           updateNoteOptions();
 
-          elements.binderSelect.addEventListener("change", () => {
+          elements.binderSelect?.addEventListener("change", () => {
             updateNoteOptions();
             renderNotebookEditorFrame();
             updateProblemPreview();
           });
-          elements.noteSelect.addEventListener("change", () => {
+          elements.noteSelect?.addEventListener("change", () => {
+            syncBinderFromSelectedNote();
             updateChapterOptions();
             renderNotebookEditorFrame();
             updateProblemPreview();
@@ -4893,19 +5084,39 @@
 
         function populateBinderOptions() {
           const binders = Object.keys(NOTE_BY_BINDER);
+          if (!elements.binderSelect) {
+            return;
+          }
           elements.binderSelect.innerHTML = binders
             .map((binder) => `<option value="${escapeHtml(binder)}">${escapeHtml(binder)}</option>`)
             .join("");
         }
 
         function updateNoteOptions() {
-          const binder = elements.binderSelect.value;
-          const notes = NOTE_BY_BINDER[binder] ?? [];
-          elements.noteSelect.innerHTML = notes
-            .map((note) => `<option value="${escapeHtml(note)}">${escapeHtml(note)}</option>`)
+          if (!elements.noteSelect) {
+            return;
+          }
+          const binderEntries = Object.entries(NOTE_BY_BINDER);
+          elements.noteSelect.innerHTML = binderEntries
+            .map(([binder, notes]) => {
+              const options = (notes || [])
+                .map((note) => `<option value="${escapeHtml(note)}" data-binder="${escapeHtml(binder)}">${escapeHtml(note)}</option>`)
+                .join("");
+              return `<optgroup label="${escapeHtml(binder)}">${options}</optgroup>`;
+            })
             .join("");
+          syncBinderFromSelectedNote();
           updateChapterOptions();
           updateProblemPreview();
+        }
+
+        function syncBinderFromSelectedNote() {
+          const selectedOption = elements.noteSelect?.selectedOptions?.[0] || null;
+          const binder = selectedOption?.dataset?.binder || Object.keys(NOTE_BY_BINDER)[0] || "";
+          if (elements.binderSelect) {
+            elements.binderSelect.value = binder;
+          }
+          return binder;
         }
 
         function updateChapterOptions() {
@@ -4925,7 +5136,7 @@
         }
 
         function updateProblemPreview() {
-          const binder = elements.binderSelect?.value.trim() || "";
+          const binder = syncBinderFromSelectedNote();
           const note = elements.noteSelect?.value.trim() || "";
           const textNumber = elements.textNumberInput?.value.trim() || "";
           const textName = elements.textNameInput?.value.trim() || "";
@@ -4934,9 +5145,6 @@
           const contentText = (elements.problemEditor?.textContent || "").replace(/\s+/g, " ").trim();
 
           const missingFields = [];
-          if (!binder) {
-            missingFields.push("バインダー");
-          }
           if (!note) {
             missingFields.push("ノート");
           }
@@ -5054,8 +5262,8 @@
         }
 
         async function createProblemDraftFromForm(status) {
-          const binder = elements.binderSelect.value.trim();
-          const note = elements.noteSelect.value.trim();
+          const binder = syncBinderFromSelectedNote();
+          const note = elements.noteSelect?.value.trim() || "";
           const chapter = "";
           const textNumber = elements.textNumberInput?.value.trim() || "";
           const textName = elements.textNameInput?.value.trim() || "";
@@ -5072,9 +5280,6 @@
           const contentText = elements.problemEditor.textContent.trim();
 
           const missingFields = [];
-          if (!binder) {
-            missingFields.push("バインダー");
-          }
           if (!note) {
             missingFields.push("ノート");
           }
@@ -5170,7 +5375,6 @@
         }
 
         function populateProblemConfirmDialog(draft) {
-          setPreviewText(elements.confirmProblemBinder, draft.binder, "-");
           setPreviewText(elements.confirmProblemNote, draft.note, "-");
           if (elements.confirmProblemContent) {
             elements.confirmProblemContent.textContent = [
