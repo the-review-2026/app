@@ -73,6 +73,7 @@ const REVIEW_DATA_EXPORT_KEY = "TheReview::DataExport::v1";
 const REVIEW_DATA_STORAGE_KEY = STORAGE_KEY;
 const REVIEW_DATA_SYNC_VERSION = 1;
 const REVIEW_DATA_SYNC_DEBOUNCE_MS = 1200;
+const REVIEW_DATA_EXTERNAL_UPDATE_GRACE_MS = 60 * 1000;
 const REVIEW_DATA_SYNC_REFRESH_MIN_MS = 15 * 1000;
 const STORE_CONFIG_KEY = "the-review-store-config-v1";
 const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
@@ -4125,11 +4126,15 @@ function setFlashcardDirectNotebookGeometry(note) {
   const rect = note.getBoundingClientRect();
   const viewportWidth = Math.max(0, document.documentElement.clientWidth || window.innerWidth || 0);
   const viewportHeight = Math.max(0, document.documentElement.clientHeight || window.innerHeight || 0);
-  const safeTop = Math.max(72, Math.min(rect.top, viewportHeight - Math.min(rect.height, viewportHeight - 132) - 68));
-  const safeLeft = Math.max(8, Math.min(rect.left, viewportWidth - rect.width - 8));
+  const targetWidth = Math.min(getFlashcardBinderTargetNoteWidth(), Math.max(260, viewportWidth - 16));
+  const targetHeight = targetWidth * Math.SQRT2;
+  const bottomReserved = Math.max(104, Math.min(148, viewportHeight * 0.18));
+  const maxTop = Math.max(8, viewportHeight - bottomReserved - Math.min(targetHeight, viewportHeight - bottomReserved - 8));
+  const safeTop = Math.max(8, Math.min(rect.top, maxTop));
+  const safeLeft = Math.max(8, Math.round((viewportWidth - targetWidth) / 2));
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-left", `${Math.round(safeLeft)}px`);
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-top", `${Math.round(safeTop)}px`);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-width", `${Math.round(rect.width)}px`);
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-width", `${Math.round(targetWidth)}px`);
 }
 
 function setLiftedFlashcardBinder(nextBinder) {
@@ -4412,6 +4417,10 @@ function handleFlashcardNoteReaderAction(actionButton) {
     activeFlashcardNotebookState.pageTurnDirection = "hide-left";
     renderFlashcardNotebook();
     recordActiveFlashcardNotebookProgress();
+    return;
+  }
+  if (action === "answer") {
+    return;
   }
 }
 
@@ -4498,34 +4507,37 @@ function renderFlashcardNotebook() {
   }
   reader.append(pageWrap);
 
+  const prevButton = document.createElement("button");
+  prevButton.type = "button";
+  prevButton.className = "flashcard-note-reader-side-nav flashcard-note-reader-side-nav-prev home-card-nav-btn home-card-nav-btn-prev";
+  prevButton.dataset.flashcardNoteReaderAction = "prev";
+  prevButton.innerHTML = '<span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_left</span>';
+  prevButton.setAttribute("aria-label", "前へ");
+  prevButton.disabled = activeFlashcardNotebookState.pageIndex <= 0;
+
+  const nextButton = document.createElement("button");
+  nextButton.type = "button";
+  nextButton.className = "flashcard-note-reader-side-nav flashcard-note-reader-side-nav-next home-card-nav-btn home-card-nav-btn-next";
+  nextButton.dataset.flashcardNoteReaderAction = "next";
+  nextButton.innerHTML = '<span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_right</span>';
+  nextButton.setAttribute("aria-label", "次へ");
+  nextButton.disabled = activeFlashcardNotebookState.pageIndex >= maxPageIndex;
+  reader.append(prevButton, nextButton);
+
   const controls = document.createElement("div");
   controls.className = "flashcard-note-reader-controls";
 
   const choiceModeButton = createFlashcardNotebookMenuButton("checklist", "3択ボタン", "choice");
   const textModeButton = createFlashcardNotebookMenuButton("keyboard", "文字入力ボタン", "text");
-  const voiceModeButton = createFlashcardNotebookMenuButton("keyboard_voice", "音声入力ボタン", "voice");
+  const voiceModeButton = createFlashcardNotebookMenuButton("mic", "音声入力ボタン", "voice");
+  const avatarPreview = createFlashcardNotebookAvatarPreview();
+  const answerButton = document.createElement("button");
+  answerButton.type = "button";
+  answerButton.className = "flashcard-note-reader-answer-btn";
+  answerButton.dataset.flashcardNoteReaderAction = "answer";
+  answerButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">check</span><span>答える</span>';
 
-  const prevButton = document.createElement("button");
-  prevButton.type = "button";
-  prevButton.className = "flashcard-note-reader-nav-btn";
-  prevButton.dataset.flashcardNoteReaderAction = "prev";
-  prevButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>';
-  prevButton.setAttribute("aria-label", "前へ");
-  prevButton.disabled = activeFlashcardNotebookState.pageIndex <= 0;
-
-  const pageCounter = document.createElement("span");
-  pageCounter.className = "flashcard-note-reader-page-count";
-  pageCounter.textContent = `${activeFlashcardNotebookState.pageIndex + 1} / ${spreads.length}`;
-
-  const nextButton = document.createElement("button");
-  nextButton.type = "button";
-  nextButton.className = "flashcard-note-reader-nav-btn";
-  nextButton.dataset.flashcardNoteReaderAction = "next";
-  nextButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>';
-  nextButton.setAttribute("aria-label", "次へ");
-  nextButton.disabled = activeFlashcardNotebookState.pageIndex >= maxPageIndex;
-
-  controls.append(choiceModeButton, textModeButton, voiceModeButton, prevButton, pageCounter, nextButton);
+  controls.append(choiceModeButton, textModeButton, voiceModeButton, avatarPreview, answerButton);
   reader.append(controls);
   activeFlashcardBinderElement.append(reader);
 }
@@ -4538,6 +4550,24 @@ function createFlashcardNotebookMenuButton(iconName, label, mode) {
   button.setAttribute("aria-label", label);
   button.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${iconName}</span>`;
   return button;
+}
+
+function createFlashcardNotebookAvatarPreview() {
+  const preview = document.createElement("div");
+  preview.className = "flashcard-note-reader-avatar avater-preview";
+  preview.setAttribute("aria-hidden", "true");
+  const baseImage = document.createElement("img");
+  baseImage.className = "avater-base-image";
+  baseImage.src = AVATER_BASE_IMAGE;
+  baseImage.alt = "";
+  preview.append(baseImage);
+  renderAvaterPreview(preview);
+  preview.querySelectorAll(".avater-layer").forEach((layer) => {
+    layer.removeAttribute("role");
+    layer.removeAttribute("tabindex");
+    layer.removeAttribute("aria-label");
+  });
+  return preview;
 }
 
 function buildFlashcardNotebookSpreads(note) {
@@ -9402,25 +9432,35 @@ function mergeReviewDataStates(localState, remoteState, remoteRecord = {}) {
   const remote = normalizePersistedState(remoteState);
   const localUpdatedAt = getReviewStateUpdatedTime(local);
   const remoteServerUpdatedAt = getRemoteReviewRecordServerUpdatedTime(remoteRecord);
+  const remoteClientUpdatedAt = getRemoteReviewRecordClientUpdatedTime(remoteRecord);
   const remoteRecordUpdatedAt = getRemoteReviewRecordUpdatedTime(remoteRecord);
   const remoteUpdatedAt = Math.max(getReviewStateUpdatedTime(remote), remoteRecordUpdatedAt);
   const localLastRemoteUpdatedAt = getReviewStateLastRemoteUpdatedTime(local);
   const remoteChangedAfterLastSync = Boolean(remoteServerUpdatedAt && remoteServerUpdatedAt > localLastRemoteUpdatedAt);
-  const preferRemote = remoteChangedAfterLastSync || remoteUpdatedAt > localUpdatedAt;
+  const remoteWasEditedOutsideThisClient =
+    remoteChangedAfterLastSync &&
+    (!remoteClientUpdatedAt ||
+      remoteClientUpdatedAt <= localLastRemoteUpdatedAt ||
+      remoteServerUpdatedAt - remoteClientUpdatedAt > REVIEW_DATA_EXTERNAL_UPDATE_GRACE_MS);
+  const preferRemote = remoteWasEditedOutsideThisClient || remoteUpdatedAt > localUpdatedAt;
   const preferred = preferRemote ? remote : local;
   const merged = normalizePersistedState(preferred);
   const bothStatesHaveSyncTimestamps = Boolean(local.sync?.updatedAt && remote.sync?.updatedAt);
 
-  merged.reviewCoin = bothStatesHaveSyncTimestamps
-    ? normalizeCoinAmount(preferred.reviewCoin)
-    : Math.max(normalizeCoinAmount(local.reviewCoin), normalizeCoinAmount(remote.reviewCoin));
+  merged.reviewCoin = preferRemote
+    ? normalizeCoinAmount(remote.reviewCoin)
+    : bothStatesHaveSyncTimestamps
+      ? normalizeCoinAmount(preferred.reviewCoin)
+      : Math.max(normalizeCoinAmount(local.reviewCoin), normalizeCoinAmount(remote.reviewCoin));
   merged.hasUnlimitedReviewCoins = Boolean(preferred.hasUnlimitedReviewCoins);
-  merged.loginDays = mergeBooleanRecord(local.loginDays, remote.loginDays);
-  merged.dailyLoginRewardDays = mergeNumberRecord(local.dailyLoginRewardDays, remote.dailyLoginRewardDays);
+  merged.loginDays = preferRemote ? remote.loginDays : mergeBooleanRecord(local.loginDays, remote.loginDays);
+  merged.dailyLoginRewardDays = preferRemote
+    ? remote.dailyLoginRewardDays
+    : mergeNumberRecord(local.dailyLoginRewardDays, remote.dailyLoginRewardDays);
   merged.dailyTryRecords = mergeDailyTryRecordMap(local.dailyTryRecords, remote.dailyTryRecords, preferRemote);
   merged.learningProgress = mergeLearningProgressStates(local.learningProgress, remote.learningProgress, preferRemote);
   merged.settings = mergeReviewSettings(local.settings, remote.settings, preferRemote);
-  merged.auth = mergeReviewAuth(local.auth, remote.auth);
+  merged.auth = mergeReviewAuth(local.auth, remote.auth, preferRemote);
   merged.avater = mergeReviewAvater(local.avater, remote.avater, preferRemote);
 
   const mergedEqualsLocal = reviewDataStateContentEquals(merged, local);
@@ -9466,9 +9506,12 @@ function mergeReviewSettings(localSettings, remoteSettings, preferRemote) {
   return normalizeSettingsState(base);
 }
 
-function mergeReviewAuth(localAuth, remoteAuth) {
+function mergeReviewAuth(localAuth, remoteAuth, preferRemote = false) {
   const local = normalizeAuthState(localAuth);
   const remote = normalizeAuthState(remoteAuth);
+  if (preferRemote) {
+    return remote;
+  }
   if (local.isLoggedIn && local.provider !== "guest") {
     return local;
   }
@@ -9606,6 +9649,11 @@ function getRemoteReviewRecordUpdatedTime(record) {
   return Math.max(updatedAt ? Date.parse(updatedAt) : 0, clientUpdatedAt ? Date.parse(clientUpdatedAt) : 0);
 }
 
+function getRemoteReviewRecordClientUpdatedTime(record) {
+  const clientUpdatedAt = normalizeIsoDateString(record?.clientUpdatedAt);
+  return clientUpdatedAt ? Date.parse(clientUpdatedAt) : 0;
+}
+
 function getRemoteReviewRecordServerUpdatedTime(record) {
   const updatedAt = normalizeIsoDateString(record?.updatedAt);
   return updatedAt ? Date.parse(updatedAt) : 0;
@@ -9619,6 +9667,7 @@ function getReviewDataStateContentSnapshot(value) {
   const normalized = normalizePersistedState(value);
   return {
     reviewCoin: normalized.reviewCoin,
+    hasUnlimitedReviewCoins: normalized.hasUnlimitedReviewCoins,
     loginDays: normalized.loginDays,
     dailyLoginRewardDays: normalized.dailyLoginRewardDays,
     dailyTryRecords: normalized.dailyTryRecords,

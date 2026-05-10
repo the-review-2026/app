@@ -63,6 +63,9 @@ export default {
     if (managerMemberMatch && request.method === "PATCH") {
       return updateManagerMember(request, env, managerMemberMatch[1]);
     }
+    if (managerMemberMatch && request.method === "DELETE") {
+      return deleteManagerMember(request, env, managerMemberMatch[1]);
+    }
 
     return json({ error: "Not Found", path: url.pathname }, 404);
   }
@@ -393,6 +396,36 @@ async function updateManagerMember(request, env, memberId) {
   const users = await response.json();
   const user = Array.isArray(users) ? users[0] ?? null : users;
   return json(serializeManagerMemberRow(user));
+}
+
+async function deleteManagerMember(request, env, memberId) {
+  const access = await requireManagerOwner(request, env);
+  if (!access.ok) {
+    return json(access.body, access.status);
+  }
+
+  const normalizedMemberId = normalizeSupabaseText(memberId);
+  if (!normalizedMemberId) {
+    return json({ error: "member id is required" }, 400);
+  }
+
+  const response = await supabaseRequest(access.supabase, `/users?id=eq.${encodeURIComponent(normalizedMemberId)}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=representation",
+    },
+  });
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to delete manager member");
+    return json(error.body, error.status);
+  }
+
+  const users = await response.json().catch(() => []);
+  const deletedUser = Array.isArray(users) ? users[0] ?? null : users;
+  return json({
+    deleted: true,
+    member: serializeManagerMemberRow(deletedUser),
+  });
 }
 
 async function requireManagerOwner(request, env) {

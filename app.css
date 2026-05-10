@@ -10139,17 +10139,18 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
   bottom: max(0.45rem, env(safe-area-inset-bottom));
   z-index: 4900;
   width: min(456px, calc(100% - 1rem));
-  min-height: 3.38rem;
+  min-height: 5.32rem;
   transform: translateX(-50%);
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  align-items: stretch;
+  display: flex;
+  align-items: center;
   gap: 0.28rem;
-  padding: 0.28rem;
+  padding: 0.68rem 0.72rem;
   border: 1px solid rgba(255, 255, 255, 0.34);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 10px 24px rgba(20, 54, 70, 0.16);
+  border-radius: 28px;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 6px),
+    rgba(29, 29, 29, 0.9);
+  box-shadow: 0 16px 34px rgba(5, 10, 18, 0.28);
   backdrop-filter: blur(14px) saturate(1.08);
 }
 
@@ -10163,30 +10164,93 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
   box-shadow: none;
 }
 
-.flashcard-note-reader-controls .flashcard-note-reader-nav-btn {
-  padding: 0;
-  display: inline-grid;
-  place-items: center;
-}
-
-.flashcard-note-reader-controls .flashcard-note-reader-page-count {
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
-  background: transparent;
-  color: rgba(29, 29, 29, 0.74);
-  font-size: 0.72rem;
-}
-
-.flashcard-note-reader-controls .flashcard-note-reader-nav-btn:not(:disabled),
 .flashcard-note-reader-controls .flashcard-note-reader-mode-btn {
-  color: rgba(29, 29, 29, 0.74);
+  flex: 0 0 2.74rem;
+  min-height: 2.74rem;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
 }
 
-.flashcard-note-reader-controls .flashcard-note-reader-nav-btn:not(:disabled):active,
+.flashcard-note-reader-controls .flashcard-note-reader-mode-btn .material-symbols-rounded {
+  font-size: 2rem;
+  font-variation-settings: "FILL" 0, "wght" 600, "GRAD" 0, "opsz" 36;
+}
+
 .flashcard-note-reader-controls .flashcard-note-reader-mode-btn:active {
+  color: #53cde8;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.flashcard-note-reader-avatar {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 2;
+  width: clamp(108px, 30%, 148px);
+  aspect-ratio: 1 / 1.08;
+  transform: translateX(-50%);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.flashcard-note-reader-avatar .avater-base-image {
+  width: 112%;
+  height: 112%;
+  object-fit: contain;
+  object-position: center bottom;
+  transform: translateY(4%);
+}
+
+.flashcard-note-reader-answer-btn {
+  appearance: none;
+  margin-left: auto;
+  min-width: clamp(7.1rem, 33%, 9.4rem);
+  min-height: 3.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  border: 0;
+  border-radius: 999px;
+  background: #50a044;
   color: #ffffff;
-  background: #1d1d1d;
+  box-shadow: 0 9px 18px rgba(20, 74, 38, 0.22);
+  font: inherit;
+  font-size: clamp(1.1rem, 5vw, 1.62rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.flashcard-note-reader-answer-btn .material-symbols-rounded {
+  font-size: 1.55em;
+  font-variation-settings: "FILL" 0, "wght" 650, "GRAD" 0, "opsz" 40;
+}
+
+.flashcard-note-reader-side-nav.home-card-nav-btn {
+  position: fixed;
+  top: min(62vh, calc(var(--flashcard-direct-note-top, 7.2rem) + 18rem));
+  z-index: 4890;
+  width: 2.42rem;
+  height: 2.42rem;
+  min-width: 2.42rem;
+}
+
+.flashcard-note-reader-side-nav-prev.home-card-nav-btn {
+  left: max(0.44rem, calc(var(--flashcard-direct-note-left, 1rem) - 3rem));
+}
+
+.flashcard-note-reader-side-nav-next.home-card-nav-btn {
+  left: min(
+    calc(100vw - 2.86rem),
+    calc(var(--flashcard-direct-note-left, 1rem) + var(--note-open-page-width) + 0.58rem)
+  );
+  right: auto;
+}
+
+.flashcard-note-reader-side-nav.home-card-nav-btn:disabled {
+  opacity: 0.24;
 }
 
 body:has(.flashcard-binder-stage.is-note-open) .top-nav,
@@ -10197,12 +10261,50 @@ body:has(.flashcard-binder-stage.is-note-open) .top-nav-character {
 
 @media (max-width: 760px) {
   .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
-    --note-open-page-width: min(var(--flashcard-direct-note-width, 456px), calc(100vw - 1.2rem));
+    --note-open-page-width: min(var(--flashcard-direct-note-width, 456px), calc(100vw - 1rem));
   }
 
   .flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
     max-width: 8.6rem;
     font-size: 0.68rem;
+  }
+
+  .flashcard-note-reader-controls {
+    width: min(456px, calc(100% - 0.7rem));
+    min-height: 4.92rem;
+    padding: 0.58rem 0.58rem;
+    border-radius: 24px;
+  }
+
+  .flashcard-note-reader-controls .flashcard-note-reader-mode-btn {
+    flex-basis: 2.28rem;
+    min-height: 2.46rem;
+  }
+
+  .flashcard-note-reader-controls .flashcard-note-reader-mode-btn .material-symbols-rounded {
+    font-size: 1.72rem;
+  }
+
+  .flashcard-note-reader-answer-btn {
+    min-width: clamp(6.2rem, 32%, 8.6rem);
+    min-height: 3.25rem;
+  }
+
+  .flashcard-note-reader-avatar {
+    width: clamp(96px, 30%, 132px);
+  }
+
+  .flashcard-note-reader-side-nav.home-card-nav-btn {
+    top: min(58vh, calc(var(--flashcard-direct-note-top, 5rem) + 14rem));
+  }
+
+  .flashcard-note-reader-side-nav-prev.home-card-nav-btn {
+    left: 0.36rem;
+  }
+
+  .flashcard-note-reader-side-nav-next.home-card-nav-btn {
+    left: auto;
+    right: 0.36rem;
   }
 }
 

@@ -2164,11 +2164,6 @@
         align-items: start;
       }
 
-      .manager-migrated-root .manager-member-meta {
-        display: grid;
-        gap: 0.16rem;
-      }
-
       .manager-migrated-root .manager-member-role-tag {
         display: inline-flex;
         align-items: center;
@@ -2189,13 +2184,25 @@
         margin: 0;
         color: #1d1d1d;
         font-weight: 800;
+        align-self: center;
       }
 
       .manager-migrated-root .manager-member-sub {
+        grid-column: 1 / -1;
         margin: 0;
         color: #555555;
         font-size: 0.78rem;
         overflow-wrap: anywhere;
+      }
+
+      .manager-migrated-root .manager-member-identity.has-no-role-tag {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.16rem;
+      }
+
+      .manager-migrated-root .manager-member-identity.has-no-role-tag .manager-member-name,
+      .manager-migrated-root .manager-member-identity.has-no-role-tag .manager-member-sub {
+        grid-column: 1 / -1;
       }
 
       .manager-migrated-root .manager-member-actions {
@@ -2276,6 +2283,8 @@
 
       .manager-migrated-root .manager-member-detail-actions {
         display: flex;
+        flex-wrap: wrap;
+        gap: 0.52rem;
         justify-content: flex-end;
       }
 
@@ -3265,7 +3274,9 @@
           });
           elements.managerMemberSearchInput?.addEventListener("input", renderManagerMembers);
           elements.managerMembersList?.addEventListener("click", (event) => {
-            const target = event.target instanceof Element ? event.target.closest("[data-manager-member-save], [data-manager-member-detail-toggle]") : null;
+            const target = event.target instanceof Element
+              ? event.target.closest("[data-manager-member-save], [data-manager-member-logout], [data-manager-member-delete], [data-manager-member-detail-toggle]")
+              : null;
             if (!target) {
               return;
             }
@@ -3275,6 +3286,14 @@
             }
             if (target.matches("[data-manager-member-detail-toggle]")) {
               toggleManagerMemberDetail(card);
+              return;
+            }
+            if (target.matches("[data-manager-member-logout]")) {
+              void logoutManagerMember(card.dataset.managerMemberId || "");
+              return;
+            }
+            if (target.matches("[data-manager-member-delete]")) {
+              void deleteManagerMember(card.dataset.managerMemberId || "");
               return;
             }
             void saveManagerMemberAccess(card.dataset.managerMemberId || "");
@@ -4041,10 +4060,12 @@
               const reviewDays = getManagerMemberReviewDays(member);
               const hasUnlimitedCoins = getManagerMemberUnlimitedReviewCoins(member);
               const roleLabel = MANAGER_ROLE_LABELS[roleValue] || MANAGER_ROLE_LABELS.user;
+              const roleTag = roleValue && roleValue !== "user"
+                ? `<span class="manager-member-role-tag">${escapeHtml(roleLabel)}</span>`
+                : "";
               const roleOptions = Object.entries(MANAGER_ROLE_LABELS)
                 .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === roleValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
                 .join("");
-              const themeOptions = renderManagerThemeOptions(getManagerMemberColorTheme(member));
 
               return `
                 <article class="manager-member-card" data-manager-member-id="${escapeHtml(id)}">
@@ -4052,12 +4073,10 @@
                     <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
                   </div>
                   <div class="manager-member-main">
-                    <div class="manager-member-identity">
-                      <span class="manager-member-role-tag">${escapeHtml(roleLabel)}</span>
-                      <div class="manager-member-meta">
-                        <p class="manager-member-name">${escapeHtml(name)}</p>
-                        <p class="manager-member-sub">${escapeHtml(sub)}</p>
-                      </div>
+                    <div class="manager-member-identity${roleTag ? "" : " has-no-role-tag"}">
+                      ${roleTag}
+                      <p class="manager-member-name">${escapeHtml(name)}</p>
+                      <p class="manager-member-sub">${escapeHtml(sub)}</p>
                     </div>
                     <div class="manager-member-actions">
                       <button class="secondary white-button manager-member-detail-toggle" type="button" data-manager-member-detail-toggle aria-expanded="false">
@@ -4082,25 +4101,19 @@
                       </label>
                       <label class="manager-member-detail-field manager-member-unlimited-field">
                         <input data-manager-member-unlimited-coins type="checkbox" ${hasUnlimitedCoins ? "checked" : ""} />
-                        <span>リビューコインを無制限にする</span>
+                        <span>リビューコインを∞枚にする</span>
                       </label>
                       <label class="manager-member-detail-field">
                         <span>メールアドレス</span>
                         <input data-manager-member-email type="email" value="${escapeHtml(getManagerMemberEmail(member))}" />
                       </label>
-                      <label class="manager-member-detail-field">
-                        <span>ログイン状況</span>
-                        <select data-manager-member-login-status>
-                          ${renderManagerLoginStatusOptions(getManagerMemberLoginStatus(member))}
-                        </select>
-                      </label>
-                      <label class="manager-member-detail-field">
+                      <label class="manager-member-detail-field is-wide">
                         <span>Education Code</span>
-                        <input data-manager-member-education-codes type="text" value="${escapeHtml(getManagerMemberEducationCodesText(member))}" />
+                        <textarea data-manager-member-education-codes-json spellcheck="false">${escapeHtml(stringifyManagerJsonArray(getManagerMemberEducationCodes(member)))}</textarea>
                       </label>
                       <label class="manager-member-detail-field">
                         <span>カラーテーマ</span>
-                        <select data-manager-member-color-theme>${themeOptions}</select>
+                        <input data-manager-member-color-theme type="text" value="${escapeHtml(getManagerMemberColorTheme(member))}" />
                       </label>
                       <label class="manager-member-detail-field is-wide">
                         <span>設定（JSON）</span>
@@ -4116,6 +4129,14 @@
                       </label>
                     </div>
                     <div class="manager-member-detail-actions">
+                      <button class="secondary white-button" type="button" data-manager-member-logout>
+                        <span class="material-symbols-rounded" aria-hidden="true">logout</span>
+                        <span>ログアウト</span>
+                      </button>
+                      <button class="danger" type="button" data-manager-member-delete>
+                        <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+                        <span>削除</span>
+                      </button>
                       <button class="primary" type="button" data-manager-member-save>
                         <span class="material-symbols-rounded" aria-hidden="true">save</span>
                         <span>保存する</span>
@@ -4177,41 +4198,6 @@
           return String(member?.email ?? member?.data?.auth?.email ?? "");
         }
 
-        function getManagerMemberLoginStatus(member) {
-          const status = String(member?.loginStatus ?? member?.login_status ?? "").trim();
-          if (["logged_in", "guest", "logged_out"].includes(status)) {
-            return status;
-          }
-          if (member?.isLoggedIn === true || member?.is_logged_in === true) {
-            return member?.authProvider === "guest" || member?.auth_provider === "guest" ? "guest" : "logged_in";
-          }
-          return "logged_out";
-        }
-
-        function renderManagerLoginStatusOptions(selectedValue) {
-          const labels = {
-            logged_in: "ログイン中",
-            guest: "Guest Mode",
-            logged_out: "ログアウト",
-          };
-          return Object.entries(labels)
-            .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
-            .join("");
-        }
-
-        function renderManagerThemeOptions(selectedValue) {
-          const selected = String(selectedValue || "sea");
-          const themeIds = MANAGER_THEME_IDS.includes(selected)
-            ? MANAGER_THEME_IDS
-            : [selected, ...MANAGER_THEME_IDS];
-          return themeIds
-            .map((value) => {
-              const label = MANAGER_THEME_LABELS[value] || value;
-              return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
-            })
-            .join("");
-        }
-
         function getManagerMemberEducationCodes(member) {
           const candidates = [
             member?.educationCodes,
@@ -4221,10 +4207,6 @@
           ];
           const found = candidates.find((value) => Array.isArray(value));
           return found || [];
-        }
-
-        function getManagerMemberEducationCodesText(member) {
-          return getManagerMemberEducationCodes(member).map((value) => String(value || "").trim()).filter(Boolean).join(", ");
         }
 
         function getManagerMemberColorTheme(member) {
@@ -4247,11 +4229,8 @@
           return JSON.stringify(getPlainManagerObject(value), null, 2);
         }
 
-        function parseEducationCodesText(value) {
-          return String(value || "")
-            .split(/[,\n]/)
-            .map((code) => code.trim())
-            .filter(Boolean);
+        function stringifyManagerJsonArray(value) {
+          return JSON.stringify(Array.isArray(value) ? value : [], null, 2);
         }
 
         function readManagerJsonField(card, selector, label) {
@@ -4267,6 +4246,22 @@
             return parsed;
           } catch {
             throw new Error(`${label}のJSONを確認してください。`);
+          }
+        }
+
+        function readManagerJsonArrayField(card, selector, label) {
+          const raw = card?.querySelector(selector)?.value || "";
+          if (!raw.trim()) {
+            return [];
+          }
+          try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+              throw new Error("array-required");
+            }
+            return parsed.map((value) => String(value || "").trim()).filter(Boolean);
+          } catch {
+            throw new Error(`${label}のJSON配列を確認してください。`);
           }
         }
 
@@ -4349,8 +4344,6 @@
           const reviewDays = Number(card?.querySelector("[data-manager-member-review-days]")?.value || 0);
           const hasUnlimitedReviewCoins = Boolean(card?.querySelector("[data-manager-member-unlimited-coins]")?.checked);
           const email = card?.querySelector("[data-manager-member-email]")?.value.trim() || "";
-          const loginStatus = card?.querySelector("[data-manager-member-login-status]")?.value || "logged_out";
-          const educationCodes = parseEducationCodesText(card?.querySelector("[data-manager-member-education-codes]")?.value || "");
           const colorTheme = card?.querySelector("[data-manager-member-color-theme]")?.value.trim() || "";
           const saveButton = card?.querySelector("[data-manager-member-save]");
           if (saveButton) {
@@ -4361,7 +4354,9 @@
           let settings;
           let avater;
           let reviewData;
+          let educationCodes;
           try {
+            educationCodes = readManagerJsonArrayField(card, "[data-manager-member-education-codes-json]", "Education Code");
             settings = readManagerJsonField(card, "[data-manager-member-settings-json]", "設定");
             avater = readManagerJsonField(card, "[data-manager-member-avater-json]", "Avater");
             reviewData = readManagerJsonField(card, "[data-manager-member-review-data-json]", "リビューデータ");
@@ -4396,7 +4391,6 @@
                 reviewDays: Number.isFinite(reviewDays) && reviewDays >= 0 ? Math.floor(reviewDays) : 0,
                 hasUnlimitedReviewCoins,
                 email,
-                loginStatus,
                 educationCodes,
                 colorTheme,
                 settings,
@@ -4417,6 +4411,90 @@
               saveButton.disabled = false;
             }
           }
+        }
+
+        async function logoutManagerMember(memberId) {
+          if (!memberId || !canManageManagerMembers()) {
+            return;
+          }
+          const card = Array.from(elements.managerMembersList?.querySelectorAll("[data-manager-member-id]") || []).find(
+            (item) => item.dataset.managerMemberId === memberId
+          );
+          setManagerMemberActionButtonsDisabled(card, true);
+          elements.managerMembersStatus.textContent = "ログアウトを反映しています。";
+          const token = await getAuth0AccessToken();
+          if (!token) {
+            elements.managerMembersStatus.textContent = "ログイン情報を確認できませんでした。";
+            setManagerMemberActionButtonsDisabled(card, false);
+            return;
+          }
+          try {
+            const response = await fetch(`${resolveApiBase()}/manager/members/${encodeURIComponent(memberId)}`, {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify({ loginStatus: "logged_out" }),
+            });
+            if (!response.ok) {
+              throw new Error(`API ${response.status}`);
+            }
+            const updated = await response.json();
+            state.managerMembers = state.managerMembers.map((member) => (member.id === memberId ? updated : member));
+            elements.managerMembersStatus.textContent = "ログアウトを反映しました。";
+            renderManagerMembers();
+          } catch {
+            elements.managerMembersStatus.textContent = "ログアウトを反映できませんでした。";
+            setManagerMemberActionButtonsDisabled(card, false);
+          }
+        }
+
+        async function deleteManagerMember(memberId) {
+          if (!memberId || !canManageManagerMembers()) {
+            return;
+          }
+          const member = state.managerMembers.find((item) => item?.id === memberId);
+          const name = getManagerMemberNickname(member);
+          if (!window.confirm(`${name}をSupabaseから削除します。よろしいですか？`)) {
+            return;
+          }
+          const card = Array.from(elements.managerMembersList?.querySelectorAll("[data-manager-member-id]") || []).find(
+            (item) => item.dataset.managerMemberId === memberId
+          );
+          setManagerMemberActionButtonsDisabled(card, true);
+          elements.managerMembersStatus.textContent = "削除しています。";
+          const token = await getAuth0AccessToken();
+          if (!token) {
+            elements.managerMembersStatus.textContent = "ログイン情報を確認できませんでした。";
+            setManagerMemberActionButtonsDisabled(card, false);
+            return;
+          }
+          try {
+            const response = await fetch(`${resolveApiBase()}/manager/members/${encodeURIComponent(memberId)}`, {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
+            if (!response.ok) {
+              throw new Error(`API ${response.status}`);
+            }
+            state.managerMembers = state.managerMembers.filter((item) => item?.id !== memberId);
+            elements.managerMembersStatus.textContent = "削除しました。";
+            renderManagerMembers();
+          } catch {
+            elements.managerMembersStatus.textContent = "削除できませんでした。";
+            setManagerMemberActionButtonsDisabled(card, false);
+          }
+        }
+
+        function setManagerMemberActionButtonsDisabled(card, disabled) {
+          card?.querySelectorAll("[data-manager-member-save], [data-manager-member-logout], [data-manager-member-delete]").forEach((button) => {
+            button.disabled = Boolean(disabled);
+          });
         }
 
         function switchScreen(screenName) {
