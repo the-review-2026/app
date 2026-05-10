@@ -213,25 +213,50 @@ async function updateManagerMember(request, env, memberId) {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
+  const hasRolePatch = Object.prototype.hasOwnProperty.call(body, "role");
   const roleText = normalizeSupabaseText(body?.role);
   const role = normalizeManagerRole(body?.role);
   const isUserRole = roleText === MANAGER_USER_ROLE;
+  const now = new Date().toISOString();
   const patch = {
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   };
-  if (isUserRole) {
+  if (hasRolePatch && isUserRole) {
     patch.manager_role = null;
     patch.manager_status = "pending";
     patch.manager_approved_at = null;
     patch.manager_approved_by = null;
-  } else if (role) {
+  } else if (hasRolePatch && role) {
     patch.manager_role = role;
     patch.manager_status = "approved";
-    patch.manager_approved_at = new Date().toISOString();
+    patch.manager_approved_at = now;
     patch.manager_approved_by = access.member?.id ?? null;
   }
-  if (!role && !isUserRole) {
+  if (hasRolePatch && !role && !isUserRole) {
     return json({ error: "role is required" }, 400);
+  }
+  let hasReviewDataPatch = false;
+  if (Object.prototype.hasOwnProperty.call(body, "reviewCoin")) {
+    patch.review_coin = normalizeNonNegativeInteger(body.reviewCoin, 0);
+    hasReviewDataPatch = true;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "hasUnlimitedReviewCoins")) {
+    patch.has_unlimited_review_coins = Boolean(body.hasUnlimitedReviewCoins);
+    hasReviewDataPatch = true;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "reviewDays")) {
+    patch.review_period = {
+      loginDays: createRecentLoginDaysRecord(normalizeNonNegativeInteger(body.reviewDays, 0)),
+      dailyLoginRewardDays: {},
+    };
+    hasReviewDataPatch = true;
+  }
+  if (hasReviewDataPatch) {
+    patch.review_remote_updated_at = now;
+    patch.review_synced_at = now;
+  }
+  if (Object.keys(patch).length === 1) {
+    return json({ error: "no fields to update" }, 400);
   }
 
   const response = await supabaseRequest(access.supabase, `/users?id=eq.${encodeURIComponent(memberId)}`, {
@@ -925,10 +950,8 @@ function serializeReviewDataRow(row) {
     Object.keys(learningProgress).length > 0 || Object.keys(existingLearningProgress).length === 0
       ? learningProgress
       : existingLearningProgress;
-  if (reviewCoin > 0 || !Number.isFinite(Number(data.reviewCoin))) {
-    data.reviewCoin = reviewCoin;
-  }
-  data.hasUnlimitedReviewCoins = Boolean(row.has_unlimited_review_coins || data.hasUnlimitedReviewCoins);
+  data.reviewCoin = reviewCoin;
+  data.hasUnlimitedReviewCoins = Boolean(row.has_unlimited_review_coins);
   data.settings = {
     ...normalizeJsonObject(data.settings),
     ...settings,
@@ -1155,6 +1178,13 @@ function serializeManagerMemberRow(user) {
   if (!user) {
     return null;
   }
+  const personalData = normalizeJsonObject(user.personal_data);
+  const reviewPeriod = normalizeJsonObject(user.review_period);
+  const loginDays = normalizeJsonObject(reviewPeriod.loginDays ?? personalData.loginDays);
+  const dailyLoginRewardDays = normalizeJsonObject(reviewPeriod.dailyLoginRewardDays ?? personalData.dailyLoginRewardDays);
+  const avater = normalizeJsonObject(user.avater ?? personalData.avater ?? personalData.avatar);
+  const equippedAvater = normalizeJsonObject(user.equipped_avater ?? avater.equipped);
+  const reviewCoin = Number.isFinite(Number(user.review_coin)) ? Number(user.review_coin) : 0;
   return {
     id: user.id || "",
     user_id: user.id || "",
@@ -1164,6 +1194,16 @@ function serializeManagerMemberRow(user) {
     email: user.email || null,
     role: normalizeManagerRole(user.manager_role),
     status: normalizeSupabaseText(user.manager_status) || "pending",
+    reviewCoin: reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
+    hasUnlimitedReviewCoins: Boolean(user.has_unlimited_review_coins),
+    reviewDays: Object.keys(loginDays).length,
+    loginDays,
+    dailyLoginRewardDays,
+    avater: {
+      ...avater,
+      equipped: equippedAvater,
+    },
+    equippedAvater,
     approved_at: user.manager_approved_at || null,
     approved_by: user.manager_approved_by || null,
     created_at: user.created_at || null,
@@ -1202,6 +1242,35 @@ function getDisplayNameFromClaims(claims) {
 
 function normalizeSupabaseText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeNonNegativeInteger(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.floor(number) : fallback;
+}
+
+function createRecentLoginDaysRecord(dayCount) {
+  const count = normalizeNonNegativeInteger(dayCount, 0);
+  const loginDays = {};
+  const anchor = getJstDateOnly(new Date());
+  for (let index = 0; index < count; index += 1) {
+    const date = new Date(anchor);
+    date.setUTCDate(anchor.getUTCDate() - index);
+    loginDays[formatUtcDateKey(date)] = true;
+  }
+  return loginDays;
+}
+
+function getJstDateOnly(date) {
+  const jstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return new Date(Date.UTC(jstDate.getUTCFullYear(), jstDate.getUTCMonth(), jstDate.getUTCDate()));
+}
+
+function formatUtcDateKey(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function normalizeIsoTimestamp(value) {

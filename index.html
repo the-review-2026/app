@@ -29,7 +29,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260509-12" />
+    <link rel="stylesheet" href="./app.css?v=20260510-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -1936,6 +1936,7 @@
 
       .manager-migrated-root .manager-published-avater-items {
         display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.72rem;
       }
 
@@ -2120,7 +2121,7 @@
 
       .manager-migrated-root .manager-member-card {
         display: grid;
-        grid-template-columns: 4.4rem minmax(0, 1fr);
+        grid-template-columns: 5.1rem minmax(0, 1fr);
         gap: 0.64rem;
         align-items: center;
         border: 1px solid rgba(0, 0, 0, 0.16);
@@ -2130,19 +2131,23 @@
       }
 
       .manager-migrated-root .manager-member-avatar {
-        width: 4.1rem;
+        width: 4.8rem;
         aspect-ratio: 1 / 1.1;
         align-self: start;
+        display: grid;
+        place-items: end center;
         border-radius: 0;
         background: transparent;
         border: 0;
+        overflow: visible;
       }
 
       .manager-migrated-root .manager-member-avatar .avater-base-image {
-        width: 100%;
-        height: 100%;
+        width: 112%;
+        height: 112%;
         object-fit: contain;
-        transform: none;
+        object-position: center bottom;
+        transform: translate(2%, 2%) scale(1.04);
         transform-origin: center bottom;
       }
 
@@ -2172,7 +2177,7 @@
 
       .manager-migrated-root .manager-member-actions {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.55fr);
+        grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 0.65fr) minmax(5.5rem, 0.5fr);
         gap: 0.52rem;
         align-items: center;
       }
@@ -2183,6 +2188,49 @@
 
       .manager-migrated-root .manager-member-actions button {
         width: 100%;
+      }
+
+      .manager-migrated-root .manager-member-detail-toggle {
+        width: 100%;
+      }
+
+      .manager-migrated-root .manager-member-detail {
+        display: grid;
+        grid-column: 1 / -1;
+        gap: 0.7rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding-top: 0.72rem;
+      }
+
+      .manager-migrated-root .manager-member-detail[hidden] {
+        display: none;
+      }
+
+      .manager-migrated-root .manager-member-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.62rem;
+      }
+
+      .manager-migrated-root .manager-member-detail-field {
+        display: grid;
+        gap: 0.28rem;
+        color: #1d1d1d;
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .manager-migrated-root .manager-member-detail-field input {
+        width: 100%;
+      }
+
+      .manager-migrated-root .manager-member-unlimited-field {
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+      }
+
+      .manager-migrated-root .manager-member-unlimited-field input {
+        width: auto;
       }
 
       @media (max-width: 760px) {
@@ -2210,6 +2258,14 @@
         }
 
         .manager-migrated-root .manager-member-actions {
+          grid-template-columns: 1fr;
+        }
+
+        .manager-migrated-root .manager-member-card {
+          grid-template-columns: 4.9rem minmax(0, 1fr);
+        }
+
+        .manager-migrated-root .manager-member-detail-grid {
           grid-template-columns: 1fr;
         }
 
@@ -2361,8 +2417,9 @@
       }
 
       .manager-migrated-root.is-embedded-manager .screens {
-        width: 100%;
-        max-width: none;
+        width: min(456px, 100%);
+        max-width: 456px;
+        margin-inline: auto;
         padding: 0;
       }
 
@@ -2371,7 +2428,7 @@
       }
 
       .manager-migrated-root #screen-home .page-script-title::after {
-        content: "制作チーム用管理プログラム";
+        content: "Manager";
       }
     </style>
     <template id="managerMigratedTemplate">
@@ -2425,7 +2482,7 @@
             <span>トップ</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="members">
-            <span>メンバー</span>
+            <span>ユーザー</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="problem">
             <span>問題</span>
@@ -2448,6 +2505,16 @@
           <div class="manager-home-grid">
             <article class="panel manager-home-card">
               <div class="manager-title-row">
+                <h3>ユーザーを管理する</h3>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">オーナー</span>
+                </span>
+              </div>
+              <p>ユーザーの役割とリビュー情報を管理できます。</p>
+              <button class="primary" type="button" data-home-link="members">開く</button>
+            </article>
+            <article class="panel manager-home-card">
+              <div class="manager-title-row">
                 <h3>問題を作成する</h3>
                 <span class="manager-role-tags" aria-label="対象ロール">
                   <span class="manager-role-tag">デベロッパー</span>
@@ -2456,16 +2523,6 @@
               </div>
               <p>問題の作成と提出ができます。</p>
               <button class="primary" type="button" data-home-link="problem">開く</button>
-            </article>
-            <article class="panel manager-home-card">
-              <div class="manager-title-row">
-                <h3>メンバーを管理する</h3>
-                <span class="manager-role-tags" aria-label="対象ロール">
-                  <span class="manager-role-tag">オーナー</span>
-                </span>
-              </div>
-              <p>制作チームメンバーの役割を管理できます。</p>
-              <button class="primary" type="button" data-home-link="members">開く</button>
             </article>
             <article class="panel manager-home-card">
               <div class="manager-title-row">
@@ -2483,17 +2540,17 @@
 
       <section id="screen-members" class="screen" hidden>
         <div class="page-title-row">
-          <h1 class="page-script-title">Members</h1>
+          <h1 class="page-script-title">Users</h1>
         </div>
           <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
             <div class="manager-members-head">
               <div class="manager-title-row">
-                <h2>メンバーを管理する</h2>
+                <h2>ユーザーを管理する</h2>
                 <span class="manager-role-tags" aria-label="対象ロール">
                   <span class="manager-role-tag">オーナー</span>
                 </span>
               </div>
-              <button id="managerMembersRefreshBtn" class="secondary manager-icon-btn" type="button" aria-label="メンバーを更新">
+              <button id="managerMembersRefreshBtn" class="secondary manager-icon-btn" type="button" aria-label="ユーザーを更新">
                 <span class="material-symbols-rounded" aria-hidden="true">sync</span>
               </button>
             </div>
@@ -2650,20 +2707,7 @@
                           </p>
                         </div>
                       </div>
-                      <div class="image-picker">
-                        <input id="problemImageInput" name="image" type="file" accept="image/*" hidden />
-                        <div class="image-picker-actions">
-                          <button id="selectProblemImageBtn" class="secondary white-button" type="button">画像を選択</button>
-                          <button id="viewProblemImageBtn" class="secondary white-button" type="button" disabled>画像を確認</button>
-                        </div>
-                        <p id="problemImageMeta" class="image-picker-filename"></p>
-                        <p class="field-help">選択した画像は問題文エディターにも挿入されます。</p>
-                      </div>
-                      <div id="problemImagePreviewWrap" class="problem-image-preview-wrap" hidden>
-                        <div class="problem-image-actions">
-                          <button id="clearProblemImageBtn" class="secondary white-button" type="button">画像を削除</button>
-                        </div>
-                      </div>
+                      <input id="problemImageInput" name="image" type="file" accept="image/*" hidden />
                     </div>
                   </fieldset>
 
@@ -2836,18 +2880,6 @@
       </form>
     </dialog>
 
-    <dialog id="problemImageDialog" class="text-reset-dialog" aria-labelledby="problemImageDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="problemImageDialogTitle">添付画像</h3>
-        <img id="problemDialogImage" class="manager-dialog-image" alt="" />
-        <p id="problemDialogImageMeta"></p>
-        <div class="manager-dialog-actions">
-          <button class="secondary" type="button" data-image-dialog-action="close">閉じる</button>
-          <button id="dialogClearProblemImageBtn" class="secondary" type="button" data-image-dialog-action="clear">画像を削除</button>
-        </div>
-      </form>
-    </dialog>
-
     <dialog id="problemResetDialog" class="text-reset-dialog" aria-labelledby="problemResetDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="problemResetDialogTitle">入力をクリア</h3>
@@ -2867,8 +2899,6 @@
           <dd id="confirmProblemBinder">-</dd>
           <dt>ノート</dt>
           <dd id="confirmProblemNote">-</dd>
-          <dt>画像</dt>
-          <dd id="confirmProblemImage">画像なし</dd>
         </dl>
         <p id="confirmProblemContent" class="manager-dialog-content"></p>
         <div class="manager-dialog-actions">
@@ -2887,85 +2917,19 @@
         const MANAGER_API_BASE_KEY = "the-review-manager-api-base";
         const STORE_CONFIG_KEY = "the-review-store-config-v1";
         const AVATER_CUSTOM_ITEMS_KEY = "the-review-avater-items-v1";
-        const DEFAULT_STORE_CONFIG = {
-          avatarStatus: "preparing",
-          avatarMessage: "準備中",
-        };
+        const MANAGER_MIGRATED_DATA = window.THE_REVIEW_MANAGER_MIGRATED_DATA;
+        if (!MANAGER_MIGRATED_DATA) {
+          throw new Error("Manager migrated data is not available.");
+        }
+        const DEFAULT_STORE_CONFIG = MANAGER_MIGRATED_DATA.defaultStoreConfig;
         const DEFAULT_API_BASE = "https://api.the-review.net";
-        const MANAGER_ROLE_LABELS = {
-          user: "ユーザー",
-          owner: "オーナー",
-          developer: "デベロッパー",
-          checker: "チェッカー",
-          system_designer: "システムデザイナー",
-          character_designer: "キャラクターデザイナー",
-        };
+        const MANAGER_ROLE_LABELS = MANAGER_MIGRATED_DATA.roleLabels;
         const MANAGER_ROLE_IDS = Object.freeze(Object.keys(MANAGER_ROLE_LABELS).filter((role) => role !== "user"));
-        const MANAGER_ROLE_ALIASES = {
-          admin: "owner",
-          administrator: "owner",
-          manager: "owner",
-          owner: "owner",
-          "オーナー": "owner",
-          developer: "developer",
-          dev: "developer",
-          "デベロッパー": "developer",
-          checker: "checker",
-          reviewer: "checker",
-          "チェッカー": "checker",
-          system_designer: "system_designer",
-          systemdesigner: "system_designer",
-          "システムデザイナー": "system_designer",
-          character_designer: "character_designer",
-          characterdesigner: "character_designer",
-          "キャラクターデザイナー": "character_designer",
-        };
-        const MANAGER_AVATER_CATEGORY_LABELS = {
-          clothes: "うわぎ",
-          glasses: "めがね",
-          accessory: "アクセサリー",
-        };
-        const MANAGER_AVATER_ITEM_CLASSES = {};
-
-        const NOTE_BY_BINDER = {
-          "Reboot 1st Edition": [
-            "現代の国語",
-            "言語文化",
-            "論理・表現Ⅰ",
-            "ＥＣⅠ",
-            "公共",
-            "保健",
-            "数学Ⅰ",
-            "数学Ａ",
-            "物理基礎",
-            "化学基礎",
-            "生物基礎",
-            "情報（工業情報数理）",
-          ],
-          "Refine 2nd Edition": [
-            "論理国語",
-            "論理・表現Ⅱ",
-            "ＥＣⅡ",
-            "地理総合",
-            "家庭基礎",
-            "保健",
-            "数学Ⅱ",
-            "数学Ｃ",
-            "数学Ｂ",
-            "物理",
-            "化学",
-            "生物",
-            "ＳＳ科学技術理論Ⅰ（１分野）",
-            "ＳＳ科学技術理論Ⅰ（２分野）",
-            "ＳＳ科学技術理論Ⅰ（３分野）",
-          ],
-          "On COLORFUL": ["朝学習テスト（１学年）", "朝学習テスト（２学年）"],
-        };
-
-        const DEFAULT_CHAPTER_CONFIG = {
-          label: "",
-          options: [],
-        };
+        const MANAGER_ROLE_ALIASES = MANAGER_MIGRATED_DATA.roleAliases;
+        const MANAGER_AVATER_CATEGORY_LABELS = MANAGER_MIGRATED_DATA.avaterCategoryLabels;
+        const MANAGER_AVATER_ITEM_CLASSES = MANAGER_MIGRATED_DATA.avaterItemClasses;
+        const NOTE_BY_BINDER = MANAGER_MIGRATED_DATA.noteByBinder;
+        const DEFAULT_CHAPTER_CONFIG = MANAGER_MIGRATED_DATA.defaultChapterConfig;
 
         const CHAPTER_CONFIG_BY_NOTE = {};
 
@@ -3256,12 +3220,16 @@
           });
           elements.managerMemberSearchInput?.addEventListener("input", renderManagerMembers);
           elements.managerMembersList?.addEventListener("click", (event) => {
-            const target = event.target instanceof Element ? event.target.closest("[data-manager-member-save]") : null;
+            const target = event.target instanceof Element ? event.target.closest("[data-manager-member-save], [data-manager-member-detail-toggle]") : null;
             if (!target) {
               return;
             }
             const card = target.closest("[data-manager-member-id]");
             if (!card) {
+              return;
+            }
+            if (target.matches("[data-manager-member-detail-toggle]")) {
+              toggleManagerMemberDetail(card);
               return;
             }
             void saveManagerMemberAccess(card.dataset.managerMemberId || "");
@@ -3960,7 +3928,7 @@
               elements.managerMembersPanel.hidden = false;
             }
             if (elements.managerMembersStatus) {
-              elements.managerMembersStatus.textContent = "メンバー管理はOwnerのみ利用できます。";
+              elements.managerMembersStatus.textContent = "ユーザー管理はOwnerのみ利用できます。";
             }
             if (elements.managerMembersList) {
               elements.managerMembersList.innerHTML = "";
@@ -4016,7 +3984,7 @@
           }
 
           elements.managerMembersStatus.textContent = visibleMembers.length
-            ? "付与する役割を選んでください。"
+            ? "ユーザーを選ぶとリビュー情報を確認・変更できます。"
             : "一致するユーザーはいません。";
           elements.managerMembersList.innerHTML = visibleMembers
             .map((member) => {
@@ -4024,6 +3992,9 @@
               const roleValue = member?.role || "user";
               const name = getManagerMemberNickname(member);
               const sub = member?.email || member?.auth0_sub || "";
+              const reviewCoin = getManagerMemberReviewCoin(member);
+              const reviewDays = getManagerMemberReviewDays(member);
+              const hasUnlimitedCoins = getManagerMemberUnlimitedReviewCoins(member);
               const roleOptions = Object.entries(MANAGER_ROLE_LABELS)
                 .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === roleValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
                 .join("");
@@ -4040,13 +4011,33 @@
                     </div>
                     <div class="manager-member-actions">
                       <select data-manager-member-role aria-label="役割">${roleOptions}</select>
+                      <button class="secondary white-button manager-member-detail-toggle" type="button" data-manager-member-detail-toggle aria-expanded="false">
+                        リビュー情報
+                      </button>
                       <button class="primary" type="button" data-manager-member-save>保存</button>
+                    </div>
+                  </div>
+                  <div class="manager-member-detail" data-manager-member-detail hidden>
+                    <div class="manager-member-detail-grid">
+                      <label class="manager-member-detail-field">
+                        <span>リビューコイン</span>
+                        <input data-manager-member-review-coin type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(String(reviewCoin))}" />
+                      </label>
+                      <label class="manager-member-detail-field">
+                        <span>リビュー日数</span>
+                        <input data-manager-member-review-days type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(String(reviewDays))}" />
+                      </label>
+                      <label class="manager-member-detail-field manager-member-unlimited-field">
+                        <input data-manager-member-unlimited-coins type="checkbox" ${hasUnlimitedCoins ? "checked" : ""} />
+                        <span>リビューコインを無制限にする</span>
+                      </label>
                     </div>
                   </div>
                 </article>
               `;
             })
             .join("");
+          renderManagerMemberAvaterPreviews(visibleMembers);
         }
 
         function getManagerMemberNickname(member) {
@@ -4063,6 +4054,98 @@
           return nickname || "Nickname未設定";
         }
 
+        function getManagerMemberReviewCoin(member) {
+          const value = Number(member?.reviewCoin ?? member?.review_coin ?? member?.data?.reviewCoin ?? 0);
+          return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+        }
+
+        function getManagerMemberReviewDays(member) {
+          const directValue = Number(member?.reviewDays ?? member?.review_days);
+          if (Number.isFinite(directValue) && directValue >= 0) {
+            return Math.floor(directValue);
+          }
+          const loginDays = getManagerMemberLoginDays(member);
+          return Object.keys(loginDays).length;
+        }
+
+        function getManagerMemberLoginDays(member) {
+          const candidates = [
+            member?.loginDays,
+            member?.login_days,
+            member?.reviewPeriod?.loginDays,
+            member?.review_period?.loginDays,
+            member?.data?.loginDays,
+          ];
+          const found = candidates.find((value) => value && typeof value === "object" && !Array.isArray(value));
+          return found || {};
+        }
+
+        function getManagerMemberUnlimitedReviewCoins(member) {
+          return Boolean(member?.hasUnlimitedReviewCoins ?? member?.has_unlimited_review_coins ?? member?.data?.hasUnlimitedReviewCoins);
+        }
+
+        function toggleManagerMemberDetail(card) {
+          const detail = card?.querySelector("[data-manager-member-detail]");
+          const button = card?.querySelector("[data-manager-member-detail-toggle]");
+          if (!detail) {
+            return;
+          }
+          const shouldOpen = detail.hidden;
+          detail.hidden = !shouldOpen;
+          button?.setAttribute("aria-expanded", String(shouldOpen));
+        }
+
+        function getManagerMemberAvaterState(member) {
+          const avater = [member?.avater, member?.avatar, member?.data?.avater, member?.data?.avatar].find(
+            (value) => value && typeof value === "object" && !Array.isArray(value),
+          ) || {};
+          const equipped = [member?.equippedAvater, member?.equipped_avater, avater?.equipped].find(
+            (value) => value && typeof value === "object" && !Array.isArray(value),
+          ) || {};
+          const itemOffsets = avater?.itemOffsets && typeof avater.itemOffsets === "object" ? avater.itemOffsets : {};
+          return { equipped, itemOffsets };
+        }
+
+        function renderManagerMemberAvaterPreviews(members) {
+          if (!elements.managerMembersList) {
+            return;
+          }
+          const managerItems = new Map(loadManagerAvaterItems().map((item) => [item.id, item]));
+          members.forEach((member) => {
+            const id = member?.id || "";
+            const preview = elements.managerMembersList.querySelector(
+              `[data-manager-member-id="${cssEscape(id)}"] .manager-member-avatar`,
+            );
+            if (!preview) {
+              return;
+            }
+            const { equipped, itemOffsets } = getManagerMemberAvaterState(member);
+            preview.querySelectorAll(".avater-layer").forEach((layer) => layer.remove());
+            Object.entries(equipped).forEach(([category, itemId]) => {
+              const itemIdText = String(itemId || "");
+              const className = MANAGER_AVATER_ITEM_CLASSES[itemIdText] || (itemIdText.startsWith("custom-") ? "avater-item-custom" : "");
+              if (!className) {
+                return;
+              }
+              const managerItem = managerItems.get(itemIdText);
+              const image = getManagerAvaterItemImage(managerItem);
+              const offset = itemOffsets[itemIdText] || {};
+              const layer = document.createElement("span");
+              layer.className = `avater-layer ${className} avater-category-${category}${image ? " has-custom-image" : ""}`;
+              layer.style.setProperty("--avater-item-offset-x", `${Number(offset.x) || 0}px`);
+              layer.style.setProperty("--avater-item-offset-y", `${Number(offset.y) || 0}px`);
+              layer.setAttribute("aria-hidden", "true");
+              if (image) {
+                const imageElement = document.createElement("img");
+                imageElement.src = image.dataUrl;
+                imageElement.alt = "";
+                layer.append(imageElement);
+              }
+              preview.append(layer);
+            });
+          });
+        }
+
         function looksLikeAuth0Subject(value) {
           return /^[a-z0-9_-]+\|/i.test(String(value || "").trim());
         }
@@ -4076,6 +4159,9 @@
             (item) => item.dataset.managerMemberId === memberId
           );
           const role = card?.querySelector("[data-manager-member-role]")?.value || "user";
+          const reviewCoin = Number(card?.querySelector("[data-manager-member-review-coin]")?.value || 0);
+          const reviewDays = Number(card?.querySelector("[data-manager-member-review-days]")?.value || 0);
+          const hasUnlimitedReviewCoins = Boolean(card?.querySelector("[data-manager-member-unlimited-coins]")?.checked);
           const saveButton = card?.querySelector("[data-manager-member-save]");
           if (saveButton) {
             saveButton.disabled = true;
@@ -4099,7 +4185,12 @@
                 "Content-Type": "application/json",
                 Accept: "application/json",
               },
-              body: JSON.stringify({ role }),
+              body: JSON.stringify({
+                role,
+                reviewCoin: Number.isFinite(reviewCoin) && reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
+                reviewDays: Number.isFinite(reviewDays) && reviewDays >= 0 ? Math.floor(reviewDays) : 0,
+                hasUnlimitedReviewCoins,
+              }),
             });
             if (!response.ok) {
               throw new Error(`API ${response.status}`);
@@ -5054,6 +5145,10 @@
             };
             if (options.insertIntoEditor) {
               insertProblemImageIntoEditor(state.problemImageData);
+              state.problemImageData = null;
+              if (elements.problemImageInput) {
+                elements.problemImageInput.value = "";
+              }
             }
             renderProblemImagePreview();
             updateProblemPreview();
@@ -5066,38 +5161,17 @@
         }
 
         async function getProblemImagePayload() {
-          const file = elements.problemImageInput?.files?.[0] || null;
-          if (!file) {
-            state.problemImageData = null;
-            renderProblemImagePreview();
-            return null;
+          state.problemImageData = null;
+          if (elements.problemImageInput) {
+            elements.problemImageInput.value = "";
           }
-
-          const cached = state.problemImageData;
-          if (cached && cached.name === file.name && cached.size === file.size && cached.type === file.type) {
-            return { ...cached };
-          }
-
-          try {
-            const dataUrl = await fileToDataUrl(file);
-            state.problemImageData = {
-              name: file.name,
-              type: file.type,
-              size: file.size,
-              dataUrl,
-            };
-            renderProblemImagePreview();
-            return { ...state.problemImageData };
-          } catch {
-            elements.proofreadingFeedback.textContent = "画像の読み込みに失敗しました。別の画像で試してください。";
-            return undefined;
-          }
+          renderProblemImagePreview();
+          return null;
         }
 
         function populateProblemConfirmDialog(draft) {
           setPreviewText(elements.confirmProblemBinder, draft.binder, "-");
           setPreviewText(elements.confirmProblemNote, draft.note, "-");
-          setPreviewText(elements.confirmProblemImage, draft.image?.name ? draft.image.name : "", "画像なし");
           if (elements.confirmProblemContent) {
             elements.confirmProblemContent.textContent = [
               draft.textNumber || draft.textName ? `テキスト ${[draft.textNumber, draft.textName].filter(Boolean).join(" ")}` : "",
@@ -5952,8 +6026,8 @@
       })();
     </script>
     <script src="./auth0-config.js?v=20260426-1"></script>
-    <script src="./app.js?v=20260509-12" charset="UTF-8"></script>
-    <script src="./pwa.js?v=20260509-12" charset="UTF-8"></script>
+    <script src="./app.js?v=20260510-1" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260510-1" charset="UTF-8"></script>
     <script>
   function isElementActuallyVisible(element) {
     if (!element) return false;

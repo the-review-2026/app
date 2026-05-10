@@ -111,6 +111,66 @@ const AVATER_CATEGORY_LABELS = {
   glasses: "めがね",
   accessory: "アクセサリー",
 };
+const MANAGER_MIGRATED_DATA = Object.freeze({
+  defaultStoreConfig: Object.freeze({
+    avatarStatus: "preparing",
+    avatarMessage: "準備中",
+  }),
+  roleLabels: Object.freeze({
+    user: "ユーザー",
+    owner: "オーナー",
+    developer: "デベロッパー",
+    checker: "チェッカー",
+    system_designer: "システムデザイナー",
+    character_designer: "キャラクターデザイナー",
+  }),
+  roleAliases: Object.freeze({
+    ...MANAGER_REVIEW_COIN_ROLE_ALIASES,
+  }),
+  avaterCategoryLabels: Object.freeze({
+    ...AVATER_CATEGORY_LABELS,
+  }),
+  avaterItemClasses: Object.freeze({}),
+  noteByBinder: Object.freeze({
+    "Reboot 1st Edition": Object.freeze([
+      "現代の国語",
+      "言語文化",
+      "論理・表現Ⅰ",
+      "ＥＣⅠ",
+      "公共",
+      "保健",
+      "数学Ⅰ",
+      "数学Ａ",
+      "物理基礎",
+      "化学基礎",
+      "生物基礎",
+      "情報（工業情報数理）",
+    ]),
+    "Refine 2nd Edition": Object.freeze([
+      "論理国語",
+      "論理・表現Ⅱ",
+      "ＥＣⅡ",
+      "地理総合",
+      "家庭基礎",
+      "保健",
+      "数学Ⅱ",
+      "数学Ｃ",
+      "数学Ｂ",
+      "物理",
+      "化学",
+      "生物",
+      "ＳＳ科学技術理論Ⅰ（１分野）",
+      "ＳＳ科学技術理論Ⅰ（２分野）",
+      "ＳＳ科学技術理論Ⅰ（３分野）",
+    ]),
+    "On COLORFUL": Object.freeze(["朝学習テスト（１学年）", "朝学習テスト（２学年）"]),
+  }),
+  defaultChapterConfig: Object.freeze({
+    label: "",
+    options: Object.freeze([]),
+  }),
+});
+window.THE_REVIEW_MANAGER_MIGRATED_DATA = MANAGER_MIGRATED_DATA;
 const FLASHCARD_DEFAULT_SERIES = {
   id: "reboot-1st-edition",
   label: "Reboot 1st Edition",
@@ -6074,6 +6134,9 @@ function renderMypageCoin() {
 }
 
 function hasUnlimitedReviewCoins() {
+  if (state.hasUnlimitedReviewCoins) {
+    return true;
+  }
   if (!state.auth.isLoggedIn || !managerAccessState) {
     return false;
   }
@@ -8499,6 +8562,7 @@ function loadState() {
 function createDefaultState() {
   return {
     reviewCoin: 0,
+    hasUnlimitedReviewCoins: false,
     loginDays: {},
     dailyLoginRewardDays: {},
     dailyTryRecords: {},
@@ -8532,6 +8596,7 @@ function normalizePersistedState(parsed) {
     ...fallback,
     reviewCoin:
       Number.isFinite(Number(parsed?.reviewCoin)) && Number(parsed.reviewCoin) >= 0 ? Number(parsed.reviewCoin) : 0,
+    hasUnlimitedReviewCoins: Boolean(parsed?.hasUnlimitedReviewCoins),
     loginDays: parsed?.loginDays && typeof parsed.loginDays === "object" ? parsed.loginDays : {},
     dailyLoginRewardDays: normalizeDailyLoginRewardDays(parsed?.dailyLoginRewardDays),
     dailyTryRecords: parsed?.dailyTryRecords && typeof parsed.dailyTryRecords === "object" ? parsed.dailyTryRecords : {},
@@ -9131,12 +9196,10 @@ function createReviewDataPayloadFromRemoteRecord(record) {
 
   if (Object.prototype.hasOwnProperty.call(record, "reviewCoin")) {
     const reviewCoin = normalizeCoinAmount(record.reviewCoin);
-    if (reviewCoin > 0 || !Number.isFinite(Number(data.reviewCoin))) {
-      data.reviewCoin = reviewCoin;
-    }
+    data.reviewCoin = reviewCoin;
   }
   if (typeof record.hasUnlimitedReviewCoins === "boolean") {
-    data.hasUnlimitedReviewCoins = Boolean(record.hasUnlimitedReviewCoins || data.hasUnlimitedReviewCoins);
+    data.hasUnlimitedReviewCoins = Boolean(record.hasUnlimitedReviewCoins);
   }
 
   const settings = normalizePlainRemoteObject(record.settings);
@@ -9260,6 +9323,7 @@ function mergeReviewDataStates(localState, remoteState, remoteRecord = {}) {
   merged.reviewCoin = bothStatesHaveSyncTimestamps
     ? normalizeCoinAmount(preferred.reviewCoin)
     : Math.max(normalizeCoinAmount(local.reviewCoin), normalizeCoinAmount(remote.reviewCoin));
+  merged.hasUnlimitedReviewCoins = Boolean(preferred.hasUnlimitedReviewCoins);
   merged.loginDays = mergeBooleanRecord(local.loginDays, remote.loginDays);
   merged.dailyLoginRewardDays = mergeNumberRecord(local.dailyLoginRewardDays, remote.dailyLoginRewardDays);
   merged.dailyTryRecords = mergeDailyTryRecordMap(local.dailyTryRecords, remote.dailyTryRecords, preferRemote);
