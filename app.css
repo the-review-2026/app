@@ -10020,6 +10020,192 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
   margin-top: auto;
 }
 
+/* Let's Review note stage refresh */
+.flashcard-note-library .flashcard-note.is-lifted {
+  transform: translate3d(0, -24px, 0);
+}
+
+.flashcard-binder-stage.is-direct-note-stage {
+  pointer-events: none;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-surface.flashcard-binder.is-active-binder {
+  position: static;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  pointer-events: none;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-surface.flashcard-binder.is-active-binder::before,
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-surface.flashcard-binder.is-active-binder::after {
+  content: none;
+  display: none;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-binder-close-btn,
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-list,
+.flashcard-binder-stage.is-direct-note-stage .flashcard-series-index {
+  display: none !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+  --note-open-page-width: var(--flashcard-direct-note-width, min(456px, calc(100vw - 2rem)));
+  position: fixed;
+  left: var(--flashcard-direct-note-left, max(1rem, calc((100vw - var(--note-open-page-width)) / 2)));
+  top: var(--flashcard-direct-note-top, 7.2rem);
+  width: var(--note-open-page-width);
+  min-height: calc(var(--note-open-page-width) * 1.4142135623730951);
+  inset: auto;
+  z-index: 4660;
+  display: block;
+  pointer-events: auto;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-pages {
+  width: var(--note-open-page-width);
+  min-height: calc(var(--note-open-page-width) * 1.4142135623730951);
+  margin: 0;
+  overflow: visible;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper {
+  width: var(--note-open-page-width);
+  max-height: none;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-right {
+  margin-left: 0;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-left {
+  left: calc((var(--note-open-page-width) + var(--note-page-gap)) * -1);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-32px, 0, 0);
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible .flashcard-note-paper-left {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+}
+
+.flashcard-note-left-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 24;
+  max-width: 9.5rem;
+}
+
+.flashcard-note-left-toggle-btn .material-symbols-rounded,
+.flashcard-note-reader-nav-btn .material-symbols-rounded,
+.flashcard-note-reader-mode-btn .material-symbols-rounded {
+  font-size: 1.24rem;
+  line-height: 1;
+}
+
+.flashcard-note-reader-mode-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: currentColor;
+  font: inherit;
+  min-width: 0;
+  min-height: 2.6rem;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.flashcard-note-reader-controls {
+  position: fixed;
+  left: 50%;
+  bottom: max(0.45rem, env(safe-area-inset-bottom));
+  z-index: 4900;
+  width: min(456px, calc(100% - 1rem));
+  min-height: 3.38rem;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.28rem;
+  padding: 0.28rem;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 24px rgba(20, 54, 70, 0.16);
+  backdrop-filter: blur(14px) saturate(1.08);
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-nav-btn,
+.flashcard-note-reader-controls .flashcard-note-reader-mode-btn,
+.flashcard-note-reader-controls .flashcard-note-reader-page-count {
+  min-width: 0;
+  min-height: 2.6rem;
+  margin: 0;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-nav-btn {
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-page-count {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  color: rgba(29, 29, 29, 0.74);
+  font-size: 0.72rem;
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-nav-btn:not(:disabled),
+.flashcard-note-reader-controls .flashcard-note-reader-mode-btn {
+  color: rgba(29, 29, 29, 0.74);
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-nav-btn:not(:disabled):active,
+.flashcard-note-reader-controls .flashcard-note-reader-mode-btn:active {
+  color: #ffffff;
+  background: #1d1d1d;
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .top-nav,
+body:has(.flashcard-binder-stage.is-note-open) .top-nav-character {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 760px) {
+  .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+    --note-open-page-width: min(var(--flashcard-direct-note-width, 456px), calc(100vw - 1.2rem));
+  }
+
+  .flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
+    max-width: 8.6rem;
+    font-size: 0.68rem;
+  }
+}
+
 .manager-integrated-screen {
   gap: 0.8rem;
 }

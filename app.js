@@ -2768,7 +2768,8 @@ async function updateManagerMenuVisibility() {
     return;
   }
   if (elements.managerMenuLink) {
-    elements.managerMenuLink.hidden = !hasUnlimitedReviewCoins();
+    const cachedRole = getManagerAccessRole(managerAccessState);
+    elements.managerMenuLink.hidden = !(managerAccessState?.canAccess !== false && cachedRole);
   }
 
   const accessToken = await withTimeout(
@@ -3843,7 +3844,7 @@ function handleFlashcardNoteBinderKeydown(event) {
   }
   if (
     target.closest(
-      "[data-flashcard-take-note], [data-flashcard-use-binder], [data-flashcard-close-binder], [data-flashcard-note-reader-action]"
+      "[data-flashcard-take-note], [data-flashcard-use-binder], [data-flashcard-close-binder], [data-flashcard-note-reader-action], [data-flashcard-note-mode]"
     )
   ) {
     return;
@@ -3924,9 +3925,18 @@ function handleFlashcardNoteBinderPointerDown(event) {
   }
   if (
     target.closest(
-      "[data-flashcard-take-note], [data-flashcard-use-binder], [data-flashcard-close-binder], [data-flashcard-note-reader-action]"
+      "[data-flashcard-take-note], [data-flashcard-use-binder], [data-flashcard-close-binder], [data-flashcard-note-reader-action], [data-flashcard-note-mode]"
     )
   ) {
+    return;
+  }
+  if (activeFlashcardNotebookState && target.closest(".flashcard-note-reader-pages, .flashcard-note-reader")) {
+    flashcardBinderPointerState = {
+      reader: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
     return;
   }
   const note = isFlashcardBinderOpen(binderList) ? target.closest(".flashcard-note") : null;
@@ -3952,6 +3962,16 @@ function handleFlashcardNoteBinderPointerUp(event) {
   }
   const deltaX = event.clientX - pointerState.startX;
   const deltaY = event.clientY - pointerState.startY;
+  if (pointerState.reader && activeFlashcardNotebookState) {
+    const isHorizontalSwipe =
+      Math.abs(deltaX) >= FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX && Math.abs(deltaX) > Math.abs(deltaY) * 1.18;
+    if (!isHorizontalSwipe) {
+      return;
+    }
+    event.preventDefault();
+    turnFlashcardNotebookPage(deltaX < 0 ? 1 : -1);
+    return;
+  }
   const isUpSwipe =
     deltaY <= FLASHCARD_BINDER_SWIPE_OPEN_THRESHOLD_PX * -1 && Math.abs(deltaY) > Math.abs(deltaX) * 1.12;
   if (!isUpSwipe) {
@@ -4035,6 +4055,7 @@ function mountFlashcardBinderStage(binder, binderList) {
       closeButtonNextSibling: closeButton?.nextSibling ?? null,
     };
   }
+  stage.classList.toggle("is-direct-note-stage", isFlashcardDirectNoteMode(binderList));
   updateFlashcardBinderTargetWidth(binder);
   stage.classList.toggle("is-note-open", binderList.classList.contains("is-note-open"));
   stage.setAttribute("aria-hidden", "false");
@@ -4073,7 +4094,7 @@ function restoreFlashcardBinderStage() {
   }
   if (stage) {
     stage.setAttribute("aria-hidden", "true");
-    stage.classList.remove("is-note-open");
+    stage.classList.remove("is-note-open", "is-direct-note-stage");
   }
   flashcardBinderPortalState = null;
 }
@@ -4095,6 +4116,20 @@ function updateFlashcardBinderTargetWidth(binder = activeFlashcardBinderElement)
     return;
   }
   binder.style.setProperty("--flashcard-note-cover-width", `${getFlashcardBinderTargetNoteWidth()}px`);
+}
+
+function setFlashcardDirectNotebookGeometry(note) {
+  if (!(note instanceof HTMLElement) || !(activeFlashcardBinderElement instanceof HTMLElement)) {
+    return;
+  }
+  const rect = note.getBoundingClientRect();
+  const viewportWidth = Math.max(0, document.documentElement.clientWidth || window.innerWidth || 0);
+  const viewportHeight = Math.max(0, document.documentElement.clientHeight || window.innerHeight || 0);
+  const safeTop = Math.max(72, Math.min(rect.top, viewportHeight - Math.min(rect.height, viewportHeight - 132) - 68));
+  const safeLeft = Math.max(8, Math.min(rect.left, viewportWidth - rect.width - 8));
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-left", `${Math.round(safeLeft)}px`);
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-top", `${Math.round(safeTop)}px`);
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-width", `${Math.round(rect.width)}px`);
 }
 
 function setLiftedFlashcardBinder(nextBinder) {
@@ -4286,6 +4321,7 @@ function openFlashcardNotebook(note) {
   const isDirectNoteMode = isFlashcardDirectNoteMode(binderList);
   if (isDirectNoteMode) {
     activeFlashcardBinderElement.classList.add("is-active-binder");
+    setFlashcardDirectNotebookGeometry(note);
     mountFlashcardBinderStage(activeFlashcardBinderElement, binderList);
     setFlashcardBinderFocusMode(true);
   }
@@ -4300,7 +4336,7 @@ function openFlashcardNotebook(note) {
   activeFlashcardNotebookState = {
     note,
     pageIndex: 0,
-    leftVisible: true,
+    leftVisible: false,
     pageTurnDirection: "",
   };
   activeFlashcardBinderElement.classList.add("is-opening-note");
@@ -4356,29 +4392,51 @@ function handleFlashcardNoteReaderAction(actionButton) {
     return;
   }
 
-  const spreads = buildFlashcardNotebookSpreads(activeFlashcardNotebookState.note);
-  const maxPageIndex = Math.max(0, spreads.length - 1);
   if (action === "prev") {
-    activeFlashcardNotebookState.pageIndex = Math.max(0, activeFlashcardNotebookState.pageIndex - 1);
-    activeFlashcardNotebookState.leftVisible = true;
-    activeFlashcardNotebookState.pageTurnDirection = "prev";
-    renderFlashcardNotebook();
-    recordActiveFlashcardNotebookProgress();
+    turnFlashcardNotebookPage(-1);
     return;
   }
   if (action === "next") {
-    activeFlashcardNotebookState.pageIndex = Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex + 1);
+    turnFlashcardNotebookPage(1);
+    return;
+  }
+  if (action === "show-left") {
     activeFlashcardNotebookState.leftVisible = true;
-    activeFlashcardNotebookState.pageTurnDirection = "next";
+    activeFlashcardNotebookState.pageTurnDirection = "show-left";
     renderFlashcardNotebook();
     recordActiveFlashcardNotebookProgress();
     return;
   }
-  if (action === "toggle-left") {
-    activeFlashcardNotebookState.leftVisible = !activeFlashcardNotebookState.leftVisible;
+  if (action === "hide-left") {
+    activeFlashcardNotebookState.leftVisible = false;
+    activeFlashcardNotebookState.pageTurnDirection = "hide-left";
     renderFlashcardNotebook();
     recordActiveFlashcardNotebookProgress();
   }
+}
+
+function turnFlashcardNotebookPage(offset) {
+  if (!activeFlashcardNotebookState) {
+    return;
+  }
+  const normalizedOffset = Number(offset);
+  if (!Number.isFinite(normalizedOffset) || normalizedOffset === 0) {
+    return;
+  }
+  const spreads = buildFlashcardNotebookSpreads(activeFlashcardNotebookState.note);
+  const maxPageIndex = Math.max(0, spreads.length - 1);
+  const nextPageIndex = Math.max(
+    0,
+    Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex + Math.trunc(normalizedOffset))
+  );
+  if (nextPageIndex === activeFlashcardNotebookState.pageIndex) {
+    return;
+  }
+  activeFlashcardNotebookState.pageIndex = nextPageIndex;
+  activeFlashcardNotebookState.leftVisible = false;
+  activeFlashcardNotebookState.pageTurnDirection = normalizedOffset > 0 ? "next" : "prev";
+  renderFlashcardNotebook();
+  recordActiveFlashcardNotebookProgress();
 }
 
 function renderFlashcardNotebook() {
@@ -4396,15 +4454,18 @@ function renderFlashcardNotebook() {
     Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex)
   );
   const spread = spreads[activeFlashcardNotebookState.pageIndex] ?? createBlankFlashcardNotebookSpread();
-  activeFlashcardNotebookState.leftVisible = true;
+  const isLeftVisible = Boolean(activeFlashcardNotebookState.leftVisible);
   const pageTurnDirection = normalizeFlashcardText(activeFlashcardNotebookState.pageTurnDirection);
   activeFlashcardNotebookState.pageTurnDirection = "";
 
   const reader = document.createElement("section");
   reader.className = "flashcard-note-reader";
-  reader.classList.add("is-left-visible");
+  reader.classList.toggle("is-left-visible", isLeftVisible);
   if (pageTurnDirection === "next" || pageTurnDirection === "prev") {
     reader.classList.add(`is-turning-${pageTurnDirection}`);
+  }
+  if (pageTurnDirection === "show-left" || pageTurnDirection === "hide-left") {
+    reader.classList.add(`is-${pageTurnDirection}`);
   }
   reader.setAttribute("aria-label", `${getFlashcardNoteJapaneseLabel(activeFlashcardNotebookState.note)}のノート`);
 
@@ -4421,6 +4482,14 @@ function renderFlashcardNotebook() {
     createFlashcardNotebookPageElement(spread.left, "left"),
     createFlashcardNotebookPageElement(spread.right, "right")
   );
+  const leftToggleButton = document.createElement("button");
+  leftToggleButton.type = "button";
+  leftToggleButton.className = "flashcard-note-left-toggle-btn";
+  leftToggleButton.dataset.flashcardNoteReaderAction = isLeftVisible ? "hide-left" : "show-left";
+  leftToggleButton.innerHTML = isLeftVisible
+    ? '<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span><span>問題に戻る</span>'
+    : '<span class="material-symbols-rounded" aria-hidden="true">chevron_left</span><span>テキストを見る</span>';
+  pageWrap.append(leftToggleButton);
   if (pageTurnDirection === "next" || pageTurnDirection === "prev") {
     const turnSheet = document.createElement("span");
     turnSheet.className = "flashcard-note-page-turn-sheet";
@@ -4432,11 +4501,16 @@ function renderFlashcardNotebook() {
   const controls = document.createElement("div");
   controls.className = "flashcard-note-reader-controls";
 
+  const choiceModeButton = createFlashcardNotebookMenuButton("checklist", "3択ボタン", "choice");
+  const textModeButton = createFlashcardNotebookMenuButton("keyboard", "文字入力ボタン", "text");
+  const voiceModeButton = createFlashcardNotebookMenuButton("keyboard_voice", "音声入力ボタン", "voice");
+
   const prevButton = document.createElement("button");
   prevButton.type = "button";
   prevButton.className = "flashcard-note-reader-nav-btn";
   prevButton.dataset.flashcardNoteReaderAction = "prev";
-  prevButton.textContent = "前へ";
+  prevButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">chevron_left</span>';
+  prevButton.setAttribute("aria-label", "前へ");
   prevButton.disabled = activeFlashcardNotebookState.pageIndex <= 0;
 
   const pageCounter = document.createElement("span");
@@ -4447,12 +4521,23 @@ function renderFlashcardNotebook() {
   nextButton.type = "button";
   nextButton.className = "flashcard-note-reader-nav-btn";
   nextButton.dataset.flashcardNoteReaderAction = "next";
-  nextButton.textContent = "次へ";
+  nextButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span>';
+  nextButton.setAttribute("aria-label", "次へ");
   nextButton.disabled = activeFlashcardNotebookState.pageIndex >= maxPageIndex;
 
-  controls.append(prevButton, pageCounter, nextButton);
+  controls.append(choiceModeButton, textModeButton, voiceModeButton, prevButton, pageCounter, nextButton);
   reader.append(controls);
   activeFlashcardBinderElement.append(reader);
+}
+
+function createFlashcardNotebookMenuButton(iconName, label, mode) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "flashcard-note-reader-mode-btn";
+  button.dataset.flashcardNoteMode = mode;
+  button.setAttribute("aria-label", label);
+  button.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${iconName}</span>`;
+  return button;
 }
 
 function buildFlashcardNotebookSpreads(note) {
@@ -6140,14 +6225,7 @@ function renderMypageCoin() {
 }
 
 function hasUnlimitedReviewCoins() {
-  if (state.hasUnlimitedReviewCoins) {
-    return true;
-  }
-  if (!state.auth.isLoggedIn || !managerAccessState) {
-    return false;
-  }
-  const role = getManagerAccessRole(managerAccessState);
-  return managerAccessState.canAccess !== false && MANAGER_REVIEW_COIN_ROLES.includes(role);
+  return Boolean(state.hasUnlimitedReviewCoins);
 }
 
 function normalizeManagerRoleValue(value) {
@@ -9154,7 +9232,7 @@ function createReviewDataStateSnapshot(sourceState = state) {
   const normalized = normalizePersistedState(JSON.parse(JSON.stringify(sourceState)));
   return {
     reviewCoin: normalized.reviewCoin,
-    hasUnlimitedReviewCoins: hasUnlimitedReviewCoins(),
+    hasUnlimitedReviewCoins: normalized.hasUnlimitedReviewCoins,
     loginDays: normalized.loginDays,
     dailyLoginRewardDays: normalized.dailyLoginRewardDays,
     dailyTryRecords: normalized.dailyTryRecords,
