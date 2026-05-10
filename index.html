@@ -2159,8 +2159,8 @@
 
       .manager-migrated-root .manager-member-identity {
         display: grid;
-        grid-template-columns: minmax(7.2rem, auto) minmax(0, 1fr);
-        gap: 0.6rem;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.48rem;
         align-items: start;
       }
 
@@ -2169,15 +2169,20 @@
         gap: 0.16rem;
       }
 
-      .manager-migrated-root .manager-member-role-select {
-        width: 100%;
-        min-width: 0;
+      .manager-migrated-root .manager-member-role-tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 1.48rem;
+        padding: 0.18rem 0.52rem;
         align-self: start;
-        border-color: rgba(29, 29, 29, 0.24);
-        border-radius: 8px;
-        background: #f7f7f7;
-        color: #1d1d1d;
+        border-radius: 999px;
+        background: #1d1d1d;
+        color: #ffffff;
+        font-size: 0.72rem;
         font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
       }
 
       .manager-migrated-root .manager-member-name {
@@ -2312,10 +2317,6 @@
 
         .manager-migrated-root .manager-member-card {
           grid-template-columns: 4.9rem minmax(0, 1fr);
-        }
-
-        .manager-migrated-root .manager-member-identity {
-          grid-template-columns: 1fr;
         }
 
         .manager-migrated-root .manager-member-detail-grid {
@@ -2969,6 +2970,8 @@
         const MANAGER_ROLE_LABELS = MANAGER_MIGRATED_DATA.roleLabels;
         const MANAGER_ROLE_IDS = Object.freeze(Object.keys(MANAGER_ROLE_LABELS).filter((role) => role !== "user"));
         const MANAGER_ROLE_ALIASES = MANAGER_MIGRATED_DATA.roleAliases;
+        const MANAGER_THEME_IDS = Object.freeze(MANAGER_MIGRATED_DATA.availableThemes || ["sea"]);
+        const MANAGER_THEME_LABELS = MANAGER_MIGRATED_DATA.themeDisplayNames || {};
         const MANAGER_AVATER_CATEGORY_LABELS = MANAGER_MIGRATED_DATA.avaterCategoryLabels;
         const MANAGER_AVATER_ITEM_CLASSES = MANAGER_MIGRATED_DATA.avaterItemClasses;
         const NOTE_BY_BINDER = MANAGER_MIGRATED_DATA.noteByBinder;
@@ -4037,9 +4040,11 @@
               const reviewCoin = getManagerMemberReviewCoin(member);
               const reviewDays = getManagerMemberReviewDays(member);
               const hasUnlimitedCoins = getManagerMemberUnlimitedReviewCoins(member);
+              const roleLabel = MANAGER_ROLE_LABELS[roleValue] || MANAGER_ROLE_LABELS.user;
               const roleOptions = Object.entries(MANAGER_ROLE_LABELS)
                 .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === roleValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
                 .join("");
+              const themeOptions = renderManagerThemeOptions(getManagerMemberColorTheme(member));
 
               return `
                 <article class="manager-member-card" data-manager-member-id="${escapeHtml(id)}">
@@ -4048,7 +4053,7 @@
                   </div>
                   <div class="manager-member-main">
                     <div class="manager-member-identity">
-                      <select class="manager-member-role-select" data-manager-member-role aria-label="役割">${roleOptions}</select>
+                      <span class="manager-member-role-tag">${escapeHtml(roleLabel)}</span>
                       <div class="manager-member-meta">
                         <p class="manager-member-name">${escapeHtml(name)}</p>
                         <p class="manager-member-sub">${escapeHtml(sub)}</p>
@@ -4064,6 +4069,10 @@
                   <div class="manager-member-detail" data-manager-member-detail hidden>
                     <div class="manager-member-detail-grid">
                       <label class="manager-member-detail-field">
+                        <span>役割</span>
+                        <select data-manager-member-role aria-label="役割">${roleOptions}</select>
+                      </label>
+                      <label class="manager-member-detail-field">
                         <span>リビューコイン</span>
                         <input data-manager-member-review-coin type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(String(reviewCoin))}" />
                       </label>
@@ -4076,7 +4085,7 @@
                         <span>リビューコインを無制限にする</span>
                       </label>
                       <label class="manager-member-detail-field">
-                        <span>e-mail</span>
+                        <span>メールアドレス</span>
                         <input data-manager-member-email type="email" value="${escapeHtml(getManagerMemberEmail(member))}" />
                       </label>
                       <label class="manager-member-detail-field">
@@ -4091,7 +4100,7 @@
                       </label>
                       <label class="manager-member-detail-field">
                         <span>カラーテーマ</span>
-                        <input data-manager-member-color-theme type="text" value="${escapeHtml(getManagerMemberColorTheme(member))}" />
+                        <select data-manager-member-color-theme>${themeOptions}</select>
                       </label>
                       <label class="manager-member-detail-field is-wide">
                         <span>設定（JSON）</span>
@@ -4187,6 +4196,19 @@
           };
           return Object.entries(labels)
             .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
+            .join("");
+        }
+
+        function renderManagerThemeOptions(selectedValue) {
+          const selected = String(selectedValue || "sea");
+          const themeIds = MANAGER_THEME_IDS.includes(selected)
+            ? MANAGER_THEME_IDS
+            : [selected, ...MANAGER_THEME_IDS];
+          return themeIds
+            .map((value) => {
+              const label = MANAGER_THEME_LABELS[value] || value;
+              return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+            })
             .join("");
         }
 

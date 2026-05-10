@@ -127,6 +127,10 @@ const MANAGER_MIGRATED_DATA = Object.freeze({
   roleAliases: Object.freeze({
     ...MANAGER_REVIEW_COIN_ROLE_ALIASES,
   }),
+  availableThemes: Object.freeze([...AVAILABLE_THEMES]),
+  themeDisplayNames: Object.freeze({
+    ...THEME_DISPLAY_NAMES,
+  }),
   avaterCategoryLabels: Object.freeze({
     ...AVATER_CATEGORY_LABELS,
   }),

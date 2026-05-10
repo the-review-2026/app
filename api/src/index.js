@@ -206,11 +206,46 @@ async function updateManagerMember(request, env, memberId) {
     return json(access.body, access.status);
   }
 
+  const normalizedMemberId = normalizeSupabaseText(memberId);
+  if (!normalizedMemberId) {
+    return json({ error: "member id is required" }, 400);
+  }
+
   let body;
   try {
     body = await request.json();
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const currentResponse = await supabaseRequest(
+    access.supabase,
+    `/users?id=eq.${encodeURIComponent(normalizedMemberId)}&select=${USER_SELECT_FIELDS}&limit=1`
+  );
+  if (!currentResponse.ok) {
+    const error = await supabaseError(currentResponse, "Failed to look up manager member");
+    return json(error.body, error.status);
+  }
+  const currentUsers = await currentResponse.json();
+  const currentUser = Array.isArray(currentUsers) ? currentUsers[0] ?? null : null;
+  if (!currentUser) {
+    return json({ error: "User not found" }, 404);
+  }
+
+  const settingsPatch = readOptionalManagerJsonObjectPatch(body, ["settings"], "settings");
+  if (!settingsPatch.ok) {
+    return json({ error: settingsPatch.error }, 400);
+  }
+  const avaterPatch = readOptionalManagerJsonObjectPatch(body, ["avater", "avatar"], "avater");
+  if (!avaterPatch.ok) {
+    return json({ error: avaterPatch.error }, 400);
+  }
+  const reviewDataPatch = readOptionalManagerJsonObjectPatch(body, ["reviewData", "review_data"], "reviewData");
+  if (!reviewDataPatch.ok) {
+    return json({ error: reviewDataPatch.error }, 400);
   }
 
   const hasRolePatch = Object.prototype.hasOwnProperty.call(body, "role");
@@ -221,6 +256,22 @@ async function updateManagerMember(request, env, memberId) {
   const patch = {
     updated_at: now,
   };
+  const personalData = { ...normalizeJsonObject(currentUser.personal_data) };
+  const authData = { ...normalizeJsonObject(personalData.auth) };
+  const currentReviewPeriod = normalizeJsonObject(currentUser.review_period);
+  let settingsData = {
+    ...normalizeJsonObject(
+      settingsPatch.has ? settingsPatch.value : pickFirstNonEmptyJsonObject(currentUser.settings, personalData.settings)
+    ),
+  };
+  let shouldPatchPersonalData = false;
+  let shouldPatchSettings = settingsPatch.has;
+  let shouldPatchAuth = false;
+  const setPersonalDataField = (key, value) => {
+    personalData[key] = value;
+    shouldPatchPersonalData = true;
+  };
+
   if (hasRolePatch && isUserRole) {
     patch.manager_role = null;
     patch.manager_status = "pending";
@@ -237,65 +288,89 @@ async function updateManagerMember(request, env, memberId) {
   }
   let hasReviewDataPatch = false;
   if (Object.prototype.hasOwnProperty.call(body, "reviewCoin")) {
-    patch.review_coin = normalizeNonNegativeInteger(body.reviewCoin, 0);
+    const reviewCoin = normalizeNonNegativeInteger(body.reviewCoin, 0);
+    patch.review_coin = reviewCoin;
+    setPersonalDataField("reviewCoin", reviewCoin);
     hasReviewDataPatch = true;
   }
   if (Object.prototype.hasOwnProperty.call(body, "hasUnlimitedReviewCoins")) {
-    patch.has_unlimited_review_coins = Boolean(body.hasUnlimitedReviewCoins);
+    const hasUnlimitedReviewCoins = Boolean(body.hasUnlimitedReviewCoins);
+    patch.has_unlimited_review_coins = hasUnlimitedReviewCoins;
+    setPersonalDataField("hasUnlimitedReviewCoins", hasUnlimitedReviewCoins);
     hasReviewDataPatch = true;
   }
   if (Object.prototype.hasOwnProperty.call(body, "reviewDays")) {
+    const loginDays = createRecentLoginDaysRecord(normalizeNonNegativeInteger(body.reviewDays, 0));
+    const dailyLoginRewardDays = normalizeJsonObject(currentReviewPeriod.dailyLoginRewardDays ?? personalData.dailyLoginRewardDays);
     patch.review_period = {
-      loginDays: createRecentLoginDaysRecord(normalizeNonNegativeInteger(body.reviewDays, 0)),
-      dailyLoginRewardDays: {},
+      loginDays,
+      dailyLoginRewardDays,
     };
+    setPersonalDataField("loginDays", loginDays);
+    setPersonalDataField("dailyLoginRewardDays", dailyLoginRewardDays);
     hasReviewDataPatch = true;
   }
   if (Object.prototype.hasOwnProperty.call(body, "email")) {
     patch.email = normalizeSupabaseText(body.email) || null;
+    authData.email = patch.email;
+    shouldPatchAuth = true;
   }
   if (Object.prototype.hasOwnProperty.call(body, "loginStatus")) {
     const loginStatus = normalizeManagerLoginStatus(body.loginStatus);
+    const currentProvider = normalizeSupabaseText(currentUser.auth_provider) || normalizeSupabaseText(authData.provider);
     patch.login_status = loginStatus;
     patch.is_logged_in = loginStatus !== "logged_out";
     if (loginStatus === "guest") {
       patch.auth_provider = "guest";
+    } else if (loginStatus === "logged_in") {
+      patch.auth_provider = currentProvider && currentProvider !== "guest" ? currentProvider : "auth0";
+    } else {
+      patch.auth_provider = null;
     }
+    authData.isLoggedIn = patch.is_logged_in;
+    authData.provider = patch.auth_provider;
+    shouldPatchAuth = true;
   }
   if (Object.prototype.hasOwnProperty.call(body, "educationCodes")) {
-    patch.education_codes = normalizeManagerEducationCodes(body.educationCodes);
+    const educationCodes = normalizeManagerEducationCodes(body.educationCodes);
+    patch.education_codes = educationCodes;
+    settingsData.educationCodes = educationCodes;
+    shouldPatchSettings = true;
     hasReviewDataPatch = true;
   }
   if (Object.prototype.hasOwnProperty.call(body, "colorTheme")) {
-    patch.color_theme = normalizeSupabaseText(body.colorTheme) || null;
+    const colorTheme = normalizeSupabaseText(body.colorTheme) || null;
+    patch.color_theme = colorTheme;
+    settingsData.theme = colorTheme || "";
+    shouldPatchSettings = true;
     hasReviewDataPatch = true;
   }
-  const settingsPatch = readOptionalManagerJsonObjectPatch(body, ["settings"], "settings");
-  if (!settingsPatch.ok) {
-    return json({ error: settingsPatch.error }, 400);
-  }
-  if (settingsPatch.has) {
-    patch.settings = settingsPatch.value;
+  if (shouldPatchSettings) {
+    patch.settings = settingsData;
+    setPersonalDataField("settings", settingsData);
     hasReviewDataPatch = true;
-  }
-  const avaterPatch = readOptionalManagerJsonObjectPatch(body, ["avater", "avatar"], "avater");
-  if (!avaterPatch.ok) {
-    return json({ error: avaterPatch.error }, 400);
   }
   if (avaterPatch.has) {
     patch.avater = avaterPatch.value;
     patch.equipped_avater = normalizeJsonObject(avaterPatch.value.equipped);
+    setPersonalDataField("avater", {
+      ...patch.avater,
+      equipped: patch.equipped_avater,
+    });
     hasReviewDataPatch = true;
-  }
-  const reviewDataPatch = readOptionalManagerJsonObjectPatch(body, ["reviewData", "review_data"], "reviewData");
-  if (!reviewDataPatch.ok) {
-    return json({ error: reviewDataPatch.error }, 400);
   }
   if (reviewDataPatch.has) {
     patch.review_data = reviewDataPatch.value;
+    setPersonalDataField("learningProgress", patch.review_data);
     hasReviewDataPatch = true;
   }
-  if (hasReviewDataPatch) {
+  if (shouldPatchAuth) {
+    setPersonalDataField("auth", authData);
+  }
+  if (shouldPatchPersonalData) {
+    patch.personal_data = personalData;
+  }
+  if (hasReviewDataPatch || shouldPatchPersonalData) {
     patch.review_remote_updated_at = now;
     patch.review_synced_at = now;
   }
@@ -303,7 +378,7 @@ async function updateManagerMember(request, env, memberId) {
     return json({ error: "no fields to update" }, 400);
   }
 
-  const response = await supabaseRequest(access.supabase, `/users?id=eq.${encodeURIComponent(memberId)}`, {
+  const response = await supabaseRequest(access.supabase, `/users?id=eq.${encodeURIComponent(normalizedMemberId)}`, {
     method: "PATCH",
     headers: {
       Prefer: "return=representation",
@@ -748,6 +823,11 @@ function createDefaultReviewDataColumns() {
 
 function normalizeJsonObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function pickFirstNonEmptyJsonObject(...values) {
+  const objects = values.map(normalizeJsonObject);
+  return objects.find((object) => Object.keys(object).length > 0) || objects[0] || {};
 }
 
 async function getOrCreateUserByAuth0Sub(supabase, claims) {
@@ -1226,10 +1306,15 @@ function serializeManagerMemberRow(user) {
   const reviewPeriod = normalizeJsonObject(user.review_period);
   const loginDays = normalizeJsonObject(reviewPeriod.loginDays ?? personalData.loginDays);
   const dailyLoginRewardDays = normalizeJsonObject(reviewPeriod.dailyLoginRewardDays ?? personalData.dailyLoginRewardDays);
-  const settings = normalizeJsonObject(user.settings ?? personalData.settings);
-  const avater = normalizeJsonObject(user.avater ?? personalData.avater ?? personalData.avatar);
-  const equippedAvater = normalizeJsonObject(user.equipped_avater ?? avater.equipped);
-  const reviewData = normalizeJsonObject(user.review_data ?? personalData.learningProgress ?? personalData.progress ?? personalData.noteProgress);
+  const settings = pickFirstNonEmptyJsonObject(user.settings, personalData.settings);
+  const avater = pickFirstNonEmptyJsonObject(user.avater, personalData.avater, personalData.avatar);
+  const equippedAvater = pickFirstNonEmptyJsonObject(user.equipped_avater, avater.equipped);
+  const reviewData = pickFirstNonEmptyJsonObject(
+    user.review_data,
+    personalData.learningProgress,
+    personalData.progress,
+    personalData.noteProgress
+  );
   const reviewCoin = Number.isFinite(Number(user.review_coin)) ? Number(user.review_coin) : 0;
   return {
     id: user.id || "",
