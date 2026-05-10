@@ -824,6 +824,10 @@
         gap: 0.9rem;
       }
 
+      .manager-migrated-root [data-problem-tab-panel][hidden] {
+        display: none !important;
+      }
+
       .manager-migrated-root .problem-manage-grid {
         display: grid;
         grid-template-columns: minmax(240px, 0.88fr) minmax(0, 1.12fr);
@@ -1686,6 +1690,69 @@
         background: #ffffff;
       }
 
+      .manager-migrated-root .manager-image-adjust-dialog {
+        width: min(560px, calc(100vw - 1.3rem));
+      }
+
+      .manager-migrated-root .manager-image-adjust-preview {
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 12px;
+        background:
+          linear-gradient(45deg, rgba(0, 0, 0, 0.05) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.05) 75%),
+          linear-gradient(45deg, rgba(0, 0, 0, 0.05) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.05) 75%),
+          #ffffff;
+        background-position: 0 0, 10px 10px;
+        background-size: 20px 20px;
+        padding: 0.86rem;
+      }
+
+      .manager-migrated-root .manager-image-adjust-stage {
+        width: min(280px, 72vw);
+        aspect-ratio: 1;
+        position: relative;
+        overflow: hidden;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+      }
+
+      .manager-migrated-root .manager-image-adjust-stage img {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        max-width: 78%;
+        max-height: 78%;
+        object-fit: contain;
+        transform:
+          translate(calc(-50% + var(--image-adjust-x, 0px)), calc(-50% + var(--image-adjust-y, 0px)))
+          rotate(var(--image-adjust-rotate, 0deg))
+          scale(var(--image-adjust-scale-x, 1), var(--image-adjust-scale-y, 1));
+        transform-origin: center;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .manager-migrated-root .manager-image-adjust-controls {
+        display: grid;
+        gap: 0.58rem;
+      }
+
+      .manager-migrated-root .manager-image-adjust-controls label {
+        display: grid;
+        grid-template-columns: minmax(5.2rem, auto) minmax(0, 1fr);
+        align-items: center;
+        gap: 0.72rem;
+        font-size: 0.84rem;
+        font-weight: 800;
+      }
+
+      .manager-migrated-root .manager-image-adjust-controls input[type="range"] {
+        width: 100%;
+        accent-color: #1d1d1d;
+      }
+
       .manager-migrated-root .text-reset-dialog {
         width: min(520px, calc(100vw - 2rem));
       }
@@ -2355,16 +2422,16 @@
       <div class="header-menu-block">
         <nav class="top-nav manager-nav" aria-label="画面切替">
           <button class="top-nav-item is-active" type="button" data-screen="home">
-            <span>ホーム</span>
+            <span>トップ</span>
+          </button>
+          <button class="top-nav-item" type="button" data-screen="members">
+            <span>メンバー</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="problem">
             <span>問題</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="store">
             <span>ストア</span>
-          </button>
-          <button class="top-nav-item" type="button" data-screen="profile">
-            <span>プロフィール</span>
           </button>
         </nav>
       </div>
@@ -2376,7 +2443,7 @@
           <h1 class="page-script-title">Manager</h1>
         </div>
         <div class="panel">
-          <h2>ホーム</h2>
+          <h2>トップ</h2>
           <p class="hint-text">ご希望の項目を選択してください。</p>
           <div class="manager-home-grid">
             <article class="panel manager-home-card">
@@ -2392,6 +2459,16 @@
             </article>
             <article class="panel manager-home-card">
               <div class="manager-title-row">
+                <h3>メンバーを管理する</h3>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">オーナー</span>
+                </span>
+              </div>
+              <p>制作チームメンバーの役割を管理できます。</p>
+              <button class="primary" type="button" data-home-link="members">開く</button>
+            </article>
+            <article class="panel manager-home-card">
+              <div class="manager-title-row">
                 <h3>ストアを管理する</h3>
                 <span class="manager-role-tags" aria-label="対象ロール">
                   <span class="manager-role-tag">キャラクターデザイナー</span>
@@ -2400,16 +2477,18 @@
               <p>アイテムの管理ができます。</p>
               <button class="primary" type="button" data-home-link="store">開く</button>
             </article>
-            <article class="panel manager-home-card">
-              <h3>プロフィール</h3>
-              <p>ログイン情報と権限情報を確認します。</p>
-              <button class="primary" type="button" data-home-link="profile">開く</button>
-            </article>
           </div>
+        </div>
+      </section>
+
+      <section id="screen-members" class="screen" hidden>
+        <div class="page-title-row">
+          <h1 class="page-script-title">Members</h1>
+        </div>
           <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
             <div class="manager-members-head">
               <div class="manager-title-row">
-                <h2>メンバー管理</h2>
+                <h2>メンバーを管理する</h2>
                 <span class="manager-role-tags" aria-label="対象ロール">
                   <span class="manager-role-tag">オーナー</span>
                 </span>
@@ -2425,7 +2504,6 @@
             <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
             <div id="managerMembersList" class="manager-members-list"></div>
           </section>
-        </div>
       </section>
 
       <section id="screen-problem" class="screen" hidden>
@@ -2682,6 +2760,7 @@
                   <img id="avaterItemImagePreview" class="manager-image-dropzone-preview" alt="" hidden />
                 </div>
                 <div class="image-picker-actions">
+                  <button id="adjustAvaterItemImageBtn" class="secondary white-button" type="button" disabled>画像を調整</button>
                   <button id="clearAvaterItemImageBtn" class="secondary white-button" type="button">画像を削除</button>
                 </div>
                 <p id="avaterItemImageMeta" class="image-picker-filename"></p>
@@ -2702,16 +2781,7 @@
                 <span class="field-label-row">価格</span>
                 <span class="manager-price-field">
                   <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                  <select id="avaterItemCostInput">
-                    <option value="0">0</option>
-                    <option value="50">50</option>
-                    <option value="80">80</option>
-                    <option value="100" selected>100</option>
-                    <option value="120">120</option>
-                    <option value="150">150</option>
-                    <option value="200">200</option>
-                    <option value="300">300</option>
-                  </select>
+                  <input id="avaterItemCostInput" type="number" inputmode="numeric" min="0" step="1" value="100" />
                 </span>
               </label>
               <div class="action-row">
@@ -2723,27 +2793,48 @@
         </div>
       </section>
 
-      <section id="screen-profile" class="screen" hidden>
-        <div class="page-title-row">
-          <h1 class="page-script-title">Profile</h1>
-        </div>
-        <section class="panel profile-card">
-          <div class="profile-character avater-preview avater-preview-profile" data-manager-avater-preview aria-hidden="true">
-            <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
-          </div>
-          <div class="profile-details">
-            <div class="profile-info-block">
-              <p class="profile-info-label">Nickname</p>
-              <p id="profileNicknameValue" class="profile-info-value">未設定</p>
-            </div>
-            <div class="profile-info-block">
-              <p class="profile-info-label">役割</p>
-              <p id="profileRoleValue" class="profile-info-value">確認中</p>
-            </div>
-          </div>
-        </section>
-      </section>
     </main>
+
+    <dialog id="avaterItemImageAdjustDialog" class="text-reset-dialog manager-image-adjust-dialog" aria-labelledby="avaterItemImageAdjustTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="avaterItemImageAdjustTitle">アイテム画像を調整</h3>
+        <div class="manager-image-adjust-preview" aria-label="調整プレビュー">
+          <div class="manager-image-adjust-stage">
+            <img id="avaterItemAdjustImage" alt="" />
+          </div>
+        </div>
+        <div class="manager-image-adjust-controls">
+          <label>
+            <span>サイズ</span>
+            <input id="avaterItemImageScaleInput" type="range" min="40" max="220" value="100" />
+          </label>
+          <label>
+            <span>横の変形</span>
+            <input id="avaterItemImageScaleXInput" type="range" min="60" max="160" value="100" />
+          </label>
+          <label>
+            <span>縦の変形</span>
+            <input id="avaterItemImageScaleYInput" type="range" min="60" max="160" value="100" />
+          </label>
+          <label>
+            <span>横位置</span>
+            <input id="avaterItemImageOffsetXInput" type="range" min="-120" max="120" value="0" />
+          </label>
+          <label>
+            <span>縦位置</span>
+            <input id="avaterItemImageOffsetYInput" type="range" min="-120" max="120" value="0" />
+          </label>
+          <label>
+            <span>回転</span>
+            <input id="avaterItemImageRotateInput" type="range" min="-45" max="45" value="0" />
+          </label>
+        </div>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-avater-image-adjust-action="cancel">キャンセル</button>
+          <button class="primary" type="button" data-avater-image-adjust-action="apply">決定</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="problemImageDialog" class="text-reset-dialog" aria-labelledby="problemImageDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
@@ -2992,7 +3083,17 @@
           avaterItemImagePreview: document.getElementById("avaterItemImagePreview"),
           avaterItemImageEmpty: document.getElementById("avaterItemImageEmpty"),
           avaterItemImageMeta: document.getElementById("avaterItemImageMeta"),
+          adjustAvaterItemImageBtn: document.getElementById("adjustAvaterItemImageBtn"),
           clearAvaterItemImageBtn: document.getElementById("clearAvaterItemImageBtn"),
+          avaterItemImageAdjustDialog: document.getElementById("avaterItemImageAdjustDialog"),
+          avaterItemAdjustImage: document.getElementById("avaterItemAdjustImage"),
+          avaterItemImageScaleInput: document.getElementById("avaterItemImageScaleInput"),
+          avaterItemImageScaleXInput: document.getElementById("avaterItemImageScaleXInput"),
+          avaterItemImageScaleYInput: document.getElementById("avaterItemImageScaleYInput"),
+          avaterItemImageOffsetXInput: document.getElementById("avaterItemImageOffsetXInput"),
+          avaterItemImageOffsetYInput: document.getElementById("avaterItemImageOffsetYInput"),
+          avaterItemImageRotateInput: document.getElementById("avaterItemImageRotateInput"),
+          avaterItemImageAdjustButtons: Array.from(document.querySelectorAll("[data-avater-image-adjust-action]")),
           addAvaterItemBtn: document.getElementById("addAvaterItemBtn"),
           managerAvaterItemList: document.getElementById("managerAvaterItemList"),
           storeConfigFeedback: document.getElementById("storeConfigFeedback"),
@@ -3181,7 +3282,28 @@
           elements.avaterItemImageInput?.addEventListener("change", async () => {
             await syncAvaterItemImageFromFile(elements.avaterItemImageInput?.files?.[0] || null);
           });
+          elements.adjustAvaterItemImageBtn?.addEventListener("click", openAvaterItemImageAdjustDialog);
           elements.clearAvaterItemImageBtn?.addEventListener("click", clearAvaterItemImage);
+          [
+            elements.avaterItemImageScaleInput,
+            elements.avaterItemImageScaleXInput,
+            elements.avaterItemImageScaleYInput,
+            elements.avaterItemImageOffsetXInput,
+            elements.avaterItemImageOffsetYInput,
+            elements.avaterItemImageRotateInput,
+          ].forEach((input) => {
+            input?.addEventListener("input", updateAvaterItemImageAdjustmentPreview);
+          });
+          elements.avaterItemImageAdjustButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              const action = button.dataset.avaterImageAdjustAction || "";
+              if (action === "apply") {
+                void applyAvaterItemImageAdjustment();
+                return;
+              }
+              closeDialog(elements.avaterItemImageAdjustDialog);
+            });
+          });
           ["dragenter", "dragover"].forEach((eventName) => {
             elements.avaterItemImageDropzone?.addEventListener(eventName, (event) => {
               event.preventDefault();
@@ -3419,11 +3541,13 @@
           }
           if (role === "owner" && access?.canAccess === true) {
             void loadManagerMembers();
+          } else if (state.activeScreen === "members") {
+            void loadManagerMembers();
           }
           document.querySelector("#screen-home .manager-access-note")?.remove();
 
           const shouldRestrict = !access || access.canAccess === false;
-          const allowedScreens = new Set(["home", "profile"]);
+          const allowedScreens = new Set(["home"]);
           elements.navButtons.forEach((button) => {
             button.disabled = shouldRestrict && !allowedScreens.has(button.dataset.screen || "");
           });
@@ -3440,7 +3564,7 @@
             const note = document.createElement("p");
             note.className = "hint-text manager-access-note";
             note.textContent =
-              "The Review Managerはユーザー以外の役割が付与されると利用できます。プロフィールでログイン情報を確認してください。";
+              "The Review Managerは制作チームの役割が付与されると利用できます。権限の付与を管理者へ確認してください。";
             panel.append(note);
           }
         }
@@ -3569,8 +3693,11 @@
               type: file.type,
               size: file.size,
               dataUrl,
+              sourceDataUrl: dataUrl,
+              transform: createDefaultAvaterImageTransform(),
             };
             renderAvaterItemImagePreview();
+            openAvaterItemImageAdjustDialog();
             if (elements.storeConfigFeedback) {
               elements.storeConfigFeedback.textContent = "";
             }
@@ -3581,6 +3708,160 @@
               elements.storeConfigFeedback.textContent = "画像の読み込みに失敗しました。";
             }
           }
+        }
+
+        function createDefaultAvaterImageTransform() {
+          return {
+            scale: 100,
+            scaleX: 100,
+            scaleY: 100,
+            offsetX: 0,
+            offsetY: 0,
+            rotate: 0,
+          };
+        }
+
+        function normalizeAvaterImageTransform(transform) {
+          const fallback = createDefaultAvaterImageTransform();
+          const clampNumber = (value, min, max, fallbackValue) => {
+            const number = Number(value);
+            if (!Number.isFinite(number)) {
+              return fallbackValue;
+            }
+            return Math.min(max, Math.max(min, number));
+          };
+          return {
+            scale: clampNumber(transform?.scale, 40, 220, fallback.scale),
+            scaleX: clampNumber(transform?.scaleX, 60, 160, fallback.scaleX),
+            scaleY: clampNumber(transform?.scaleY, 60, 160, fallback.scaleY),
+            offsetX: clampNumber(transform?.offsetX, -120, 120, fallback.offsetX),
+            offsetY: clampNumber(transform?.offsetY, -120, 120, fallback.offsetY),
+            rotate: clampNumber(transform?.rotate, -45, 45, fallback.rotate),
+          };
+        }
+
+        function readAvaterImageTransformInputs() {
+          return normalizeAvaterImageTransform({
+            scale: elements.avaterItemImageScaleInput?.value,
+            scaleX: elements.avaterItemImageScaleXInput?.value,
+            scaleY: elements.avaterItemImageScaleYInput?.value,
+            offsetX: elements.avaterItemImageOffsetXInput?.value,
+            offsetY: elements.avaterItemImageOffsetYInput?.value,
+            rotate: elements.avaterItemImageRotateInput?.value,
+          });
+        }
+
+        function setAvaterImageTransformInputs(transform) {
+          const normalized = normalizeAvaterImageTransform(transform);
+          if (elements.avaterItemImageScaleInput) {
+            elements.avaterItemImageScaleInput.value = String(normalized.scale);
+          }
+          if (elements.avaterItemImageScaleXInput) {
+            elements.avaterItemImageScaleXInput.value = String(normalized.scaleX);
+          }
+          if (elements.avaterItemImageScaleYInput) {
+            elements.avaterItemImageScaleYInput.value = String(normalized.scaleY);
+          }
+          if (elements.avaterItemImageOffsetXInput) {
+            elements.avaterItemImageOffsetXInput.value = String(normalized.offsetX);
+          }
+          if (elements.avaterItemImageOffsetYInput) {
+            elements.avaterItemImageOffsetYInput.value = String(normalized.offsetY);
+          }
+          if (elements.avaterItemImageRotateInput) {
+            elements.avaterItemImageRotateInput.value = String(normalized.rotate);
+          }
+        }
+
+        function openAvaterItemImageAdjustDialog() {
+          const imageData = state.avaterItemImageData;
+          if (!imageData) {
+            return;
+          }
+          setAvaterImageTransformInputs(imageData.transform);
+          updateAvaterItemImageAdjustmentPreview();
+          showDialog(elements.avaterItemImageAdjustDialog);
+        }
+
+        function updateAvaterItemImageAdjustmentPreview() {
+          const imageData = state.avaterItemImageData;
+          if (!elements.avaterItemAdjustImage || !imageData) {
+            return;
+          }
+          const transform = readAvaterImageTransformInputs();
+          const previewScaleX = (transform.scale / 100) * (transform.scaleX / 100);
+          const previewScaleY = (transform.scale / 100) * (transform.scaleY / 100);
+          elements.avaterItemAdjustImage.src = imageData.sourceDataUrl || imageData.dataUrl || "";
+          elements.avaterItemAdjustImage.alt = imageData.name || "";
+          elements.avaterItemAdjustImage.style.setProperty("--image-adjust-x", `${transform.offsetX}px`);
+          elements.avaterItemAdjustImage.style.setProperty("--image-adjust-y", `${transform.offsetY}px`);
+          elements.avaterItemAdjustImage.style.setProperty("--image-adjust-rotate", `${transform.rotate}deg`);
+          elements.avaterItemAdjustImage.style.setProperty("--image-adjust-scale-x", String(previewScaleX));
+          elements.avaterItemAdjustImage.style.setProperty("--image-adjust-scale-y", String(previewScaleY));
+        }
+
+        async function applyAvaterItemImageAdjustment() {
+          const imageData = state.avaterItemImageData;
+          if (!imageData) {
+            closeDialog(elements.avaterItemImageAdjustDialog);
+            return;
+          }
+          const transform = readAvaterImageTransformInputs();
+          try {
+            const adjusted = await renderAdjustedAvaterImage(imageData.sourceDataUrl || imageData.dataUrl, transform);
+            state.avaterItemImageData = {
+              ...imageData,
+              dataUrl: adjusted.dataUrl,
+              size: adjusted.size,
+              transform,
+            };
+            renderAvaterItemImagePreview();
+            closeDialog(elements.avaterItemImageAdjustDialog);
+          } catch {
+            if (elements.storeConfigFeedback) {
+              elements.storeConfigFeedback.textContent = "画像の調整を反映できませんでした。";
+            }
+          }
+        }
+
+        async function renderAdjustedAvaterImage(sourceDataUrl, transform) {
+          const image = await loadImageElement(sourceDataUrl);
+          const canvas = document.createElement("canvas");
+          const size = 512;
+          canvas.width = size;
+          canvas.height = size;
+          const context = canvas.getContext("2d");
+          if (!context) {
+            throw new Error("canvas-context-unavailable");
+          }
+          context.clearRect(0, 0, size, size);
+          context.save();
+          context.translate(size / 2 + transform.offsetX * 1.7, size / 2 + transform.offsetY * 1.7);
+          context.rotate((transform.rotate * Math.PI) / 180);
+          const baseScale = 390 / Math.max(1, image.naturalWidth, image.naturalHeight);
+          const scale = transform.scale / 100;
+          context.scale(baseScale * scale * (transform.scaleX / 100), baseScale * scale * (transform.scaleY / 100));
+          context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+          context.restore();
+          const dataUrl = canvas.toDataURL("image/png");
+          return {
+            dataUrl,
+            size: estimateDataUrlByteSize(dataUrl),
+          };
+        }
+
+        function loadImageElement(src) {
+          return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = () => reject(new Error("image-load-failed"));
+            image.src = src;
+          });
+        }
+
+        function estimateDataUrlByteSize(dataUrl) {
+          const payload = String(dataUrl || "").split(",")[1] || "";
+          return Math.max(0, Math.floor((payload.length * 3) / 4));
         }
 
         function renderAvaterItemImagePreview() {
@@ -3597,6 +3878,9 @@
             const sizeKb = imageData?.size ? Math.max(1, Math.round(imageData.size / 1024)) : 0;
             elements.avaterItemImageMeta.textContent = imageData ? `${imageData.name} (${sizeKb}KB)` : "";
           }
+          if (elements.adjustAvaterItemImageBtn) {
+            elements.adjustAvaterItemImageBtn.disabled = !imageData;
+          }
         }
 
         function clearAvaterItemImage() {
@@ -3604,6 +3888,7 @@
           if (elements.avaterItemImageInput) {
             elements.avaterItemImageInput.value = "";
           }
+          closeDialog(elements.avaterItemImageAdjustDialog);
           renderAvaterItemImagePreview();
         }
 
@@ -3672,7 +3957,13 @@
         async function loadManagerMembers() {
           if (!canManageManagerMembers()) {
             if (elements.managerMembersPanel) {
-              elements.managerMembersPanel.hidden = true;
+              elements.managerMembersPanel.hidden = false;
+            }
+            if (elements.managerMembersStatus) {
+              elements.managerMembersStatus.textContent = "メンバー管理はOwnerのみ利用できます。";
+            }
+            if (elements.managerMembersList) {
+              elements.managerMembersList.innerHTML = "";
             }
             return;
           }
@@ -3835,6 +4126,9 @@
           elements.navButtons.forEach((button) => {
             button.classList.toggle("is-active", button.dataset.screen === screenName);
           });
+          if (screenName === "members") {
+            void loadManagerMembers();
+          }
         }
 
         function initializePublishedFilters() {
