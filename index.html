@@ -2208,9 +2208,22 @@
         }
       }
 
+      #screen-manager .manager-integrated-shell {
+        min-height: 0;
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      #screen-manager .manager-migrated-mount {
+        min-height: 0;
+      }
+
       .manager-migrated-root.is-embedded-manager {
-        min-height: 100dvh;
-        padding: 0 0 1rem;
+        min-height: 0;
+        padding: 0;
         background: transparent;
       }
 
@@ -2221,15 +2234,16 @@
       }
 
       .manager-migrated-root.is-embedded-manager .app-header {
-        position: sticky;
-        top: 0;
-        z-index: 20;
+        position: static;
+        top: auto;
+        z-index: auto;
         width: 100%;
         margin: 0;
         min-height: auto;
-        padding: 0.48rem;
-        background: rgba(29, 29, 29, 0.92);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+        padding: 0;
+        display: block;
+        background: transparent;
+        box-shadow: none;
       }
 
       .manager-migrated-root.is-embedded-manager .header-menu-block {
@@ -2238,20 +2252,55 @@
         display: block;
       }
 
+      .manager-migrated-root.is-embedded-manager .header-menu-block::before {
+        content: none;
+        display: none;
+      }
+
       .manager-migrated-root.is-embedded-manager .top-nav.manager-nav {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        align-items: stretch !important;
+        gap: 0.28rem;
         position: static;
         width: 100%;
         max-width: none;
-        margin: 0;
+        margin: 0 0 0.72rem;
+        padding: 0.28rem;
+        border: 1px solid rgba(255, 255, 255, 0.34);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.48);
+        box-shadow: 0 10px 22px rgba(20, 54, 70, 0.12);
+        backdrop-filter: blur(14px) saturate(1.08);
+      }
+
+      .manager-migrated-root.is-embedded-manager .manager-nav .top-nav-item {
+        width: auto !important;
+        min-height: 2.6rem;
+        border-radius: 10px !important;
+        color: rgba(29, 29, 29, 0.74);
+      }
+
+      .manager-migrated-root.is-embedded-manager .manager-nav .top-nav-item.is-active {
+        color: #ffffff;
+        background: #1d1d1d !important;
+        box-shadow: 0 8px 16px rgba(29, 29, 29, 0.18) !important;
+      }
+
+      .manager-migrated-root.is-embedded-manager .manager-nav .top-nav-item.is-active > span {
+        color: #ffffff !important;
+        background: none !important;
+        -webkit-text-fill-color: #ffffff !important;
       }
 
       .manager-migrated-root.is-embedded-manager .screens {
-        width: min(100%, 980px);
-        padding: 0.7rem 0.64rem 1.2rem;
+        width: 100%;
+        max-width: none;
+        padding: 0;
       }
 
       .manager-migrated-root.is-embedded-manager .screen > .page-title-row {
-        margin-top: 0;
+        display: none;
       }
 
       .manager-migrated-root #screen-home .page-script-title::after {
