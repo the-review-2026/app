@@ -603,6 +603,7 @@ let lastReviewAccountProfileSync = null;
 let reviewDataSyncTimerId = 0;
 let reviewDataSyncInFlight = null;
 let reviewDataSyncQueued = false;
+let reviewDataCloudPullCompleted = false;
 let isApplyingRemoteReviewData = false;
 let lastReviewDataCloudRefreshAt = 0;
 let activeAvaterCategory = "clothes";
@@ -3006,6 +3007,7 @@ async function syncAuthStateFromAuth0(options = {}) {
   });
   saveState({ skipTouch: true, skipRemoteSync: true });
   await syncReviewAccountProfileToApi({ skipTouch: true });
+  reviewDataCloudPullCompleted = false;
   await syncReviewDataWithCloud({ reason: "auth" });
 }
 
@@ -8958,6 +8960,10 @@ async function syncReviewDataWithCloud(options = {}) {
     }
 
     const remoteReviewRecord = await fetchReviewDataFromCloud(token);
+    if (remoteReviewRecord === undefined) {
+      return null;
+    }
+    reviewDataCloudPullCompleted = true;
     if (remoteReviewRecord) {
       return handleRemoteReviewDataRecord(token, remoteReviewRecord, options);
     }
@@ -8987,6 +8993,9 @@ async function syncReviewDataWithCloud(options = {}) {
 async function pushReviewDataToCloud() {
   if (!canSyncReviewDataToCloud()) {
     return null;
+  }
+  if (!reviewDataCloudPullCompleted) {
+    return syncReviewDataWithCloud({ reason: "pre-push" });
   }
   if (reviewDataSyncInFlight) {
     reviewDataSyncQueued = true;
@@ -9061,13 +9070,13 @@ async function fetchReviewDataFromCloud(token) {
     });
     if (!response.ok) {
       console.warn("Failed to fetch Review Data:", response.status);
-      return null;
+      return undefined;
     }
     const payload = await response.json().catch(() => null);
     return normalizeRemoteReviewDataRecord(payload?.reviewData);
   } catch (error) {
     console.warn("Failed to fetch Review Data:", error);
-    return null;
+    return undefined;
   }
 }
 
@@ -9314,12 +9323,12 @@ function mergeReviewDataStates(localState, remoteState, remoteRecord = {}) {
   const local = normalizePersistedState(localState);
   const remote = normalizePersistedState(remoteState);
   const localUpdatedAt = getReviewStateUpdatedTime(local);
-  const remoteUpdatedAt =
-    getReviewStateUpdatedTime(remote) ||
-    Date.parse(remoteRecord.clientUpdatedAt || "") ||
-    Date.parse(remoteRecord.updatedAt || "") ||
-    0;
-  const preferRemote = remoteUpdatedAt > localUpdatedAt;
+  const remoteServerUpdatedAt = getRemoteReviewRecordServerUpdatedTime(remoteRecord);
+  const remoteRecordUpdatedAt = getRemoteReviewRecordUpdatedTime(remoteRecord);
+  const remoteUpdatedAt = Math.max(getReviewStateUpdatedTime(remote), remoteRecordUpdatedAt);
+  const localLastRemoteUpdatedAt = getReviewStateLastRemoteUpdatedTime(local);
+  const remoteChangedAfterLastSync = Boolean(remoteServerUpdatedAt && remoteServerUpdatedAt > localLastRemoteUpdatedAt);
+  const preferRemote = remoteChangedAfterLastSync || remoteUpdatedAt > localUpdatedAt;
   const preferred = preferRemote ? remote : local;
   const merged = normalizePersistedState(preferred);
   const bothStatesHaveSyncTimestamps = Boolean(local.sync?.updatedAt && remote.sync?.updatedAt);
@@ -9506,6 +9515,22 @@ function normalizeDailyTryRecord(record) {
 function getReviewStateUpdatedTime(value) {
   const timestamp = normalizeIsoDateString(value?.sync?.updatedAt);
   return timestamp ? Date.parse(timestamp) : 0;
+}
+
+function getReviewStateLastRemoteUpdatedTime(value) {
+  const timestamp = normalizeIsoDateString(value?.sync?.lastRemoteUpdatedAt);
+  return timestamp ? Date.parse(timestamp) : 0;
+}
+
+function getRemoteReviewRecordUpdatedTime(record) {
+  const updatedAt = normalizeIsoDateString(record?.updatedAt);
+  const clientUpdatedAt = normalizeIsoDateString(record?.clientUpdatedAt);
+  return Math.max(updatedAt ? Date.parse(updatedAt) : 0, clientUpdatedAt ? Date.parse(clientUpdatedAt) : 0);
+}
+
+function getRemoteReviewRecordServerUpdatedTime(record) {
+  const updatedAt = normalizeIsoDateString(record?.updatedAt);
+  return updatedAt ? Date.parse(updatedAt) : 0;
 }
 
 function reviewDataStateContentEquals(a, b) {

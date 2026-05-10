@@ -537,14 +537,15 @@ async function saveCurrentReviewData(request, env) {
     return json(existingResult.body, existingResult.status);
   }
   if (existingResult.reviewData) {
-    const existingUpdatedAt = Date.parse(
-      existingResult.reviewData.review_client_updated_at ||
-        existingResult.reviewData.review_remote_updated_at ||
-        existingResult.reviewData.updated_at ||
-        ""
-    );
+    const existingClientUpdatedAt = parseSupabaseTimestamp(existingResult.reviewData.review_client_updated_at);
+    const existingRemoteUpdatedAt = parseSupabaseTimestamp(existingResult.reviewData.review_remote_updated_at);
+    const existingReviewUpdatedAt = Math.max(existingClientUpdatedAt, existingRemoteUpdatedAt);
+    const incomingLastRemoteUpdatedAt = parseSupabaseTimestamp(payloadResult.value.payload?.sync?.lastRemoteUpdatedAt);
     const incomingUpdatedAt = Date.parse(payloadResult.value.client_updated_at);
-    if (Number.isFinite(existingUpdatedAt) && Number.isFinite(incomingUpdatedAt) && existingUpdatedAt > incomingUpdatedAt) {
+    const remoteChangedAfterClientLastPull = existingRemoteUpdatedAt > 0 && existingRemoteUpdatedAt > incomingLastRemoteUpdatedAt;
+    const remoteIsNewerThanIncoming =
+      existingReviewUpdatedAt > 0 && Number.isFinite(incomingUpdatedAt) && existingReviewUpdatedAt > incomingUpdatedAt;
+    if (remoteChangedAfterClientLastPull || remoteIsNewerThanIncoming) {
       return json(
         {
           error: "A newer Review Data snapshot already exists.",
@@ -1380,6 +1381,11 @@ function getDisplayNameFromClaims(claims) {
 
 function normalizeSupabaseText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function parseSupabaseTimestamp(value) {
+  const time = Date.parse(normalizeSupabaseText(value));
+  return Number.isFinite(time) ? time : 0;
 }
 
 function normalizeNonNegativeInteger(value, fallback = 0) {
