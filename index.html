@@ -29,7 +29,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260510-1" />
+    <link rel="stylesheet" href="./app.css?v=20260511-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -44,7 +44,7 @@
     <header class="app-header">
       <img class="app-logo" src="./assets/logos/original.png?v=20260326-1" alt="The Review" />
       <div class="header-menu-block">
-        <div id="reviewCoinBoard" class="review-coin-board" role="button" tabindex="0" aria-label="リビューコイン枚数へ移動">
+        <div id="reviewCoinBoard" class="review-coin-board" role="button" tabindex="0" aria-label="Review Coin枚数へ移動">
           <img class="review-coin-icon" src="./assets/icons/coin.png?v=20260326-1" alt="Review Coin" />
           <strong id="reviewCoinValue" class="review-coin-value">0</strong>
         </div>
@@ -331,14 +331,20 @@
           data-settings-panel="account"
         >
             <h2 class="account-panel-title">
-              <span>Review Account</span>
-              <span class="account-title-actions">
+              <span class="account-title-main">
+                <span>Review Account</span>
                 <strong id="authLoginStatusText" class="account-status-badge is-guest">Guest Mode</strong>
-                <button id="accountEditBtn" class="secondary account-icon-button account-edit-button" type="button">
-                  <span>編集する</span>
-                  <span class="material-symbols-rounded" aria-hidden="true">edit</span>
-                </button>
               </span>
+
+            <button
+              id="accountEditBtn"
+              class="secondary account-icon-button account-edit-button"
+              type="button"
+              aria-label="Review Accountを編集する"
+              title="編集する"
+            >
+              <span class="material-symbols-rounded account-edit-symbol" aria-hidden="true">edit</span>
+            </button>
             </h2>
             <div class="settings-section-content settings-line-list">
               <div class="setting-row">
@@ -403,7 +409,7 @@
         </div>
         <section class="panel settings-section">
           <h2 class="review-coin-section-title">
-            <span>リビューコイン枚数</span>
+            <span>Review Coin枚数</span>
           </h2>
           <div class="settings-section-content">
             <p class="mypage-coin-value">
@@ -2573,7 +2579,7 @@
                   <span class="manager-role-tag">オーナー</span>
                 </span>
               </div>
-              <p>ユーザーの役割とリビュー情報を管理できます。</p>
+              <p>ユーザーに関わる管理ができます。</p>
               <button class="primary" type="button" data-home-link="members">開く</button>
             </article>
             <article class="panel manager-home-card">
@@ -2618,8 +2624,8 @@
               </button>
             </div>
             <label class="field-block manager-member-search" for="managerMemberSearchInput">
-              <span class="field-label-row">ユーザーを検索</span>
-              <input id="managerMemberSearchInput" type="search" placeholder="Nickname / メール / Auth0 ID" />
+              <span class="field-label-row">検索する</span>
+              <input id="managerMemberSearchInput" type="search" placeholder="Nickname、メールアドレス、Auth0 ID、役割" />
             </label>
             <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
             <div id="managerMembersList" class="manager-members-list"></div>
@@ -3596,7 +3602,7 @@
             const note = document.createElement("p");
             note.className = "hint-text manager-access-note";
             note.textContent =
-              "The Review Managerは制作チームの役割が付与されると利用できます。権限の付与を管理者へ確認してください。";
+              "The Review Managerは役割が付与されると利用できます。オーナーに権限が付与されているか確認してください。";
             panel.append(note);
           }
         }
@@ -4032,11 +4038,11 @@
             return;
           }
 
-          const query = String(elements.managerMemberSearchInput?.value || "").trim().toLowerCase();
+          const query = normalizeManagerMemberSearchText(elements.managerMemberSearchInput?.value || "");
           const visibleMembers = query
             ? state.managerMembers.filter((member) =>
-                [getManagerMemberNickname(member), member?.email, member?.auth0_sub]
-                  .map((value) => String(value || "").toLowerCase())
+                getManagerMemberSearchValues(member)
+                  .map(normalizeManagerMemberSearchText)
                   .some((value) => value.includes(query)),
               )
             : state.managerMembers;
@@ -4048,7 +4054,7 @@
           }
 
           elements.managerMembersStatus.textContent = visibleMembers.length
-            ? "ユーザーを選ぶとリビュー情報を確認・変更できます。"
+            ? "ユーザーのReview Dataを編集できます。"
             : "一致するユーザーはいません。";
           elements.managerMembersList.innerHTML = visibleMembers
             .map((member) => {
@@ -4058,7 +4064,6 @@
               const sub = member?.email || member?.auth0_sub || "";
               const reviewCoin = getManagerMemberReviewCoin(member);
               const reviewDays = getManagerMemberReviewDays(member);
-              const hasUnlimitedCoins = getManagerMemberUnlimitedReviewCoins(member);
               const roleLabel = MANAGER_ROLE_LABELS[roleValue] || MANAGER_ROLE_LABELS.user;
               const roleTag = roleValue && roleValue !== "user"
                 ? `<span class="manager-member-role-tag">${escapeHtml(roleLabel)}</span>`
@@ -4081,39 +4086,35 @@
                     <div class="manager-member-actions">
                       <button class="secondary white-button manager-member-detail-toggle" type="button" data-manager-member-detail-toggle aria-expanded="false">
                         <span class="material-symbols-rounded" aria-hidden="true">edit</span>
-                        <span>リビューデータを編集する</span>
+                        <span>Review Dataを編集する</span>
                       </button>
                     </div>
                   </div>
                   <div class="manager-member-detail" data-manager-member-detail hidden>
                     <div class="manager-member-detail-grid">
-                      <label class="manager-member-detail-field">
+                      <label class="manager-member-detail-field is-wide">
+                        <span>Review Data（JSON）</span>
+                        <textarea data-manager-member-review-data-json spellcheck="false">${escapeHtml(stringifyManagerJson(getManagerMemberReviewData(member)))}</textarea>
+                      </label>
+                      <label class="manager-member-detail-field is-wide">
                         <span>役割</span>
                         <select data-manager-member-role aria-label="役割">${roleOptions}</select>
                       </label>
                       <label class="manager-member-detail-field">
-                        <span>リビューコイン</span>
+                        <span>Review Coin</span>
                         <input data-manager-member-review-coin type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(String(reviewCoin))}" />
                       </label>
                       <label class="manager-member-detail-field">
                         <span>リビュー日数</span>
                         <input data-manager-member-review-days type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(String(reviewDays))}" />
                       </label>
-                      <label class="manager-member-detail-field manager-member-unlimited-field">
-                        <input data-manager-member-unlimited-coins type="checkbox" ${hasUnlimitedCoins ? "checked" : ""} />
-                        <span>リビューコインを∞枚にする</span>
+                      <label class="manager-member-detail-field">
+                        <span>Nickname</span>
+                        <input data-manager-member-nickname type="text" value="${escapeHtml(getManagerMemberRawNickname(member))}" />
                       </label>
                       <label class="manager-member-detail-field">
                         <span>メールアドレス</span>
                         <input data-manager-member-email type="email" value="${escapeHtml(getManagerMemberEmail(member))}" />
-                      </label>
-                      <label class="manager-member-detail-field is-wide">
-                        <span>Education Code</span>
-                        <textarea data-manager-member-education-codes-json spellcheck="false">${escapeHtml(stringifyManagerJsonArray(getManagerMemberEducationCodes(member)))}</textarea>
-                      </label>
-                      <label class="manager-member-detail-field">
-                        <span>カラーテーマ</span>
-                        <input data-manager-member-color-theme type="text" value="${escapeHtml(getManagerMemberColorTheme(member))}" />
                       </label>
                       <label class="manager-member-detail-field is-wide">
                         <span>設定（JSON）</span>
@@ -4122,10 +4123,6 @@
                       <label class="manager-member-detail-field is-wide">
                         <span>Avater（JSON）</span>
                         <textarea data-manager-member-avater-json spellcheck="false">${escapeHtml(stringifyManagerJson(getManagerMemberAvaterState(member).avater))}</textarea>
-                      </label>
-                      <label class="manager-member-detail-field is-wide">
-                        <span>リビューデータ（JSON）</span>
-                        <textarea data-manager-member-review-data-json spellcheck="false">${escapeHtml(stringifyManagerJson(getManagerMemberReviewData(member)))}</textarea>
                       </label>
                     </div>
                     <div class="manager-member-detail-actions">
@@ -4150,7 +4147,7 @@
           renderManagerMemberAvaterPreviews(visibleMembers);
         }
 
-        function getManagerMemberNickname(member) {
+        function getManagerMemberRawNickname(member) {
           const candidates = [
             member?.nickname,
             member?.profile?.nickname,
@@ -4161,7 +4158,32 @@
           const nickname = candidates
             .map((value) => String(value || "").trim())
             .find((value) => value && !looksLikeAuth0Subject(value));
-          return nickname || "Nickname未設定";
+          return nickname || "";
+        }
+
+        function getManagerMemberNickname(member) {
+          return getManagerMemberRawNickname(member) || "Nickname未設定";
+        }
+
+        function normalizeManagerMemberSearchText(value) {
+          return String(value || "").trim().toLowerCase().replace(/[\s\u3000]+/g, "");
+        }
+
+        function getManagerMemberSearchValues(member) {
+          const roleValue = member?.role || "user";
+          const roleLabel = MANAGER_ROLE_LABELS[roleValue] || MANAGER_ROLE_LABELS.user;
+          const roleAliases = Object.entries(MANAGER_ROLE_ALIASES)
+            .filter(([, normalizedRole]) => normalizedRole === roleValue)
+            .map(([alias]) => alias);
+          return [
+            getManagerMemberRawNickname(member),
+            getManagerMemberNickname(member),
+            member?.email,
+            member?.auth0_sub,
+            roleValue,
+            roleLabel,
+            ...roleAliases,
+          ];
         }
 
         function getManagerMemberReviewCoin(member) {
@@ -4342,9 +4364,8 @@
           const role = card?.querySelector("[data-manager-member-role]")?.value || "user";
           const reviewCoin = Number(card?.querySelector("[data-manager-member-review-coin]")?.value || 0);
           const reviewDays = Number(card?.querySelector("[data-manager-member-review-days]")?.value || 0);
-          const hasUnlimitedReviewCoins = Boolean(card?.querySelector("[data-manager-member-unlimited-coins]")?.checked);
+          const nickname = card?.querySelector("[data-manager-member-nickname]")?.value.trim() || "";
           const email = card?.querySelector("[data-manager-member-email]")?.value.trim() || "";
-          const colorTheme = card?.querySelector("[data-manager-member-color-theme]")?.value.trim() || "";
           const saveButton = card?.querySelector("[data-manager-member-save]");
           if (saveButton) {
             saveButton.disabled = true;
@@ -4354,12 +4375,10 @@
           let settings;
           let avater;
           let reviewData;
-          let educationCodes;
           try {
-            educationCodes = readManagerJsonArrayField(card, "[data-manager-member-education-codes-json]", "Education Code");
             settings = readManagerJsonField(card, "[data-manager-member-settings-json]", "設定");
             avater = readManagerJsonField(card, "[data-manager-member-avater-json]", "Avater");
-            reviewData = readManagerJsonField(card, "[data-manager-member-review-data-json]", "リビューデータ");
+            reviewData = readManagerJsonField(card, "[data-manager-member-review-data-json]", "Review Data");
           } catch (error) {
             elements.managerMembersStatus.textContent = error?.message || "JSONを確認してください。";
             if (saveButton) {
@@ -4387,12 +4406,10 @@
               },
               body: JSON.stringify({
                 role,
+                nickname,
                 reviewCoin: Number.isFinite(reviewCoin) && reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
                 reviewDays: Number.isFinite(reviewDays) && reviewDays >= 0 ? Math.floor(reviewDays) : 0,
-                hasUnlimitedReviewCoins,
                 email,
-                educationCodes,
-                colorTheme,
                 settings,
                 avater,
                 reviewData,
@@ -6330,8 +6347,8 @@
       })();
     </script>
     <script src="./auth0-config.js?v=20260426-1"></script>
-    <script src="./app.js?v=20260510-1" charset="UTF-8"></script>
-    <script src="./pwa.js?v=20260510-1" charset="UTF-8"></script>
+    <script src="./app.js?v=20260511-1" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260511-1" charset="UTF-8"></script>
     <script>
   function isElementActuallyVisible(element) {
     if (!element) return false;

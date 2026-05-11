@@ -4123,18 +4123,26 @@ function setFlashcardDirectNotebookGeometry(note) {
   if (!(note instanceof HTMLElement) || !(activeFlashcardBinderElement instanceof HTMLElement)) {
     return;
   }
-  const rect = note.getBoundingClientRect();
   const viewportWidth = Math.max(0, document.documentElement.clientWidth || window.innerWidth || 0);
   const viewportHeight = Math.max(0, document.documentElement.clientHeight || window.innerHeight || 0);
-  const targetWidth = Math.min(getFlashcardBinderTargetNoteWidth(), Math.max(260, viewportWidth - 16));
+  const pageGap = Math.max(8, Math.min(12, viewportWidth * 0.018));
+  const bottomReserved = Math.max(164, Math.min(220, viewportHeight * 0.24));
+  const availableHeight = Math.max(220, viewportHeight - bottomReserved - 16);
+  const maxPageWidthByViewport = Math.max(132, (viewportWidth - pageGap - 16) / 2);
+  const maxPageWidthByHeight = Math.max(132, availableHeight / Math.SQRT2);
+  const targetWidth = Math.max(
+    132,
+    Math.min(getFlashcardBinderTargetNoteWidth(), maxPageWidthByViewport, maxPageWidthByHeight)
+  );
   const targetHeight = targetWidth * Math.SQRT2;
-  const bottomReserved = Math.max(104, Math.min(148, viewportHeight * 0.18));
-  const maxTop = Math.max(8, viewportHeight - bottomReserved - Math.min(targetHeight, viewportHeight - bottomReserved - 8));
-  const safeTop = Math.max(8, Math.min(rect.top, maxTop));
-  const safeLeft = Math.max(8, Math.round((viewportWidth - targetWidth) / 2));
+  const spreadWidth = targetWidth * 2 + pageGap;
+  const safeTop = Math.max(8, Math.round((viewportHeight - bottomReserved - targetHeight) / 2));
+  const safeLeft = Math.max(8, Math.round((viewportWidth - spreadWidth) / 2));
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-left", `${Math.round(safeLeft)}px`);
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-top", `${Math.round(safeTop)}px`);
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-width", `${Math.round(targetWidth)}px`);
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-page-width", `${Math.round(targetWidth)}px`);
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-gap", `${Math.round(pageGap)}px`);
 }
 
 function setLiftedFlashcardBinder(nextBinder) {
@@ -4341,7 +4349,7 @@ function openFlashcardNotebook(note) {
   activeFlashcardNotebookState = {
     note,
     pageIndex: 0,
-    leftVisible: false,
+    leftVisible: isDirectNoteMode,
     pageTurnDirection: "",
   };
   activeFlashcardBinderElement.classList.add("is-opening-note");
@@ -4442,7 +4450,7 @@ function turnFlashcardNotebookPage(offset) {
     return;
   }
   activeFlashcardNotebookState.pageIndex = nextPageIndex;
-  activeFlashcardNotebookState.leftVisible = false;
+  activeFlashcardNotebookState.leftVisible = isFlashcardDirectNoteMode(elements.flashcardBinderList);
   activeFlashcardNotebookState.pageTurnDirection = normalizedOffset > 0 ? "next" : "prev";
   renderFlashcardNotebook();
   recordActiveFlashcardNotebookProgress();

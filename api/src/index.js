@@ -313,6 +313,13 @@ async function updateManagerMember(request, env, memberId) {
     setPersonalDataField("dailyLoginRewardDays", dailyLoginRewardDays);
     hasReviewDataPatch = true;
   }
+  if (Object.prototype.hasOwnProperty.call(body, "nickname")) {
+    const nickname = normalizeSupabaseText(body.nickname) || null;
+    patch.nickname = nickname;
+    authData.nickname = nickname || "";
+    authData.displayName = nickname || "";
+    shouldPatchAuth = true;
+  }
   if (Object.prototype.hasOwnProperty.call(body, "email")) {
     patch.email = normalizeSupabaseText(body.email) || null;
     authData.email = patch.email;

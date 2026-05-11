@@ -8771,6 +8771,25 @@ body.manager-page .header-menu-block::before {
   pointer-events: none;
 }
 
+.login-usage-notes {
+  width: min(100%, 430px);
+  margin: -0.18rem auto 0;
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.68rem 0.78rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.login-usage-notes p {
+  margin: 0;
+  color: #d6e0eb;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
 .onboarding-step-actions > button[data-onboarding-nav],
 .onboarding-action-callout > button[data-onboarding-nav],
 #authLoginAuth0Btn {
@@ -10057,11 +10076,15 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
 }
 
 .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
-  --note-open-page-width: var(--flashcard-direct-note-width, min(456px, calc(100vw - 2rem)));
+  --note-page-gap: var(--flashcard-direct-note-gap, clamp(0.5rem, 1.8vw, 0.75rem));
+  --note-open-page-width: min(
+    var(--flashcard-direct-note-page-width, var(--flashcard-direct-note-width, 320px)),
+    calc((100vw - var(--note-page-gap) - 1rem) / 2)
+  );
   position: fixed;
-  left: var(--flashcard-direct-note-left, max(1rem, calc((100vw - var(--note-open-page-width)) / 2)));
-  top: var(--flashcard-direct-note-top, 7.2rem);
-  width: var(--note-open-page-width);
+  left: var(--flashcard-direct-note-left, max(0.5rem, calc((100vw - ((var(--note-open-page-width) * 2) + var(--note-page-gap))) / 2)));
+  top: var(--flashcard-direct-note-top, 5.4rem);
+  width: calc((var(--note-open-page-width) * 2) + var(--note-page-gap));
   min-height: calc(var(--note-open-page-width) * 1.4142135623730951);
   inset: auto;
   z-index: 4660;
@@ -10070,7 +10093,7 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
 }
 
 .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-pages {
-  width: var(--note-open-page-width);
+  width: calc((var(--note-open-page-width) * 2) + var(--note-page-gap));
   min-height: calc(var(--note-open-page-width) * 1.4142135623730951);
   margin: 0;
   overflow: visible;
@@ -10082,14 +10105,14 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
 }
 
 .flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-right {
-  margin-left: 0;
+  margin-left: calc(var(--note-open-page-width) + var(--note-page-gap));
 }
 
 .flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-left {
-  left: calc((var(--note-open-page-width) + var(--note-page-gap)) * -1);
-  opacity: 0;
-  pointer-events: none;
-  transform: translate3d(-32px, 0, 0);
+  left: 0;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
 }
 
 .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible .flashcard-note-paper-left {
@@ -10105,11 +10128,7 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
 }
 
 .flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
-  left: 0;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 24;
-  max-width: 9.5rem;
+  display: none;
 }
 
 .flashcard-note-left-toggle-btn .material-symbols-rounded,
@@ -10244,7 +10263,7 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
 .flashcard-note-reader-side-nav-next.home-card-nav-btn {
   left: min(
     calc(100vw - 2.86rem),
-    calc(var(--flashcard-direct-note-left, 1rem) + var(--note-open-page-width) + 0.58rem)
+    calc(var(--flashcard-direct-note-left, 1rem) + (var(--note-open-page-width) * 2) + var(--note-page-gap) + 0.58rem)
   );
   right: auto;
 }
@@ -10253,15 +10272,29 @@ body:has(#screen-mypage.is-active) .top-nav .top-nav-character {
   opacity: 0.24;
 }
 
-body:has(.flashcard-binder-stage.is-note-open) .top-nav,
+body:has(.flashcard-binder-stage.is-note-open) .top-nav {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  z-index: 4800;
+}
+
 body:has(.flashcard-binder-stage.is-note-open) .top-nav-character {
-  opacity: 0 !important;
-  pointer-events: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 4790;
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+  bottom: calc(max(0.45rem, env(safe-area-inset-bottom)) + 5.65rem);
 }
 
 @media (max-width: 760px) {
   .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
-    --note-open-page-width: min(var(--flashcard-direct-note-width, 456px), calc(100vw - 1rem));
+    --note-open-page-width: min(
+      var(--flashcard-direct-note-page-width, var(--flashcard-direct-note-width, 180px)),
+      calc((100vw - var(--note-page-gap) - 0.72rem) / 2)
+    );
   }
 
   .flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
@@ -10305,6 +10338,10 @@ body:has(.flashcard-binder-stage.is-note-open) .top-nav-character {
   .flashcard-note-reader-side-nav-next.home-card-nav-btn {
     left: auto;
     right: 0.36rem;
+  }
+
+  body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+    bottom: calc(max(0.45rem, env(safe-area-inset-bottom)) + 5.2rem);
   }
 }
 
@@ -10856,4 +10893,83 @@ body.learn-popover-open #screen-learn .learn-menu-action::before {
   .flashcard-series-index {
     margin-bottom: -625px;
   }
+}
+
+.account-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 14px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.account-title-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.account-title-main > span {
+  min-width: 0;
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-status-badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px 10px;
+}
+
+.account-edit-button {
+  width: 34px;
+  height: 30px;
+  min-width: 34px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.account-edit-button .material-symbols-rounded {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.account-edit-button span:not(.material-symbols-rounded) {
+  display: none;
+}
+
+.account-edit-button {
+  position: relative;
+  z-index: 10;
+  width: 34px;
+  height: 30px;
+  min-width: 34px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.account-edit-symbol {
+  display: block !important;
+  font-family: "Material Symbols Rounded" !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  color: currentColor;
 }
