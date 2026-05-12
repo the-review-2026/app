@@ -29,7 +29,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260511-1" />
+    <link rel="stylesheet" href="./app.css?v=20260512-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -148,13 +148,29 @@
                 <span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_right</span>
               </button>
             </div>
-            <div id="homeCardProgress" class="home-card-progress" aria-label="ホームカードの位置">
-              <span class="home-card-progress-dot is-active" aria-hidden="true"></span>
-              <span class="home-card-progress-dot" aria-hidden="true"></span>
-            </div>
+          <div id="homeCardProgress" class="home-card-progress" aria-label="ホームカードの位置">
+            <span class="home-card-progress-dot is-active" aria-hidden="true"></span>
+            <span class="home-card-progress-dot" aria-hidden="true"></span>
           </div>
         </div>
-      </section>
+        <div class="home-menu-actions learn-menu-actions" aria-label="ホームメニュー">
+          <button class="secondary learn-menu-action home-menu-action" type="button" data-learn-action="settings">
+            <span class="material-symbols-rounded" aria-hidden="true">settings</span>
+            <span>設定</span>
+          </button>
+          <button
+            id="managerMenuLink"
+            class="secondary learn-menu-action home-menu-action"
+            type="button"
+            data-learn-action="manager"
+            hidden
+          >
+            <span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>
+            <span>The Review Manager（制作チーム用管理プログラム）</span>
+          </button>
+        </div>
+      </div>
+    </section>
 
       <section id="screen-learn" class="screen learn-layout">
         <div class="page-title-row">
@@ -164,16 +180,6 @@
           <article class="learn-overview-section">
             <p id="learnGreetingMessage" class="learn-overview-message" aria-live="polite"></p>
           </article>
-          <div class="learn-menu-actions" aria-label="らーんメニュー">
-            <button class="secondary learn-menu-action" type="button" data-learn-action="settings">
-              <span class="material-symbols-rounded" aria-hidden="true">settings</span>
-              <span>設定</span>
-            </button>
-            <button class="secondary learn-menu-action" type="button" data-learn-action="manager">
-              <span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>
-              <span>制作チーム用管理プログラム</span>
-            </button>
-          </div>
         </section>
       </section>
 
@@ -350,6 +356,23 @@
               <div class="setting-row">
                 <span>Nickname</span>
                 <strong id="authNicknameText">未設定</strong>
+              </div>
+              <div class="setting-row">
+                <span>メールアドレス</span>
+                <strong id="authEmailText">未設定</strong>
+              </div>
+              <div class="setting-row account-password-row">
+                <span>パスワード</span>
+                <strong id="authPasswordText">*****</strong>
+                <button
+                  id="authPasswordToggleBtn"
+                  class="account-password-toggle"
+                  type="button"
+                  aria-label="パスワードを表示する"
+                  title="パスワードを表示する"
+                >
+                  <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
+                </button>
               </div>
               <div class="setting-row account-action-row">
                 <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">
@@ -538,13 +561,42 @@
                 <span class="sr-only">Nickname</span>
                 <input id="accountEditNicknameInput" type="text" inputmode="text" autocomplete="nickname" maxlength="24" />
               </label>
-              <p id="accountEditNicknameFeedback" class="account-edit-feedback" aria-live="polite"></p>
-              <button id="accountEditNicknameSaveBtn" class="primary" type="button" data-account-edit-action="nickname-save">保存する</button>
             </div>
           </article>
+          <article class="account-edit-option">
+            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">mail</span>
+            <div>
+              <h4>メールアドレス</h4>
+              <label class="account-edit-field" for="accountEditEmailInput">
+                <span class="sr-only">メールアドレス</span>
+                <input id="accountEditEmailInput" type="email" inputmode="email" autocomplete="email" maxlength="120" />
+              </label>
+            </div>
+          </article>
+          <article class="account-edit-option">
+            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">lock</span>
+            <div>
+              <h4>パスワード</h4>
+              <label class="account-edit-field account-edit-password-field" for="accountEditPasswordInput">
+                <span class="sr-only">パスワード</span>
+                <input id="accountEditPasswordInput" type="password" inputmode="text" autocomplete="new-password" maxlength="64" />
+                <button
+                  id="accountEditPasswordToggleBtn"
+                  class="account-password-toggle"
+                  type="button"
+                  aria-label="パスワードを表示する"
+                  title="パスワードを表示する"
+                >
+                  <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
+                </button>
+              </label>
+            </div>
+          </article>
+          <p id="accountEditNicknameFeedback" class="account-edit-feedback" aria-live="polite"></p>
         </div>
         <div class="guest-mode-actions account-edit-actions">
-          <button class="primary" type="button" data-account-edit-action="close">閉じる</button>
+          <button class="secondary" type="button" data-account-edit-action="close">閉じる</button>
+          <button id="accountEditNicknameSaveBtn" class="primary" type="button" data-account-edit-action="profile-save">保存する</button>
         </div>
       </form>
     </dialog>
@@ -3004,7 +3056,7 @@
         const state = {
           activeScreen: "home",
           auth0Client: null,
-          drafts: loadJson(MANAGER_DRAFT_KEY, []),
+          drafts: loadManagerProblemDrafts(),
           auth: loadAuthSummary(),
           managerAccess: null,
           managerMembers: [],
@@ -3304,6 +3356,13 @@
             }
             void saveManagerMemberAccess(card.dataset.managerMemberId || "");
           });
+          elements.managerMembersList?.addEventListener("change", (event) => {
+            const target = event.target instanceof Element ? event.target.closest("[data-manager-member-role]") : null;
+            if (!target) {
+              return;
+            }
+            syncManagerMemberReviewCoinField(target.closest("[data-manager-member-id]"));
+          });
         }
 
         function initializeStoreSettings() {
@@ -3560,6 +3619,7 @@
           }
           applyManagerProfileFromAccess(state.managerAccess);
           await loadReviewDataSnapshotFromApi(token);
+          await loadQuestionSubmissionsFromApi(token);
           renderManagerAccess();
         }
 
@@ -4063,6 +4123,7 @@
               const name = getManagerMemberNickname(member);
               const sub = member?.email || member?.auth0_sub || "";
               const reviewCoin = getManagerMemberReviewCoin(member);
+              const hasUnlimitedReviewCoins = roleValue !== "user";
               const reviewDays = getManagerMemberReviewDays(member);
               const roleLabel = MANAGER_ROLE_LABELS[roleValue] || MANAGER_ROLE_LABELS.user;
               const roleTag = roleValue && roleValue !== "user"
@@ -4084,7 +4145,7 @@
                       <p class="manager-member-sub">${escapeHtml(sub)}</p>
                     </div>
                     <div class="manager-member-actions">
-                      <button class="secondary white-button manager-member-detail-toggle" type="button" data-manager-member-detail-toggle aria-expanded="false">
+                      <button class="primary black-button manager-member-detail-toggle" type="button" data-manager-member-detail-toggle aria-expanded="false">
                         <span class="material-symbols-rounded" aria-hidden="true">edit</span>
                         <span>Review Dataを編集する</span>
                       </button>
@@ -4100,9 +4161,18 @@
                         <span>役割</span>
                         <select data-manager-member-role aria-label="役割">${roleOptions}</select>
                       </label>
-                      <label class="manager-member-detail-field">
+                      <label class="manager-member-detail-field manager-member-review-coin-field${hasUnlimitedReviewCoins ? " is-unlimited" : ""}">
                         <span>Review Coin</span>
-                        <input data-manager-member-review-coin type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(String(reviewCoin))}" />
+                        <input
+                          data-manager-member-review-coin
+                          type="${hasUnlimitedReviewCoins ? "text" : "number"}"
+                          inputmode="${hasUnlimitedReviewCoins ? "text" : "numeric"}"
+                          min="0"
+                          step="1"
+                          value="${escapeHtml(hasUnlimitedReviewCoins ? "∞枚" : String(reviewCoin))}"
+                          data-review-coin-value="${escapeHtml(String(reviewCoin))}"
+                          ${hasUnlimitedReviewCoins ? "disabled" : ""}
+                        />
                       </label>
                       <label class="manager-member-detail-field">
                         <span>リビュー日数</span>
@@ -4117,7 +4187,7 @@
                         <input data-manager-member-email type="email" value="${escapeHtml(getManagerMemberEmail(member))}" />
                       </label>
                       <label class="manager-member-detail-field is-wide">
-                        <span>設定（JSON）</span>
+                        <span>カラーテーマ・Education Code・購入状況など（JSON）</span>
                         <textarea data-manager-member-settings-json spellcheck="false">${escapeHtml(stringifyManagerJson(getManagerMemberSettings(member)))}</textarea>
                       </label>
                       <label class="manager-member-detail-field is-wide">
@@ -4130,9 +4200,9 @@
                         <span class="material-symbols-rounded" aria-hidden="true">logout</span>
                         <span>ログアウト</span>
                       </button>
-                      <button class="danger" type="button" data-manager-member-delete>
+                      <button class="secondary white-button" type="button" data-manager-member-delete>
                         <span class="material-symbols-rounded" aria-hidden="true">delete</span>
-                        <span>削除</span>
+                        <span>削除する</span>
                       </button>
                       <button class="primary" type="button" data-manager-member-save>
                         <span class="material-symbols-rounded" aria-hidden="true">save</span>
@@ -4298,6 +4368,23 @@
           button?.setAttribute("aria-expanded", String(shouldOpen));
         }
 
+        function syncManagerMemberReviewCoinField(card) {
+          const role = card?.querySelector("[data-manager-member-role]")?.value || "user";
+          const field = card?.querySelector(".manager-member-review-coin-field");
+          const input = card?.querySelector("[data-manager-member-review-coin]");
+          if (!field || !input) {
+            return;
+          }
+          const isUnlimited = role !== "user";
+          const storedValue = input.dataset.reviewCoinValue || String(Number(input.value) || 0);
+          input.dataset.reviewCoinValue = storedValue;
+          field.classList.toggle("is-unlimited", isUnlimited);
+          input.disabled = isUnlimited;
+          input.type = isUnlimited ? "text" : "number";
+          input.inputMode = isUnlimited ? "text" : "numeric";
+          input.value = isUnlimited ? "∞枚" : storedValue;
+        }
+
         function getManagerMemberAvaterState(member) {
           const avater = [member?.avater, member?.avatar, member?.data?.avater, member?.data?.avatar].find(
             (value) => value && typeof value === "object" && !Array.isArray(value),
@@ -4362,7 +4449,8 @@
             (item) => item.dataset.managerMemberId === memberId
           );
           const role = card?.querySelector("[data-manager-member-role]")?.value || "user";
-          const reviewCoin = Number(card?.querySelector("[data-manager-member-review-coin]")?.value || 0);
+          const reviewCoinInput = card?.querySelector("[data-manager-member-review-coin]");
+          const reviewCoin = Number(reviewCoinInput?.dataset.reviewCoinValue || reviewCoinInput?.value || 0);
           const reviewDays = Number(card?.querySelector("[data-manager-member-review-days]")?.value || 0);
           const nickname = card?.querySelector("[data-manager-member-nickname]")?.value.trim() || "";
           const email = card?.querySelector("[data-manager-member-email]")?.value.trim() || "";
@@ -4408,6 +4496,7 @@
                 role,
                 nickname,
                 reviewCoin: Number.isFinite(reviewCoin) && reviewCoin >= 0 ? Math.floor(reviewCoin) : 0,
+                hasUnlimitedReviewCoins: role !== "user",
                 reviewDays: Number.isFinite(reviewDays) && reviewDays >= 0 ? Math.floor(reviewDays) : 0,
                 email,
                 settings,
@@ -4585,8 +4674,12 @@
             state.selectedPendingQuestionId = row.dataset.pendingQuestionId || "";
             renderPendingQuestionManager();
           });
-          elements.pendingQuestionSaveBtn?.addEventListener("click", savePendingQuestionEdit);
-          elements.pendingQuestionApproveBtn?.addEventListener("click", approveSelectedPendingQuestion);
+          elements.pendingQuestionSaveBtn?.addEventListener("click", () => {
+            void savePendingQuestionEdit();
+          });
+          elements.pendingQuestionApproveBtn?.addEventListener("click", () => {
+            void approveSelectedPendingQuestion();
+          });
         }
 
         function renderPublishedNoteMenu() {
@@ -5322,7 +5415,7 @@
             return;
           }
 
-          draft.submittedAt = new Date().toISOString();
+          draft.submittedAt = toJstIsoString();
           setProblemStep("submit");
           await submitProblemForProofreading(draft);
         }
@@ -5353,10 +5446,10 @@
             closeDialog(elements.problemConfirmDialog);
             elements.proofreadingFeedback.textContent =
               result.transport === "api"
-                ? "提出しました。承認後にアプリ内へ公開されます。"
+                ? "提出しました。お疲れさまでした。"
                 : "APIに接続できなかったため、ローカル下書きとして保存しました。";
           } catch {
-            elements.proofreadingFeedback.textContent = "送信に失敗しました。しばらくして再試行してください。";
+            elements.proofreadingFeedback.textContent = "送信に失敗しました。しばらくしてから再試行してください。";
           } finally {
             if (submitButton instanceof HTMLButtonElement) {
               submitButton.disabled = false;
@@ -5441,7 +5534,7 @@
             contentHtml,
             contentText,
             notebookBlocks: [],
-            submittedAt: new Date().toISOString(),
+            submittedAt: toJstIsoString(),
             status,
             remoteId: null,
             transport: "local",
@@ -5700,8 +5793,8 @@
 
             return {
               transport: "api",
-              remoteId: json?.id ?? null,
-              status: json?.status ?? "pending",
+              remoteId: json?.id ?? json?.submission?.id ?? null,
+              status: json?.status ?? json?.submission?.status ?? "pending",
             };
           } catch {
             queueOutbox(payload);
@@ -5713,10 +5806,66 @@
           }
         }
 
+        async function updateQuestionSubmissionApi(draft, patch = {}) {
+          const token = await getAuth0AccessToken();
+          if (!token) {
+            return null;
+          }
+
+          const payload = {
+            binder: draft.binder,
+            note: draft.note,
+            chapter: draft.chapter,
+            section: draft.section,
+            textNumber: draft.textNumber,
+            textName: draft.textName,
+            textBlocks: draft.textBlocks || [],
+            questionNumber: draft.questionNumber,
+            questionName: draft.questionName,
+            image: draft.image,
+            notebookBlocks: draft.notebookBlocks || [],
+            contentHtml: draft.contentHtml,
+            contentText: draft.contentText,
+            submittedAt: draft.submittedAt,
+            sourceApp: "The Review Manager",
+            ...patch,
+          };
+
+          const existingId = draft.remoteId || "";
+          const endpoint = existingId
+            ? `${resolveApiBase()}/manager/question-submissions/${encodeURIComponent(existingId)}`
+            : `${resolveApiBase()}/manager/question-submissions`;
+          const method = existingId ? "PATCH" : "POST";
+
+          try {
+            const response = await fetch(endpoint, {
+              method,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+              throw new Error(`API ${response.status}`);
+            }
+            const json = await response.json().catch(() => null);
+            const responseId = json?.id ?? json?.submission?.id ?? existingId ?? null;
+            return {
+              transport: "api",
+              remoteId: responseId || null,
+              status: json?.status ?? json?.submission?.status ?? patch.status ?? draft.status,
+            };
+          } catch {
+            return null;
+          }
+        }
+
         function queueOutbox(payload) {
           const outbox = loadJson(MANAGER_OUTBOX_KEY, []);
           outbox.push({
-            queuedAt: new Date().toISOString(),
+            queuedAt: toJstIsoString(),
             payload,
           });
           saveJson(MANAGER_OUTBOX_KEY, outbox);
@@ -6009,7 +6158,7 @@
           }
         }
 
-        function savePendingQuestionEdit() {
+        async function savePendingQuestionEdit() {
           const draft = state.drafts.find((item) => item.id === state.selectedPendingQuestionId);
           if (!draft || normalizeStatus(draft.status) !== "pending") {
             setTextContent(elements.pendingQuestionFeedback, "編集できる未承認の問題を選択してください。");
@@ -6022,20 +6171,38 @@
           }
           draft.contentText = nextText;
           draft.contentHtml = textToEditorHtml(nextText);
-          draft.updatedAt = new Date().toISOString();
+          draft.updatedAt = toJstIsoString();
+          if (draft.remoteId) {
+            const result = await updateQuestionSubmissionApi(draft, { contentText: draft.contentText, contentHtml: draft.contentHtml });
+            if (result) {
+              draft.transport = "api";
+              draft.remoteId = result.remoteId || draft.remoteId;
+              draft.status = result.status || draft.status;
+            }
+          }
           saveJson(MANAGER_DRAFT_KEY, state.drafts);
           renderQuestionList();
           setTextContent(elements.pendingQuestionFeedback, "編集を保存しました。");
         }
 
-        function approveSelectedPendingQuestion() {
+        async function approveSelectedPendingQuestion() {
           const draft = state.drafts.find((item) => item.id === state.selectedPendingQuestionId);
           if (!draft || normalizeStatus(draft.status) !== "pending") {
             setTextContent(elements.pendingQuestionFeedback, "承認できる未承認の問題を選択してください。");
             return;
           }
+          setTextContent(elements.pendingQuestionFeedback, "承認を保存しています。");
+          const result = await updateQuestionSubmissionApi(draft, { status: "approved" });
+          if (!result && draft.transport === "api") {
+            setTextContent(elements.pendingQuestionFeedback, "承認をSupabaseへ保存できませんでした。通信状態を確認してください。");
+            return;
+          }
           draft.status = "approved";
-          draft.approvedAt = new Date().toISOString();
+          if (result?.remoteId) {
+            draft.remoteId = result.remoteId;
+          }
+          draft.transport = result?.transport || draft.transport || "local";
+          draft.approvedAt = toJstIsoString();
           draft.updatedAt = draft.approvedAt;
           saveJson(MANAGER_DRAFT_KEY, state.drafts);
           state.selectedPendingQuestionId = "";
@@ -6101,6 +6268,83 @@
           state.reviewDataSnapshot = data;
           state.auth = createAuthSummaryFromAppState(data, state.auth);
           renderProfile();
+        }
+
+        async function loadQuestionSubmissionsFromApi(token) {
+          if (!token) {
+            return;
+          }
+          try {
+            const response = await fetch(`${resolveApiBase()}/manager/question-submissions`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
+            if (!response.ok) {
+              return;
+            }
+            const json = await response.json().catch(() => null);
+            const submissions = Array.isArray(json?.submissions) ? json.submissions : Array.isArray(json) ? json : [];
+            const remoteDrafts = submissions.map(normalizeQuestionSubmissionDraft).filter(Boolean);
+            if (!remoteDrafts.length) {
+              return;
+            }
+            const draftByRemoteId = new Map(
+              state.drafts
+                .filter((draft) => draft.remoteId)
+                .map((draft) => [String(draft.remoteId), draft]),
+            );
+            remoteDrafts.forEach((remoteDraft) => {
+              const existing = draftByRemoteId.get(String(remoteDraft.remoteId));
+              if (existing) {
+                Object.assign(existing, remoteDraft, { id: existing.id });
+              } else {
+                state.drafts.push(remoteDraft);
+              }
+            });
+            saveJson(MANAGER_DRAFT_KEY, state.drafts);
+            renderQuestionList();
+          } catch {
+            return;
+          }
+        }
+
+        function normalizeQuestionSubmissionDraft(submission) {
+          if (!submission || typeof submission !== "object" || Array.isArray(submission)) {
+            return null;
+          }
+          const id = String(submission.id || "").trim();
+          const payload = submission.payload && typeof submission.payload === "object" ? submission.payload : {};
+          if (!id) {
+            return null;
+          }
+          return normalizeProblemDraft({
+            id: `remote_${id}`,
+            remoteId: id,
+            transport: "api",
+            binder: submission.binder ?? payload.binder ?? "",
+            note: submission.note ?? payload.note ?? "",
+            chapter: submission.chapter ?? payload.chapter ?? "",
+            section: submission.section ?? payload.section ?? "",
+            textNumber: submission.textNumber ?? submission.text_number ?? payload.textNumber ?? "",
+            textName: submission.textName ?? submission.text_name ?? payload.textName ?? "",
+            textBlocks: Array.isArray(submission.textBlocks) ? submission.textBlocks : Array.isArray(payload.textBlocks) ? payload.textBlocks : [],
+            questionNumber: submission.questionNumber ?? submission.question_number ?? payload.questionNumber ?? "",
+            questionName: submission.questionName ?? submission.question_name ?? payload.questionName ?? "",
+            image: submission.image ?? payload.image ?? null,
+            notebookBlocks: Array.isArray(submission.notebookBlocks)
+              ? submission.notebookBlocks
+              : Array.isArray(payload.notebookBlocks)
+                ? payload.notebookBlocks
+                : [],
+            contentHtml: submission.contentHtml ?? submission.content_html ?? payload.contentHtml ?? "",
+            contentText: submission.contentText ?? submission.content_text ?? payload.contentText ?? "",
+            submittedAt: submission.submittedAt ?? submission.submitted_at ?? payload.submittedAt ?? "",
+            approvedAt: submission.approvedAt ?? submission.approved_at ?? payload.approvedAt ?? "",
+            updatedAt: submission.updatedAt ?? submission.updated_at ?? "",
+            status: submission.status ?? payload.status ?? "pending",
+          });
         }
 
         async function fetchCloudDataSnapshot(token, path, responseKey) {
@@ -6278,6 +6522,42 @@
           }
         }
 
+        function toJstIsoString(value = new Date()) {
+          const date = value instanceof Date ? value : new Date(value);
+          const time = date.getTime();
+          if (!Number.isFinite(time)) {
+            return "";
+          }
+          const jstDate = new Date(time + 9 * 60 * 60 * 1000);
+          const year = jstDate.getUTCFullYear();
+          const month = String(jstDate.getUTCMonth() + 1).padStart(2, "0");
+          const day = String(jstDate.getUTCDate()).padStart(2, "0");
+          const hours = String(jstDate.getUTCHours()).padStart(2, "0");
+          const minutes = String(jstDate.getUTCMinutes()).padStart(2, "0");
+          const seconds = String(jstDate.getUTCSeconds()).padStart(2, "0");
+          const milliseconds = String(jstDate.getUTCMilliseconds()).padStart(3, "0");
+          return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}+09:00`;
+        }
+
+        function normalizeProblemDraft(draft) {
+          if (!draft || typeof draft !== "object" || Array.isArray(draft)) {
+            return null;
+          }
+          const status = normalizeStatus(draft.status || (draft.remoteId || draft.transport === "api" ? "pending" : "draft"));
+          return {
+            ...draft,
+            id: String(draft.id || draft.remoteId || `draft_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`),
+            status,
+            transport: draft.transport || (draft.remoteId ? "api" : "local"),
+            remoteId: draft.remoteId ?? null,
+          };
+        }
+
+        function loadManagerProblemDrafts() {
+          const drafts = loadJson(MANAGER_DRAFT_KEY, []);
+          return (Array.isArray(drafts) ? drafts : []).map(normalizeProblemDraft).filter(Boolean);
+        }
+
         function normalizeStatus(status) {
           if (status === "draft" || status === "approved" || status === "rejected") {
             return status;
@@ -6347,7 +6627,7 @@
       })();
     </script>
     <script src="./auth0-config.js?v=20260426-1"></script>
-    <script src="./app.js?v=20260511-1" charset="UTF-8"></script>
+    <script src="./app.js?v=20260512-1" charset="UTF-8"></script>
     <script src="./pwa.js?v=20260511-1" charset="UTF-8"></script>
     <script>
   function isElementActuallyVisible(element) {

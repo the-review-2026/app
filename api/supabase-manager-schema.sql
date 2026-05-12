@@ -104,3 +104,47 @@ alter table public.users
   drop column if exists display_name;
 
 drop table if exists public.manager_members;
+
+create table if not exists public.question_submissions (
+  id uuid primary key default gen_random_uuid(),
+  binder text,
+  note text,
+  chapter text,
+  section text,
+  text_number text,
+  text_name text,
+  question_number text,
+  question_name text,
+  content_text text,
+  content_html text,
+  image jsonb not null default '{}'::jsonb,
+  notebook_blocks jsonb not null default '[]'::jsonb,
+  payload jsonb not null default '{}'::jsonb,
+  status text not null default 'pending',
+  source_app text,
+  author jsonb not null default '{}'::jsonb,
+  submitted_by uuid references public.users(id) on delete set null,
+  approved_by uuid references public.users(id) on delete set null,
+  submitted_at timestamptz,
+  approved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.question_submissions'::regclass
+      and conname = 'question_submissions_status_check'
+  ) then
+    alter table public.question_submissions
+      add constraint question_submissions_status_check check (status in ('draft', 'pending', 'approved', 'rejected'));
+  end if;
+end $$;
+
+create index if not exists question_submissions_status_idx on public.question_submissions(status);
+create index if not exists question_submissions_note_idx on public.question_submissions(note);
+create index if not exists question_submissions_submitted_by_idx on public.question_submissions(submitted_by);
+create index if not exists question_submissions_updated_at_idx on public.question_submissions(updated_at desc);

@@ -443,8 +443,13 @@ const elements = {
   avaterResetBtn: document.getElementById("avaterResetBtn"),
   avaterScrollLockBtn: document.getElementById("avaterScrollLockBtn"),
   authNicknameText: document.getElementById("authNicknameText"),
+  authEmailText: document.getElementById("authEmailText"),
+  authPasswordText: document.getElementById("authPasswordText"),
+  authPasswordToggleBtn: document.getElementById("authPasswordToggleBtn"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
   authNicknameRow: document.getElementById("authNicknameText")?.closest(".setting-row") ?? null,
+  authEmailRow: document.getElementById("authEmailText")?.closest(".setting-row") ?? null,
+  authPasswordRow: document.getElementById("authPasswordText")?.closest(".setting-row") ?? null,
   settingsEducationCodeStatusText: document.getElementById("settingsEducationCodeStatusText"),
   settingsEducationCodeList: document.getElementById("settingsEducationCodeList"),
   settingsEducationCodeAddBtn: document.getElementById("settingsEducationCodeAddBtn"),
@@ -470,6 +475,9 @@ const elements = {
   accountEditDialog: document.getElementById("accountEditDialog"),
   accountEditForm: document.querySelector("#accountEditDialog form"),
   accountEditNicknameInput: document.getElementById("accountEditNicknameInput"),
+  accountEditEmailInput: document.getElementById("accountEditEmailInput"),
+  accountEditPasswordInput: document.getElementById("accountEditPasswordInput"),
+  accountEditPasswordToggleBtn: document.getElementById("accountEditPasswordToggleBtn"),
   accountEditNicknameFeedback: document.getElementById("accountEditNicknameFeedback"),
   accountEditNicknameSaveBtn: document.getElementById("accountEditNicknameSaveBtn"),
   accountEditActionButtons: Array.from(document.querySelectorAll("[data-account-edit-action]")),
@@ -582,6 +590,8 @@ let managerMigrationPromise = null;
 let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
 let isSavingAccountEditNickname = false;
+let isAccountPasswordVisible = false;
+let isAccountEditPasswordVisible = false;
 let settingsEducationCodeEditingCode = "";
 let pendingSettingsEducationCodeRemovalCode = "";
 let settingsEducationCodeScanStream = null;
@@ -1642,7 +1652,31 @@ function bindEvents() {
     elements.accountEditBtn.addEventListener("click", handleAccountEditButtonClick);
   }
 
-  elements.accountEditNicknameInput?.addEventListener("input", () => {
+  [
+    elements.accountEditNicknameInput,
+    elements.accountEditEmailInput,
+    elements.accountEditPasswordInput,
+  ].forEach((input) => {
+    input?.addEventListener("input", () => {
+      setAccountEditNicknameFeedback("", "");
+      syncAccountEditNicknameSaveButton();
+    });
+  });
+
+  elements.authPasswordToggleBtn?.addEventListener("click", () => {
+    isAccountPasswordVisible = !isAccountPasswordVisible;
+    renderMypageSettings();
+  });
+
+  elements.accountEditPasswordToggleBtn?.addEventListener("click", () => {
+    isAccountEditPasswordVisible = !isAccountEditPasswordVisible;
+    syncAccountPasswordToggle(elements.accountEditPasswordToggleBtn, isAccountEditPasswordVisible, "編集用パスワード");
+    if (elements.accountEditPasswordInput) {
+      elements.accountEditPasswordInput.type = isAccountEditPasswordVisible ? "text" : "password";
+    }
+  });
+
+  elements.accountEditNicknameInput?.addEventListener("change", () => {
     setAccountEditNicknameFeedback("", "");
     syncAccountEditNicknameSaveButton();
   });
@@ -1650,7 +1684,7 @@ function bindEvents() {
   elements.accountEditForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     if (!elements.accountEditNicknameSaveBtn?.disabled) {
-      void saveAccountEditNickname();
+      void saveAccountEditProfile();
     }
   });
 
@@ -2288,6 +2322,14 @@ function openAccountEdit() {
   if (elements.accountEditNicknameInput) {
     elements.accountEditNicknameInput.value = normalizeNicknameText(state.auth.nickname);
   }
+  if (elements.accountEditEmailInput) {
+    elements.accountEditEmailInput.value = normalizeAccountEmailText(state.auth.email);
+  }
+  if (elements.accountEditPasswordInput) {
+    elements.accountEditPasswordInput.value = normalizeAccountPasswordText(state.auth.password);
+    elements.accountEditPasswordInput.type = isAccountEditPasswordVisible ? "text" : "password";
+  }
+  syncAccountPasswordToggle(elements.accountEditPasswordToggleBtn, isAccountEditPasswordVisible, "編集用パスワード");
   setAccountEditNicknameFeedback("", "");
   syncAccountEditNicknameSaveButton();
   if (elements.accountEditDialog && typeof elements.accountEditDialog.showModal === "function") {
@@ -2303,8 +2345,8 @@ async function handleAccountEditAction(action) {
     closeAccountEditDialog();
     return;
   }
-  if (normalizedAction === "nickname-save") {
-    await saveAccountEditNickname();
+  if (normalizedAction === "nickname-save" || normalizedAction === "profile-save") {
+    await saveAccountEditProfile();
     return;
   }
 }
@@ -2313,18 +2355,30 @@ function getAccountEditNicknameValue() {
   return normalizeNicknameText(elements.accountEditNicknameInput?.value);
 }
 
+function getAccountEditEmailValue() {
+  return normalizeAccountEmailText(elements.accountEditEmailInput?.value);
+}
+
+function getAccountEditPasswordValue() {
+  return normalizeAccountPasswordText(elements.accountEditPasswordInput?.value);
+}
+
 function syncAccountEditNicknameSaveButton() {
   if (!elements.accountEditNicknameSaveBtn) {
     return;
   }
   const nextNickname = getAccountEditNicknameValue();
   const currentNickname = normalizeNicknameText(state.auth.nickname);
+  const nextEmail = getAccountEditEmailValue();
+  const currentEmail = normalizeAccountEmailText(state.auth.email);
+  const nextPassword = getAccountEditPasswordValue();
+  const currentPassword = normalizeAccountPasswordText(state.auth.password);
   elements.accountEditNicknameSaveBtn.disabled =
     isSavingAccountEditNickname ||
     !state.auth.isLoggedIn ||
     state.auth.provider === "guest" ||
     !nextNickname ||
-    nextNickname === currentNickname;
+    (nextNickname === currentNickname && nextEmail === currentEmail && nextPassword === currentPassword);
 }
 
 function setAccountEditNicknameFeedback(message, status = "") {
@@ -2337,10 +2391,16 @@ function setAccountEditNicknameFeedback(message, status = "") {
 }
 
 async function saveAccountEditNickname() {
+  return saveAccountEditProfile();
+}
+
+async function saveAccountEditProfile() {
   if (isSavingAccountEditNickname) {
     return;
   }
   const nickname = getAccountEditNicknameValue();
+  const email = getAccountEditEmailValue();
+  const password = getAccountEditPasswordValue();
   if (!nickname) {
     setAccountEditNicknameFeedback("Nicknameを入力してください。", "error");
     syncAccountEditNicknameSaveButton();
@@ -2357,13 +2417,15 @@ async function saveAccountEditNickname() {
   state.auth = normalizeAuthState({
     ...state.auth,
     nickname,
+    email,
+    password,
   });
   saveState();
   renderMypageSettings();
   syncAccountEditNicknameSaveButton();
   setAccountEditNicknameFeedback("保存しています。", "");
 
-  const payload = await syncReviewAccountProfileToApi({ nickname });
+  const payload = await syncReviewAccountProfileToApi({ nickname, email });
   isSavingAccountEditNickname = false;
   if (!payload) {
     state.auth = normalizeAuthState(previousAuth);
@@ -2374,7 +2436,7 @@ async function saveAccountEditNickname() {
     return;
   }
 
-  setAccountEditNicknameFeedback("Nicknameを保存しました。", "success");
+  setAccountEditNicknameFeedback("Review Accountを保存しました。", "success");
   syncAccountEditNicknameSaveButton();
 }
 
@@ -2621,7 +2683,15 @@ async function syncReviewAccountProfileToApi(options = {}) {
 
   const requestedNickname =
     "nickname" in options ? normalizeNicknameText(options.nickname) : normalizeNicknameText(state.auth.nickname);
-  const body = requestedNickname ? { nickname: requestedNickname } : {};
+  const requestedEmail =
+    "email" in options ? normalizeAccountEmailText(options.email) : normalizeAccountEmailText(state.auth.email);
+  const body = {};
+  if (requestedNickname) {
+    body.nickname = requestedNickname;
+  }
+  if ("email" in options) {
+    body.email = requestedEmail;
+  }
 
   try {
     const response = await fetch(`${REVIEW_API_BASE_URL}/me`, {
@@ -2640,7 +2710,11 @@ async function syncReviewAccountProfileToApi(options = {}) {
     }
     const payload = await response.json().catch(() => null);
     lastReviewAccountProfileSync = payload;
-    applyReviewAccountProfilePayload(payload, { requestedNickname, skipTouch: Boolean(options.skipTouch) });
+    applyReviewAccountProfilePayload(payload, {
+      requestedNickname,
+      requestedEmail,
+      skipTouch: Boolean(options.skipTouch),
+    });
     const access = createManagerAccessFromProfilePayload(payload);
     if (access) {
       updateManagerMenuVisibilityFromAccess(access);
@@ -2658,17 +2732,23 @@ function applyReviewAccountProfilePayload(payload, options = {}) {
     return;
   }
   const requestedNickname = normalizeNicknameText(options.requestedNickname);
+  const requestedEmail = normalizeAccountEmailText(options.requestedEmail);
   const serverNickname = normalizeNicknameText(payload?.user?.nickname || payload?.managerMember?.nickname || payload?.managerMember?.display_name);
+  const serverEmail = normalizeAccountEmailText(payload?.user?.email || payload?.managerMember?.email);
   const shouldUseServerNickname =
     serverNickname && !looksLikeAuth0Subject(serverNickname) && (requestedNickname || payload.isNewReviewAccount === false);
   const nextNickname = requestedNickname || (shouldUseServerNickname ? serverNickname : "");
-  if (!nextNickname || nextNickname === normalizeNicknameText(state.auth.nickname)) {
+  const nextEmail = requestedEmail || serverEmail || normalizeAccountEmailText(state.auth.email);
+  const nicknameUnchanged = !nextNickname || nextNickname === normalizeNicknameText(state.auth.nickname);
+  const emailUnchanged = nextEmail === normalizeAccountEmailText(state.auth.email);
+  if (nicknameUnchanged && emailUnchanged) {
     return;
   }
 
   state.auth = normalizeAuthState({
     ...state.auth,
-    nickname: nextNickname,
+    nickname: nextNickname || state.auth.nickname,
+    email: nextEmail,
   });
   if (options.skipTouch) {
     saveState({ skipTouch: true, skipRemoteSync: true });
@@ -3142,7 +3222,7 @@ function recordActiveFlashcardProgress() {
     cardNumber: cardIndex + 1,
     cardCount: unit.cards.length,
     answerVisible: Boolean(flashcardState.answerVisible),
-    updatedAt: new Date().toISOString(),
+    updatedAt: toJstIsoString(),
   };
   saveState();
 }
@@ -3168,7 +3248,7 @@ function recordActiveFlashcardNotebookProgress() {
     pageNumber: pageIndex + 1,
     spreadCount: spreads.length,
     leftVisible: Boolean(activeFlashcardNotebookState.leftVisible),
-    updatedAt: new Date().toISOString(),
+    updatedAt: toJstIsoString(),
   };
   saveState();
 }
@@ -4137,8 +4217,12 @@ function setFlashcardDirectNotebookGeometry(note) {
   const targetHeight = targetWidth * Math.SQRT2;
   const spreadWidth = targetWidth * 2 + pageGap;
   const safeTop = Math.max(8, Math.round((viewportHeight - bottomReserved - targetHeight) / 2));
-  const safeLeft = Math.max(8, Math.round((viewportWidth - spreadWidth) / 2));
+  const spreadLeft = Math.max(8, Math.round((viewportWidth - spreadWidth) / 2));
+  const rightPageLeft = Math.round(viewportWidth / 2 - targetWidth / 2);
+  const safeLeft = Math.round(rightPageLeft - targetWidth - pageGap);
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-left", `${Math.round(safeLeft)}px`);
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-spread-left", `${Math.round(spreadLeft)}px`);
+  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-right-left", `${Math.round(safeLeft)}px`);
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-top", `${Math.round(safeTop)}px`);
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-width", `${Math.round(targetWidth)}px`);
   activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-page-width", `${Math.round(targetWidth)}px`);
@@ -4349,7 +4433,7 @@ function openFlashcardNotebook(note) {
   activeFlashcardNotebookState = {
     note,
     pageIndex: 0,
-    leftVisible: isDirectNoteMode,
+    leftVisible: false,
     pageTurnDirection: "",
   };
   activeFlashcardBinderElement.classList.add("is-opening-note");
@@ -4450,7 +4534,7 @@ function turnFlashcardNotebookPage(offset) {
     return;
   }
   activeFlashcardNotebookState.pageIndex = nextPageIndex;
-  activeFlashcardNotebookState.leftVisible = isFlashcardDirectNoteMode(elements.flashcardBinderList);
+  activeFlashcardNotebookState.leftVisible = false;
   activeFlashcardNotebookState.pageTurnDirection = normalizedOffset > 0 ? "next" : "prev";
   renderFlashcardNotebook();
   recordActiveFlashcardNotebookProgress();
@@ -6242,6 +6326,7 @@ function renderCoinBoard(options = {}) {
   if (!elements.reviewCoinValue) {
     return;
   }
+  elements.reviewCoinBoard?.classList.toggle("is-unlimited", hasUnlimitedReviewCoins());
   if (hasUnlimitedReviewCoins()) {
     if (reviewCoinAnimationFrameId !== null) {
       window.cancelAnimationFrame(reviewCoinAnimationFrameId);
@@ -6263,7 +6348,7 @@ function renderMypageCoin() {
 }
 
 function hasUnlimitedReviewCoins() {
-  return Boolean(state.hasUnlimitedReviewCoins);
+  return Boolean(state.hasUnlimitedReviewCoins || getManagerAccessRole(managerAccessState));
 }
 
 function normalizeManagerRoleValue(value) {
@@ -6871,6 +6956,16 @@ function renderMypageSettings() {
   if (elements.authNicknameText) {
     elements.authNicknameText.textContent = nicknameText;
   }
+  if (elements.authEmailText) {
+    const emailText = normalizeAccountEmailText(state.auth.email);
+    elements.authEmailText.textContent = state.auth.isLoggedIn && emailText ? emailText : "未設定";
+  }
+  if (elements.authPasswordText) {
+    const passwordText = normalizeAccountPasswordText(state.auth.password);
+    elements.authPasswordText.textContent =
+      state.auth.isLoggedIn && passwordText && isAccountPasswordVisible ? passwordText : "*****";
+  }
+  syncAccountPasswordToggle(elements.authPasswordToggleBtn, isAccountPasswordVisible, "パスワード");
   if (elements.authLoginStatusText) {
     elements.authLoginStatusText.classList.toggle("is-logged-in", state.auth.isLoggedIn && state.auth.provider !== "guest");
     elements.authLoginStatusText.classList.toggle("is-guest", state.auth.isLoggedIn && state.auth.provider === "guest");
@@ -6893,21 +6988,18 @@ function renderMypageSettings() {
   if (elements.accountEditBtn) {
     elements.accountEditBtn.disabled = !state.auth.isLoggedIn;
     const icon = elements.accountEditBtn.querySelector(".material-symbols-rounded");
-    const label = elements.accountEditBtn.querySelector("span:last-child");
     if (isGuestMode) {
       if (icon) {
         icon.textContent = "person_add";
       }
-      if (label) {
-        label.textContent = "Review Accountを作成する";
-      }
+      elements.accountEditBtn.setAttribute("aria-label", "Review Accountを作成する");
+      elements.accountEditBtn.title = "Review Accountを作成する";
     } else {
       if (icon) {
         icon.textContent = "edit";
       }
-      if (label) {
-        label.textContent = "編集する";
-      }
+      elements.accountEditBtn.setAttribute("aria-label", "Review Accountを編集する");
+      elements.accountEditBtn.title = "編集する";
     }
   }
   if (elements.deleteAccountBtn) {
@@ -6917,11 +7009,30 @@ function renderMypageSettings() {
   if (elements.authNicknameRow) {
     elements.authNicknameRow.hidden = isGuestMode;
   }
+  if (elements.authEmailRow) {
+    elements.authEmailRow.hidden = isGuestMode;
+  }
+  if (elements.authPasswordRow) {
+    elements.authPasswordRow.hidden = isGuestMode;
+  }
   if (elements.accountActionRow) {
     elements.accountActionRow.classList.toggle("is-guest-account-actions", isGuestMode);
   }
   renderThemeCardSelection();
   renderSettingsEducationCode();
+}
+
+function syncAccountPasswordToggle(button, isVisible, label = "パスワード") {
+  if (!button) {
+    return;
+  }
+  const icon = button.querySelector(".material-symbols-rounded");
+  if (icon) {
+    icon.textContent = isVisible ? "visibility_off" : "visibility";
+  }
+  const actionText = isVisible ? "非表示にする" : "表示する";
+  button.setAttribute("aria-label", `${label}を${actionText}`);
+  button.title = `${label}を${actionText}`;
 }
 
 function renderSettingsEducationCode() {
@@ -7010,7 +7121,7 @@ function createEducationCodeDetailFromValidation(result) {
   return {
     schoolName: normalizeSchoolName(result.schoolName),
     message: typeof result.message === "string" ? result.message.trim() : "",
-    checkedAt: new Date().toISOString(),
+    checkedAt: toJstIsoString(),
   };
 }
 
@@ -7652,7 +7763,7 @@ function exportReviewData() {
     app: "The Review",
     storageKey: STORAGE_KEY,
     format: REVIEW_DATA_EXPORT_FORMAT,
-    exportedAt: new Date().toISOString(),
+    exportedAt: toJstIsoString(),
     data: obfuscateExportData(plainJson),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -8703,6 +8814,7 @@ function createDefaultState() {
       displayName: "Guest Mode",
       nickname: "",
       email: null,
+      password: "",
     },
     avater: createDefaultAvaterState(),
     sync: createDefaultReviewDataSyncState(),
@@ -8941,17 +9053,44 @@ function normalizeAuthState(value) {
       : "Guest Mode";
   const nickname = isLoggedIn && normalizeNicknameText(value?.nickname) ? normalizeNicknameText(value.nickname) : "";
   const email = isLoggedIn && typeof value?.email === "string" && value.email.trim() ? value.email.trim() : null;
+  const password = isLoggedIn ? normalizeAccountPasswordText(value?.password) : "";
   return {
     isLoggedIn,
     provider,
     displayName,
     nickname,
     email,
+    password,
   };
 }
 
 function normalizeNicknameText(value) {
   return typeof value === "string" ? value.trim().slice(0, 24) : "";
+}
+
+function normalizeAccountEmailText(value) {
+  return typeof value === "string" ? value.trim().slice(0, 120) : "";
+}
+
+function normalizeAccountPasswordText(value) {
+  return typeof value === "string" ? value.trim().slice(0, 64) : "";
+}
+
+function toJstIsoString(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  if (!Number.isFinite(time)) {
+    return "";
+  }
+  const jstDate = new Date(time + 9 * 60 * 60 * 1000);
+  const year = jstDate.getUTCFullYear();
+  const month = String(jstDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(jstDate.getUTCDate()).padStart(2, "0");
+  const hours = String(jstDate.getUTCHours()).padStart(2, "0");
+  const minutes = String(jstDate.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(jstDate.getUTCSeconds()).padStart(2, "0");
+  const milliseconds = String(jstDate.getUTCMilliseconds()).padStart(3, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}+09:00`;
 }
 
 function normalizeIsoDateString(value) {
@@ -8960,7 +9099,7 @@ function normalizeIsoDateString(value) {
     return "";
   }
   const time = Date.parse(text);
-  return Number.isFinite(time) ? new Date(time).toISOString() : "";
+  return Number.isFinite(time) ? toJstIsoString(new Date(time)) : "";
 }
 
 function looksLikeAuth0Subject(value) {
@@ -9017,15 +9156,15 @@ function saveState(options = {}) {
   }
 }
 
-function touchReviewDataSyncMetadata(timestamp = new Date().toISOString()) {
+function touchReviewDataSyncMetadata(timestamp = toJstIsoString()) {
   state.sync = normalizeReviewDataSyncState(state.sync);
-  state.sync.updatedAt = normalizeIsoDateString(timestamp) || new Date().toISOString();
+  state.sync.updatedAt = normalizeIsoDateString(timestamp) || toJstIsoString();
 }
 
 function ensureReviewDataSyncMetadata() {
   state.sync = normalizeReviewDataSyncState(state.sync);
   if (!state.sync.updatedAt) {
-    state.sync.updatedAt = new Date().toISOString();
+    state.sync.updatedAt = toJstIsoString();
   }
   return state.sync;
 }
@@ -9257,7 +9396,7 @@ function serializeReviewDataForCloud(sourceState = state) {
   const snapshot = createReviewDataStateSnapshot(sourceState);
   snapshot.sync = normalizeReviewDataSyncState(snapshot.sync);
   if (!snapshot.sync.updatedAt) {
-    snapshot.sync.updatedAt = new Date().toISOString();
+    snapshot.sync.updatedAt = toJstIsoString();
   }
   return {
     storageKey: REVIEW_DATA_STORAGE_KEY,
@@ -9268,6 +9407,8 @@ function serializeReviewDataForCloud(sourceState = state) {
 
 function createReviewDataStateSnapshot(sourceState = state) {
   const normalized = normalizePersistedState(JSON.parse(JSON.stringify(sourceState)));
+  const cloudAuth = { ...normalized.auth };
+  delete cloudAuth.password;
   return {
     reviewCoin: normalized.reviewCoin,
     hasUnlimitedReviewCoins: normalized.hasUnlimitedReviewCoins,
@@ -9276,7 +9417,7 @@ function createReviewDataStateSnapshot(sourceState = state) {
     dailyTryRecords: normalized.dailyTryRecords,
     learningProgress: normalized.learningProgress,
     settings: normalized.settings,
-    auth: normalized.auth,
+    auth: cloudAuth,
     avater: normalized.avater,
     sync: normalizeReviewDataSyncState(normalized.sync),
   };
@@ -9402,13 +9543,20 @@ function applyReviewDataRemoteMetadata(remoteRecord) {
     return;
   }
   state.sync = normalizeReviewDataSyncState(state.sync);
-  state.sync.syncedAt = new Date().toISOString();
+  state.sync.syncedAt = toJstIsoString();
   state.sync.lastRemoteUpdatedAt = normalizedRecord.updatedAt || normalizedRecord.clientUpdatedAt || "";
   saveState({ skipTouch: true, skipRemoteSync: true });
 }
 
 function applyReviewDataState(nextState, options = {}) {
   const normalizedNextState = normalizePersistedState(nextState);
+  const localPassword = normalizeAccountPasswordText(state.auth?.password);
+  if (localPassword && !normalizeAccountPasswordText(normalizedNextState.auth?.password)) {
+    normalizedNextState.auth = normalizeAuthState({
+      ...normalizedNextState.auth,
+      password: localPassword,
+    });
+  }
   isApplyingRemoteReviewData = true;
   try {
     replaceState(normalizedNextState);
@@ -9475,19 +9623,19 @@ function mergeReviewDataStates(localState, remoteState, remoteRecord = {}) {
   const mergedEqualsRemote = reviewDataStateContentEquals(merged, remote);
   merged.sync = normalizeReviewDataSyncState(preferred.sync);
   if (!mergedEqualsLocal && !mergedEqualsRemote) {
-    merged.sync.updatedAt = new Date().toISOString();
+    merged.sync.updatedAt = toJstIsoString();
   } else if (mergedEqualsRemote) {
     merged.sync.updatedAt =
       normalizeIsoDateString(remote.sync?.updatedAt) ||
       normalizeIsoDateString(remoteRecord.clientUpdatedAt) ||
       normalizeIsoDateString(remoteRecord.updatedAt) ||
-      new Date().toISOString();
+      toJstIsoString();
   } else {
     merged.sync.updatedAt =
       normalizeIsoDateString(local.sync?.updatedAt) ||
       normalizeIsoDateString(remoteRecord.clientUpdatedAt) ||
       normalizeIsoDateString(remoteRecord.updatedAt) ||
-      new Date().toISOString();
+      toJstIsoString();
   }
   merged.sync.syncedAt = "";
   merged.sync.lastRemoteUpdatedAt = normalizeIsoDateString(remoteRecord.updatedAt || remoteRecord.clientUpdatedAt);
@@ -9518,7 +9666,10 @@ function mergeReviewAuth(localAuth, remoteAuth, preferRemote = false) {
   const local = normalizeAuthState(localAuth);
   const remote = normalizeAuthState(remoteAuth);
   if (preferRemote) {
-    return remote;
+    return normalizeAuthState({
+      ...remote,
+      password: local.password || remote.password,
+    });
   }
   if (local.isLoggedIn && local.provider !== "guest") {
     return local;

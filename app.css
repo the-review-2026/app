@@ -10973,3 +10973,332 @@ body.learn-popover-open #screen-learn .learn-menu-action::before {
   line-height: 1;
   color: currentColor;
 }
+
+/* 2026-05-12 account, manager, and notebook polish. */
+.home-menu-actions {
+  width: min(420px, calc(100% - 1.4rem));
+  margin: 0.72rem auto 0;
+}
+
+#screen-home .home-menu-action {
+  justify-content: flex-start;
+  min-height: 2.74rem;
+  padding: 0.24rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--text-main);
+  box-shadow: none;
+  text-align: left;
+}
+
+#screen-home .home-menu-action[hidden] {
+  display: none !important;
+}
+
+#screen-home .home-menu-action::before {
+  content: "›";
+  display: inline-grid;
+  place-items: center;
+  width: 1.08rem;
+  height: 1.08rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 1.26rem;
+  font-weight: 900;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+#screen-home .home-menu-action .material-symbols-rounded {
+  display: none;
+}
+
+.home-greeting {
+  bottom: calc(max(0.65rem, env(safe-area-inset-bottom)) + 8.2rem);
+}
+
+.account-panel-title,
+.account-title-main {
+  min-width: 0;
+}
+
+.account-panel-title .account-edit-button,
+.account-edit-button {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-main);
+}
+
+.account-panel-title .account-edit-button .material-symbols-rounded,
+.account-edit-symbol {
+  font-size: 1.28rem !important;
+  font-variation-settings: "FILL" 0, "wght" 650, "GRAD" 0, "opsz" 24;
+}
+
+.account-password-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.account-password-toggle {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-main);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.account-password-toggle .material-symbols-rounded {
+  font-size: 1.16rem;
+  line-height: 1;
+}
+
+.account-edit-option > div {
+  min-width: 0;
+}
+
+.account-edit-password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.account-edit-password-field input {
+  padding-right: 2.2rem;
+}
+
+.account-edit-password-field .account-password-toggle {
+  position: absolute;
+  right: 0.18rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.review-coin-board.is-unlimited {
+  position: relative;
+  opacity: 0.72;
+}
+
+.review-coin-board.is-unlimited::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+  left: var(--flashcard-direct-note-right-left, var(--flashcard-direct-note-left, 0));
+  transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible {
+  left: var(--flashcard-direct-note-spread-left, var(--flashcard-direct-note-left, 0));
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-left {
+  opacity: 0.32;
+  pointer-events: none;
+  transition:
+    opacity 240ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible .flashcard-note-paper-left {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
+  position: absolute;
+  left: calc(var(--note-open-page-width) + var(--note-page-gap));
+  top: 50%;
+  z-index: 5;
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.1rem;
+  padding: 0.38rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(38, 50, 56, 0.22);
+  background: rgba(255, 255, 255, 0.94);
+  color: #10222b;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  transform: translate(-50%, -50%);
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .top-nav {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(120%) !important;
+  transition:
+    opacity 220ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 220ms ease;
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .top-nav-character {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translate(-50%, 120%) !important;
+  transition:
+    opacity 220ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 220ms ease;
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+  bottom: max(0.45rem, env(safe-area-inset-bottom));
+  animation: noteMenuSwapIn 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes noteMenuSwapIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 120%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.manager-migrated-root,
+.manager-migrated-root * {
+  --bg-sky: #ffffff;
+  --bg-warm: #ffffff;
+  --bg-cool: #ffffff;
+  --panel: #ffffff;
+  --panel-line: #000000;
+  --text-main: #000000;
+  --text-soft: #000000;
+  --primary: #1d1d1d;
+  --primary-strong: #000000;
+  --accent: #1d1d1d;
+  --accent-strong: #000000;
+  --danger: #000000;
+  --success: #000000;
+}
+
+.manager-migrated-root,
+.manager-migrated-root .screens,
+.manager-migrated-root .panel,
+.manager-migrated-root .manager-card,
+.manager-migrated-root .manager-member-card,
+.manager-migrated-root .problem-create-panel,
+.manager-migrated-root .problem-list-panel,
+.manager-migrated-root .problem-pending-detail,
+.manager-migrated-root dialog,
+.manager-migrated-root input,
+.manager-migrated-root select,
+.manager-migrated-root textarea,
+.manager-migrated-root [contenteditable="true"] {
+  border-color: #000000 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+.manager-migrated-root button,
+.manager-migrated-root .primary,
+.manager-migrated-root .black-button {
+  border-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.manager-migrated-root .white-button,
+.manager-migrated-root .secondary.white-button,
+.manager-migrated-root [data-manager-member-logout],
+.manager-migrated-root [data-manager-member-delete] {
+  border-color: #000000 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+.manager-migrated-root .manager-member-review-coin-field {
+  position: relative;
+}
+
+.manager-migrated-root .manager-member-review-coin-field.is-unlimited input {
+  color: rgba(0, 0, 0, 0.72);
+  text-align: center;
+  background: #ffffff;
+  -webkit-text-fill-color: rgba(0, 0, 0, 0.72);
+}
+
+.manager-migrated-root .manager-member-review-coin-field.is-unlimited::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.8rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
+.manager-migrated-root .status-chip,
+.manager-migrated-root .status-chip.pending,
+.manager-migrated-root .status-chip.approved,
+.manager-migrated-root .status-chip.rejected,
+.manager-migrated-root .manager-member-role-tag {
+  border: 1px solid #000000 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+.manager-migrated-root .manager-nav-button.is-active,
+.manager-migrated-root .problem-tab-button.is-active,
+.manager-migrated-root .published-note-button.is-active {
+  border-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.manager-migrated-root input:focus,
+.manager-migrated-root select:focus,
+.manager-migrated-root textarea:focus,
+.manager-migrated-root [contenteditable="true"]:focus {
+  border-color: #000000 !important;
+  outline-color: #000000 !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.16) !important;
+}
+
+@media (max-width: 760px) {
+  .home-menu-actions {
+    margin-top: 0.52rem;
+  }
+
+  .home-greeting {
+    bottom: calc(max(0.65rem, env(safe-area-inset-bottom)) + 7.45rem);
+  }
+
+  .flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
+    font-size: 0.72rem;
+    padding-inline: 0.5rem;
+  }
+
+  body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+    bottom: max(0.45rem, env(safe-area-inset-bottom));
+  }
+}

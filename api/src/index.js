@@ -11,20 +11,7 @@ export default {
     }
 
     if (pathname === "/questions" && request.method === "GET") {
-      const questions = [
-        {
-          id: "q_001",
-          subject: "english",
-          unit: "Reboot 1st Edition",
-          question: "次の英文を和訳しなさい。",
-          answerType: "text",
-          correctAnswer: "私は昨日図書館に行きました。",
-          choices: [],
-          explanation: "went は go の過去形です。"
-        }
-      ];
-
-      return json(questions);
+      return listApprovedQuestions(env);
     }
 
     if (pathname === "/me" && ["GET", "POST", "PATCH"].includes(request.method)) {
@@ -59,12 +46,25 @@ export default {
       return listManagerMembers(request, env);
     }
 
+    if (pathname === "/manager/question-submissions" && request.method === "GET") {
+      return listManagerQuestionSubmissions(request, env);
+    }
+
+    if (pathname === "/manager/question-submissions" && request.method === "POST") {
+      return createManagerQuestionSubmission(request, env);
+    }
+
     const managerMemberMatch = pathname.match(/^\/manager\/members\/([^/]+)$/);
     if (managerMemberMatch && request.method === "PATCH") {
       return updateManagerMember(request, env, managerMemberMatch[1]);
     }
     if (managerMemberMatch && request.method === "DELETE") {
       return deleteManagerMember(request, env, managerMemberMatch[1]);
+    }
+
+    const managerQuestionSubmissionMatch = pathname.match(/^\/manager\/question-submissions\/([^/]+)$/);
+    if (managerQuestionSubmissionMatch && request.method === "PATCH") {
+      return updateManagerQuestionSubmission(request, env, managerQuestionSubmissionMatch[1]);
     }
 
     return json({ error: "Not Found", path: url.pathname }, 404);
@@ -104,6 +104,32 @@ const USER_SELECT_FIELDS = [
   "created_at",
   "updated_at",
 ].join(",");
+const QUESTION_SUBMISSION_SELECT_FIELDS = [
+  "id",
+  "binder",
+  "note",
+  "chapter",
+  "section",
+  "text_number",
+  "text_name",
+  "question_number",
+  "question_name",
+  "content_text",
+  "content_html",
+  "image",
+  "notebook_blocks",
+  "payload",
+  "status",
+  "source_app",
+  "author",
+  "submitted_by",
+  "approved_by",
+  "submitted_at",
+  "approved_at",
+  "created_at",
+  "updated_at",
+].join(",");
+const QUESTION_SUBMISSION_STATUSES = ["draft", "pending", "approved", "rejected"];
 const MANAGER_USER_ROLE = "user";
 const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const MANAGER_ROLE_PERMISSIONS = {
@@ -255,7 +281,7 @@ async function updateManagerMember(request, env, memberId) {
   const roleText = normalizeSupabaseText(body?.role);
   const role = normalizeManagerRole(body?.role);
   const isUserRole = roleText === MANAGER_USER_ROLE;
-  const now = new Date().toISOString();
+  const now = toJstIsoString();
   const patch = {
     updated_at: now,
   };
@@ -435,6 +461,183 @@ async function deleteManagerMember(request, env, memberId) {
   });
 }
 
+async function listApprovedQuestions(env) {
+  const supabase = getSupabaseConfig(env);
+  if (!supabase) {
+    return json(getFallbackQuestions());
+  }
+
+  const response = await supabaseRequest(
+    supabase,
+    `/question_submissions?status=eq.approved&select=${QUESTION_SUBMISSION_SELECT_FIELDS}&order=approved_at.desc.nullslast,updated_at.desc`
+  );
+  if (!response.ok) {
+    return json(getFallbackQuestions());
+  }
+
+  const rows = await response.json().catch(() => []);
+  const questions = Array.isArray(rows)
+    ? rows.map(serializeQuestionForApp).filter((question) => question && question.question)
+    : [];
+  return json(questions.length > 0 ? questions : getFallbackQuestions());
+}
+
+async function listManagerQuestionSubmissions(request, env) {
+  const access = await requireManagerPermission(request, env, ["createQuestions", "submitQuestions", "checkQuestions", "publishQuestions"]);
+  if (!access.ok) {
+    return json(access.body, access.status);
+  }
+
+  const canSeeAll = Boolean(access.permissions.checkQuestions || access.permissions.publishQuestions || access.member?.role === "owner");
+  const submittedByFilter = canSeeAll ? "" : `&submitted_by=eq.${encodeURIComponent(access.user.id)}`;
+  const response = await supabaseRequest(
+    access.supabase,
+    `/question_submissions?select=${QUESTION_SUBMISSION_SELECT_FIELDS}${submittedByFilter}&order=created_at.desc`
+  );
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to list question submissions");
+    return json(error.body, error.status);
+  }
+
+  const rows = await response.json().catch(() => []);
+  return json({
+    submissions: Array.isArray(rows) ? rows.map(serializeQuestionSubmissionRow) : [],
+  });
+}
+
+async function createManagerQuestionSubmission(request, env) {
+  const access = await requireManagerPermission(request, env, ["createQuestions", "submitQuestions", "checkQuestions", "publishQuestions"]);
+  if (!access.ok) {
+    return json(access.body, access.status);
+  }
+
+  const body = await readJsonBody(request);
+  if (!body.ok || !body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const normalized = normalizeQuestionSubmissionPayload(body.value, {
+    fallbackStatus: access.permissions.checkQuestions || access.permissions.publishQuestions ? "pending" : "pending",
+  });
+  if (!normalized.ok) {
+    return json({ error: normalized.error }, 400);
+  }
+
+  const now = toJstIsoString();
+  const canApprove = Boolean(access.permissions.checkQuestions || access.permissions.publishQuestions || access.member?.role === "owner");
+  const status = normalized.value.status === "approved" && !canApprove ? "pending" : normalized.value.status;
+  const row = {
+    ...normalized.value.columns,
+    status,
+    payload: {
+      ...normalized.value.payload,
+      status,
+    },
+    submitted_by: access.user.id,
+    submitted_at: normalized.value.submittedAt || now,
+    approved_by: status === "approved" ? access.user.id : null,
+    approved_at: status === "approved" ? now : null,
+    created_at: now,
+    updated_at: now,
+  };
+
+  const response = await supabaseRequest(access.supabase, "/question_submissions", {
+    method: "POST",
+    headers: {
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(row),
+  });
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to create question submission");
+    return json(error.body, error.status);
+  }
+
+  const rows = await response.json().catch(() => []);
+  const submission = serializeQuestionSubmissionRow(Array.isArray(rows) ? rows[0] ?? null : rows);
+  return json({
+    ...submission,
+    submission,
+  });
+}
+
+async function updateManagerQuestionSubmission(request, env, submissionId) {
+  const access = await requireManagerPermission(request, env, ["checkQuestions", "publishQuestions"]);
+  if (!access.ok) {
+    return json(access.body, access.status);
+  }
+
+  const normalizedSubmissionId = normalizeSupabaseText(submissionId);
+  if (!normalizedSubmissionId) {
+    return json({ error: "submission id is required" }, 400);
+  }
+
+  const body = await readJsonBody(request);
+  if (!body.ok || !body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const normalized = normalizeQuestionSubmissionPayload(body.value, { allowPartial: true });
+  if (!normalized.ok) {
+    return json({ error: normalized.error }, 400);
+  }
+
+  const currentResponse = await supabaseRequest(
+    access.supabase,
+    `/question_submissions?id=eq.${encodeURIComponent(normalizedSubmissionId)}&select=${QUESTION_SUBMISSION_SELECT_FIELDS}&limit=1`
+  );
+  if (!currentResponse.ok) {
+    const error = await supabaseError(currentResponse, "Failed to look up question submission");
+    return json(error.body, error.status);
+  }
+  const currentRows = await currentResponse.json().catch(() => []);
+  const currentRow = Array.isArray(currentRows) ? currentRows[0] ?? null : null;
+  if (!currentRow) {
+    return json({ error: "Question submission not found" }, 404);
+  }
+
+  const now = toJstIsoString();
+  const patch = {
+    ...normalized.value.columns,
+    payload: {
+      ...normalizeJsonObject(currentRow.payload),
+      ...normalized.value.payload,
+      ...(normalized.value.status ? { status: normalized.value.status } : {}),
+    },
+    updated_at: now,
+  };
+  if (normalized.value.status) {
+    patch.status = normalized.value.status;
+    if (normalized.value.status === "approved") {
+      patch.approved_by = access.user.id;
+      patch.approved_at = now;
+    }
+  }
+
+  const response = await supabaseRequest(
+    access.supabase,
+    `/question_submissions?id=eq.${encodeURIComponent(normalizedSubmissionId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(patch),
+    }
+  );
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to update question submission");
+    return json(error.body, error.status);
+  }
+
+  const rows = await response.json().catch(() => []);
+  const submission = serializeQuestionSubmissionRow(Array.isArray(rows) ? rows[0] ?? null : rows);
+  return json({
+    ...submission,
+    submission,
+  });
+}
+
 async function requireManagerOwner(request, env) {
   const context = await getAuthenticatedSupabaseContext(request, env);
   if (!context.ok) {
@@ -460,6 +663,38 @@ async function requireManagerOwner(request, env) {
     ok: true,
     ...context,
     member: memberResult.member,
+  };
+}
+
+async function requireManagerPermission(request, env, permissions = []) {
+  const context = await getAuthenticatedSupabaseContext(request, env);
+  if (!context.ok) {
+    return context;
+  }
+
+  const memberResult = await getOrCreateManagerMember(context.supabase, context.user, context.claims, env);
+  if (!memberResult.ok) {
+    return memberResult;
+  }
+
+  const role = normalizeManagerRole(memberResult.member?.role);
+  const rolePermissions = getManagerPermissions(role);
+  const allowed = role === "owner" || permissions.some((permission) => rolePermissions[permission]);
+  if (!allowed) {
+    return {
+      ok: false,
+      status: 403,
+      body: {
+        error: "The Review Manager permission is required.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    ...context,
+    member: memberResult.member,
+    permissions: rolePermissions,
   };
 }
 
@@ -507,22 +742,36 @@ async function upsertCurrentReviewAccount(request, env) {
 
   const payload = body?.value && typeof body.value === "object" ? body.value : {};
   const hasNicknamePatch = request.method !== "GET" && Object.prototype.hasOwnProperty.call(payload, "nickname");
+  const hasEmailPatch = request.method !== "GET" && Object.prototype.hasOwnProperty.call(payload, "email");
   const nickname = normalizeSupabaseText(payload.nickname);
+  const emailPatch = normalizeSupabaseText(payload.email) || null;
   const displayName = hasNicknamePatch && nickname ? nickname : normalizeSupabaseText(context.user?.nickname);
+  const patch = {};
+  if (hasNicknamePatch && nickname && nickname !== context.user?.nickname) {
+    patch.nickname = nickname;
+  }
+  if (hasEmailPatch && emailPatch !== (context.user?.email ?? null)) {
+    patch.email = emailPatch;
+  }
+  if (Object.keys(patch).length > 0) {
+    patch.updated_at = toJstIsoString();
+  }
   let user = context.user;
-  if (user?.id && hasNicknamePatch && nickname && nickname !== user.nickname) {
-    const updatedUser = await updateUserById(context.supabase, user.id, {
-      nickname,
-    });
+  if (user?.id && Object.keys(patch).length > 0) {
+    const updatedUser = await updateUserById(context.supabase, user.id, patch);
     if (updatedUser.ok && updatedUser.user) {
       user = updatedUser.user;
     }
   }
 
-  const memberResult = await getOrCreateManagerMember(context.supabase, user, context.claims, env, {
+  const managerProfile = {
     displayName,
     updateDisplayName: hasNicknamePatch && Boolean(nickname),
-  });
+  };
+  if (hasEmailPatch) {
+    managerProfile.email = emailPatch;
+  }
+  const memberResult = await getOrCreateManagerMember(context.supabase, user, context.claims, env, managerProfile);
   if (!memberResult.ok) {
     return json(memberResult.body, memberResult.status);
   }
@@ -733,7 +982,7 @@ function normalizeReviewDataPayload(body) {
   const errors = [];
   const storageKey = normalizeSupabaseText(body?.storageKey ?? body?.storage_key) || REVIEW_DATA_STORAGE_KEY;
   const payload = body?.data ?? body?.payload;
-  const clientUpdatedAt = normalizeIsoTimestamp(body?.clientUpdatedAt ?? body?.client_updated_at) || new Date().toISOString();
+  const clientUpdatedAt = normalizeIsoTimestamp(body?.clientUpdatedAt ?? body?.client_updated_at) || toJstIsoString();
 
   if (storageKey !== REVIEW_DATA_STORAGE_KEY) {
     errors.push("storageKey is invalid");
@@ -1005,7 +1254,7 @@ async function getReviewDataByUserId(supabase, userId) {
 }
 
 async function upsertReviewData(supabase, reviewData) {
-  const now = new Date().toISOString();
+  const now = toJstIsoString();
   const userId = normalizeSupabaseText(reviewData?.user_id);
   if (!userId) {
     return {
@@ -1070,7 +1319,7 @@ async function deleteReviewDataByUserId(supabase, userId) {
     },
     body: JSON.stringify({
       ...createDefaultReviewDataColumns(),
-      updated_at: new Date().toISOString(),
+      updated_at: toJstIsoString(),
     }),
   });
 
@@ -1202,7 +1451,10 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
   const shouldUpdateDisplayName = Boolean(profile?.updateDisplayName && profileDisplayName);
   const displayName =
     profileDisplayName || normalizeSupabaseText(user?.nickname) || getDisplayNameFromClaims(claims);
-  const email = normalizeSupabaseText(profile?.email) || normalizeSupabaseText(claims?.email) || null;
+  const hasProfileEmail = Object.prototype.hasOwnProperty.call(profile || {}, "email");
+  const email = hasProfileEmail
+    ? normalizeSupabaseText(profile.email) || null
+    : normalizeSupabaseText(claims?.email) || null;
   if (existing.member) {
     const patch = {};
     if (auth0Sub && existing.member.auth0_sub !== auth0Sub) {
@@ -1221,11 +1473,11 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
       Object.assign(patch, {
         manager_role: "owner",
         manager_status: "approved",
-        manager_approved_at: new Date().toISOString(),
+        manager_approved_at: toJstIsoString(),
       });
     }
     if (Object.keys(patch).length > 0) {
-      patch.updated_at = new Date().toISOString();
+      patch.updated_at = toJstIsoString();
       return updateManagerMemberById(supabase, existing.member.id, patch);
     }
     return existing;
@@ -1238,7 +1490,7 @@ async function getOrCreateManagerMember(supabase, user, claims, env, profile = {
     email,
     role: shouldBootstrapOwner ? "owner" : null,
     status: shouldBootstrapOwner ? "approved" : "pending",
-    approved_at: shouldBootstrapOwner ? new Date().toISOString() : null,
+    approved_at: shouldBootstrapOwner ? toJstIsoString() : null,
   });
 }
 
@@ -1302,7 +1554,7 @@ async function createManagerMember(supabase, member) {
       manager_role: normalizeManagerRole(member.role),
       manager_status: normalizeSupabaseText(member.status) || "pending",
       manager_approved_at: member.approved_at || null,
-      updated_at: new Date().toISOString(),
+      updated_at: toJstIsoString(),
     }),
   });
 
@@ -1398,6 +1650,199 @@ function isBootstrapManagerOwner(claims, env) {
     .map((value) => value.trim())
     .filter(Boolean)
     .includes(auth0Sub);
+}
+
+function normalizeQuestionSubmissionPayload(body, options = {}) {
+  const allowPartial = Boolean(options.allowPartial);
+  const status = normalizeQuestionSubmissionStatus(body?.status, options.fallbackStatus || (allowPartial ? "" : "pending"));
+  const contentText = normalizeSupabaseText(body?.contentText ?? body?.content_text);
+  const contentHtml = normalizeSupabaseText(body?.contentHtml ?? body?.content_html);
+  if (!allowPartial && !contentText && !contentHtml) {
+    return { ok: false, error: "contentText is required" };
+  }
+
+  const textBlocks = Array.isArray(body?.textBlocks ?? body?.text_blocks) ? body.textBlocks ?? body.text_blocks : [];
+  const notebookBlocks = Array.isArray(body?.notebookBlocks ?? body?.notebook_blocks)
+    ? body.notebookBlocks ?? body.notebook_blocks
+    : [];
+  const payload = {
+    binder: normalizeSupabaseText(body?.binder),
+    note: normalizeSupabaseText(body?.note),
+    chapter: normalizeSupabaseText(body?.chapter),
+    section: normalizeSupabaseText(body?.section),
+    textNumber: normalizeSupabaseText(body?.textNumber ?? body?.text_number),
+    textName: normalizeSupabaseText(body?.textName ?? body?.text_name),
+    textBlocks,
+    questionNumber: normalizeSupabaseText(body?.questionNumber ?? body?.question_number),
+    questionName: normalizeSupabaseText(body?.questionName ?? body?.question_name),
+    image: body?.image && typeof body.image === "object" && !Array.isArray(body.image) ? body.image : null,
+    notebookBlocks,
+    contentHtml,
+    contentText,
+    submittedAt: normalizeIsoTimestamp(body?.submittedAt ?? body?.submitted_at) || "",
+    sourceApp: normalizeSupabaseText(body?.sourceApp ?? body?.source_app),
+    author: normalizeJsonObject(body?.author),
+    status,
+  };
+  const payloadPatch = {};
+  const setPayloadPatch = (key, value, ...sourceKeys) => {
+    if (!allowPartial || sourceKeys.some((sourceKey) => Object.prototype.hasOwnProperty.call(body, sourceKey))) {
+      payloadPatch[key] = value;
+    }
+  };
+  setPayloadPatch("binder", payload.binder, "binder");
+  setPayloadPatch("note", payload.note, "note");
+  setPayloadPatch("chapter", payload.chapter, "chapter");
+  setPayloadPatch("section", payload.section, "section");
+  setPayloadPatch("textNumber", payload.textNumber, "textNumber", "text_number");
+  setPayloadPatch("textName", payload.textName, "textName", "text_name");
+  setPayloadPatch("textBlocks", payload.textBlocks, "textBlocks", "text_blocks");
+  setPayloadPatch("questionNumber", payload.questionNumber, "questionNumber", "question_number");
+  setPayloadPatch("questionName", payload.questionName, "questionName", "question_name");
+  setPayloadPatch("image", payload.image, "image");
+  setPayloadPatch("notebookBlocks", payload.notebookBlocks, "notebookBlocks", "notebook_blocks");
+  setPayloadPatch("contentHtml", payload.contentHtml, "contentHtml", "content_html");
+  setPayloadPatch("contentText", payload.contentText, "contentText", "content_text");
+  setPayloadPatch("submittedAt", payload.submittedAt, "submittedAt", "submitted_at");
+  setPayloadPatch("sourceApp", payload.sourceApp, "sourceApp", "source_app");
+  setPayloadPatch("author", payload.author, "author");
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "status")) {
+    payloadPatch.status = status;
+  }
+  const columns = {};
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "binder")) columns.binder = payload.binder || null;
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "note")) columns.note = payload.note || null;
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "chapter")) columns.chapter = payload.chapter || null;
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "section")) columns.section = payload.section || null;
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "textNumber") || Object.prototype.hasOwnProperty.call(body, "text_number")) {
+    columns.text_number = payload.textNumber || null;
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "textName") || Object.prototype.hasOwnProperty.call(body, "text_name")) {
+    columns.text_name = payload.textName || null;
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "questionNumber") || Object.prototype.hasOwnProperty.call(body, "question_number")) {
+    columns.question_number = payload.questionNumber || null;
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "questionName") || Object.prototype.hasOwnProperty.call(body, "question_name")) {
+    columns.question_name = payload.questionName || null;
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "contentText") || Object.prototype.hasOwnProperty.call(body, "content_text")) {
+    columns.content_text = payload.contentText || stripHtmlText(payload.contentHtml) || null;
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "contentHtml") || Object.prototype.hasOwnProperty.call(body, "content_html")) {
+    columns.content_html = payload.contentHtml || null;
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "image")) columns.image = payload.image ?? {};
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "notebookBlocks") || Object.prototype.hasOwnProperty.call(body, "notebook_blocks")) {
+    columns.notebook_blocks = payload.notebookBlocks;
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "sourceApp") || Object.prototype.hasOwnProperty.call(body, "source_app")) {
+    columns.source_app = payload.sourceApp || "The Review Manager";
+  }
+  if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "author")) columns.author = payload.author;
+
+  return {
+    ok: true,
+    value: {
+      status,
+      columns,
+      payload: allowPartial ? payloadPatch : payload,
+      submittedAt: payload.submittedAt,
+    },
+  };
+}
+
+function normalizeQuestionSubmissionStatus(value, fallback = "pending") {
+  const status = normalizeSupabaseText(value);
+  if (QUESTION_SUBMISSION_STATUSES.includes(status)) {
+    return status;
+  }
+  return fallback && QUESTION_SUBMISSION_STATUSES.includes(fallback) ? fallback : "";
+}
+
+function serializeQuestionSubmissionRow(row) {
+  if (!row) {
+    return null;
+  }
+  const payload = normalizeJsonObject(row.payload);
+  return {
+    id: row.id || "",
+    binder: row.binder || payload.binder || "",
+    note: row.note || payload.note || "",
+    chapter: row.chapter || payload.chapter || "",
+    section: row.section || payload.section || "",
+    textNumber: row.text_number || payload.textNumber || "",
+    textName: row.text_name || payload.textName || "",
+    textBlocks: Array.isArray(payload.textBlocks) ? payload.textBlocks : [],
+    questionNumber: row.question_number || payload.questionNumber || "",
+    questionName: row.question_name || payload.questionName || "",
+    contentText: row.content_text || payload.contentText || "",
+    contentHtml: row.content_html || payload.contentHtml || "",
+    image: row.image || payload.image || null,
+    notebookBlocks: Array.isArray(row.notebook_blocks)
+      ? row.notebook_blocks
+      : Array.isArray(payload.notebookBlocks)
+        ? payload.notebookBlocks
+        : [],
+    payload,
+    status: normalizeQuestionSubmissionStatus(row.status, "pending"),
+    sourceApp: row.source_app || payload.sourceApp || "",
+    author: normalizeJsonObject(row.author || payload.author),
+    submittedBy: row.submitted_by || null,
+    approvedBy: row.approved_by || null,
+    submittedAt: row.submitted_at || payload.submittedAt || null,
+    approvedAt: row.approved_at || payload.approvedAt || null,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  };
+}
+
+function serializeQuestionForApp(row) {
+  const submission = serializeQuestionSubmissionRow(row);
+  if (!submission) {
+    return null;
+  }
+  const questionText = submission.contentText || stripHtmlText(submission.contentHtml);
+  const subjectLabel = submission.note || submission.binder || "The Review";
+  const unitLabel = [submission.textNumber, submission.textName].filter(Boolean).join(" ") || submission.chapter || "The Review Manager";
+  return {
+    id: submission.id,
+    subject: subjectLabel,
+    subjectLabel,
+    deckId: subjectLabel,
+    binder: submission.binder,
+    note: submission.note,
+    unit: unitLabel,
+    unitName: unitLabel,
+    chapter: submission.chapter,
+    question: questionText,
+    contentText: questionText,
+    contentHtml: submission.contentHtml,
+    answerType: "text",
+    correctAnswer: "",
+    choices: [],
+    explanation: [submission.questionNumber, submission.questionName].filter(Boolean).join(" ") || "",
+    status: submission.status,
+  };
+}
+
+function stripHtmlText(value) {
+  return normalizeSupabaseText(String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " "));
+}
+
+function getFallbackQuestions() {
+  return [
+    {
+      id: "q_001",
+      subject: "english",
+      unit: "Reboot 1st Edition",
+      question: "次の英文を和訳しなさい。",
+      answerType: "text",
+      correctAnswer: "私は昨日図書館に行きました。",
+      choices: [],
+      explanation: "went は go の過去形です。",
+    },
+  ];
 }
 
 function normalizeManagerRole(value) {
@@ -1505,13 +1950,30 @@ function formatUtcDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function toJstIsoString(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  const time = date.getTime();
+  if (!Number.isFinite(time)) {
+    return "";
+  }
+  const jstDate = new Date(time + 9 * 60 * 60 * 1000);
+  const year = jstDate.getUTCFullYear();
+  const month = String(jstDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(jstDate.getUTCDate()).padStart(2, "0");
+  const hours = String(jstDate.getUTCHours()).padStart(2, "0");
+  const minutes = String(jstDate.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(jstDate.getUTCSeconds()).padStart(2, "0");
+  const milliseconds = String(jstDate.getUTCMilliseconds()).padStart(3, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}+09:00`;
+}
+
 function normalizeIsoTimestamp(value) {
   const text = normalizeSupabaseText(value);
   if (!text) {
     return "";
   }
   const time = Date.parse(text);
-  return Number.isFinite(time) ? new Date(time).toISOString() : "";
+  return Number.isFinite(time) ? toJstIsoString(new Date(time)) : "";
 }
 
 function normalizeEducationCode(value) {
