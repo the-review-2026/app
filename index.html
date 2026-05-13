@@ -68,6 +68,8 @@
       </div>
     </header>
 
+    <p id="homeGreeting" class="home-greeting" aria-live="polite"></p>
+
     <main class="screens">
       <section id="screen-home" class="screen is-active">
         <div class="home-top-row">
@@ -152,22 +154,6 @@
             <span class="home-card-progress-dot is-active" aria-hidden="true"></span>
             <span class="home-card-progress-dot" aria-hidden="true"></span>
           </div>
-        </div>
-        <div class="home-menu-actions learn-menu-actions" aria-label="ホームメニュー">
-          <button class="secondary learn-menu-action home-menu-action" type="button" data-learn-action="settings">
-            <span class="material-symbols-rounded" aria-hidden="true">settings</span>
-            <span>設定</span>
-          </button>
-          <button
-            id="managerMenuLink"
-            class="secondary learn-menu-action home-menu-action"
-            type="button"
-            data-learn-action="manager"
-            hidden
-          >
-            <span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>
-            <span>The Review Manager（制作チーム用管理プログラム）</span>
-          </button>
         </div>
       </div>
     </section>
@@ -322,6 +308,29 @@
               </div>
             </div>
           </section>
+          <div class="home-menu-actions mypage-menu-actions learn-menu-actions" aria-label="マイページメニュー">
+            <button class="secondary learn-menu-action home-menu-action mypage-menu-action" type="button" data-learn-action="settings">
+              <span class="material-symbols-rounded" aria-hidden="true">settings</span>
+              <span>設定</span>
+            </button>
+            <button
+              id="managerMenuLink"
+              class="secondary learn-menu-action home-menu-action mypage-menu-action"
+              type="button"
+              data-learn-action="manager"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>
+              <span>The Review Manager（制作チーム用管理プログラム）</span>
+            </button>
+            <button class="secondary learn-menu-action home-menu-action mypage-menu-action" type="button" data-learn-action="legal">
+              <span class="material-symbols-rounded" aria-hidden="true">policy</span>
+              <span>利用規約・プライバシーポリシー</span>
+            </button>
+            <button class="secondary learn-menu-action home-menu-action mypage-menu-action" type="button" data-learn-action="licenses">
+              <span class="material-symbols-rounded" aria-hidden="true">license</span>
+              <span>ライセンス・謝辞</span>
+            </button>
+          </div>
         </section>
 
       </section>
@@ -650,6 +659,53 @@
         <div class="guest-mode-actions education-code-remove-actions">
           <button class="secondary" type="button" data-settings-education-code-remove-action="cancel">キャンセル</button>
           <button class="primary danger" type="button" data-settings-education-code-remove-action="confirm">削除する</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="legalInfoDialog" class="text-reset-dialog legal-info-dialog" aria-labelledby="legalInfoDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="legalInfoDialogTitle">利用規約・プライバシーポリシー</h3>
+        <div class="legal-info-stack">
+          <section class="legal-info-panel">
+            <h4>利用規約</h4>
+            <article id="legalTermsContent" class="legal-info-content">
+              <p>読み込んでいます。</p>
+            </article>
+          </section>
+          <section class="legal-info-panel">
+            <h4>プライバシーポリシー</h4>
+            <article id="legalPrivacyContent" class="legal-info-content">
+              <p>読み込んでいます。</p>
+            </article>
+          </section>
+        </div>
+        <div class="guest-mode-actions account-edit-actions">
+          <button class="primary" type="button" data-legal-dialog-action="close">閉じる</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="licenseInfoDialog" class="text-reset-dialog legal-info-dialog" aria-labelledby="licenseInfoDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="licenseInfoDialogTitle">ライセンス・謝辞</h3>
+        <div class="legal-info-stack">
+          <section class="legal-info-panel">
+            <h4>ライセンス</h4>
+            <article class="legal-info-content">
+              <p>The Reviewのアプリ本体、UI、オリジナル画像、キャラクター素材、問題データはThe Review Production Teamに帰属します。</p>
+              <p>Google Fonts / Material Symbols、Auth0、Cloudflare Workersなど、利用している外部サービスとフォントのライセンスに従って構成しています。</p>
+            </article>
+          </section>
+          <section class="legal-info-panel">
+            <h4>謝辞</h4>
+            <article class="legal-info-content">
+              <p>学習を続けるユーザー、制作と確認に関わるチームメンバー、検証に協力してくださった皆さまに感謝します。</p>
+            </article>
+          </section>
+        </div>
+        <div class="guest-mode-actions account-edit-actions">
+          <button class="primary" type="button" data-license-dialog-action="close">閉じる</button>
         </div>
       </form>
     </dialog>
@@ -1335,6 +1391,84 @@
         border: 1px solid rgba(0, 0, 0, 0.16);
         border-radius: 10px;
         background: #ffffff;
+      }
+
+      .manager-migrated-root .vector-graph-dialog {
+        width: min(680px, calc(100vw - 1.6rem));
+      }
+
+      .manager-migrated-root .vector-graph-tools {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.62rem;
+        align-items: end;
+      }
+
+      .manager-migrated-root .vector-graph-tool-actions {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+      }
+
+      .manager-migrated-root .vector-graph-canvas-wrap {
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 12px;
+        background: #ffffff;
+        overflow: hidden;
+        touch-action: none;
+      }
+
+      .manager-migrated-root .vector-graph-canvas {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        min-height: 240px;
+        cursor: crosshair;
+        touch-action: none;
+        background: #ffffff;
+      }
+
+      .manager-migrated-root .vector-graph-canvas marker path {
+        fill: #1d4f91;
+      }
+
+      .manager-migrated-root .vector-graph-canvas .vector-grid-line {
+        stroke: rgba(56, 91, 126, 0.16);
+        stroke-width: 1;
+      }
+
+      .manager-migrated-root .vector-graph-canvas .vector-axis-line {
+        stroke: rgba(29, 29, 29, 0.54);
+        stroke-width: 2;
+      }
+
+      .manager-migrated-root .vector-graph-line {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .manager-migrated-root .vector-graph-line[data-line-kind="vector"] {
+        stroke: #1d4f91;
+        stroke-width: 4;
+        marker-end: url(#vectorGraphArrow);
+      }
+
+      .manager-migrated-root .vector-graph-line[data-line-kind="answer"] {
+        stroke: #0b7c4b;
+        stroke-width: 5;
+      }
+
+      .manager-migrated-root .vector-graph-preview {
+        stroke: #1d1d1d;
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-dasharray: 8 8;
+        pointer-events: none;
+      }
+
+      .manager-migrated-root .vector-graph-hint {
+        margin-top: -0.22rem;
       }
 
       .manager-migrated-root .editor-footer {
@@ -2804,6 +2938,10 @@
                             <span class="material-symbols-rounded" aria-hidden="true">image</span>
                             <span>画像</span>
                           </button>
+                          <button class="editor-tool-btn" type="button" data-insert="vector-graph">
+                            <span class="material-symbols-rounded" aria-hidden="true">show_chart</span>
+                            <span>グラフ</span>
+                          </button>
                         </div>
                         <div
                           id="problemEditor"
@@ -2993,6 +3131,48 @@
       </form>
     </dialog>
 
+    <dialog id="vectorGraphDialog" class="text-reset-dialog vector-graph-dialog" aria-labelledby="vectorGraphDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="vectorGraphDialogTitle">グラフ・ベクトルを追加</h3>
+        <div class="vector-graph-tools">
+          <label class="field-block" for="vectorGraphModeSelect">
+            <span class="field-label-row">作図モード</span>
+            <select id="vectorGraphModeSelect">
+              <option value="vector">ベクトル</option>
+              <option value="answer">回答線</option>
+            </select>
+          </label>
+          <div class="vector-graph-tool-actions">
+            <button class="secondary white-button" type="button" data-vector-graph-action="undo">1本戻す</button>
+            <button class="secondary white-button" type="button" data-vector-graph-action="clear">クリア</button>
+          </div>
+        </div>
+        <div class="vector-graph-canvas-wrap">
+          <svg
+            id="vectorGraphSvg"
+            class="vector-graph-canvas"
+            viewBox="0 0 640 400"
+            role="application"
+            aria-label="始点から終点までドラッグして線を引く"
+          >
+            <defs>
+              <marker id="vectorGraphArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+                <path d="M 0 0 L 10 5 L 0 10 z"></path>
+              </marker>
+            </defs>
+            <g id="vectorGraphGrid"></g>
+            <g id="vectorGraphLines"></g>
+            <line id="vectorGraphPreview" class="vector-graph-preview" x1="0" y1="0" x2="0" y2="0" hidden></line>
+          </svg>
+        </div>
+        <p class="hint-text vector-graph-hint">方眼上をドラッグすると線を引けます。ベクトルは矢印つき、回答線は太線で入ります。</p>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-vector-graph-action="cancel">キャンセル</button>
+          <button class="primary" type="button" data-vector-graph-action="insert">挿入する</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="problemResetDialog" class="text-reset-dialog" aria-labelledby="problemResetDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="problemResetDialogTitle">入力をクリア</h3>
@@ -3079,6 +3259,8 @@
           notebookDragState: null,
           notebookLongPressTimerId: null,
           notebookSuppressSurfaceClick: false,
+          vectorGraphLines: [],
+          vectorGraphPointerState: null,
           avaterItemImageData: null,
           activeStoreItemId: "",
           reviewDataSnapshot: null,
@@ -3135,6 +3317,13 @@
           clearProblemImageBtn: document.getElementById("clearProblemImageBtn"),
           problemEditor: document.getElementById("problemEditor"),
           editorToolbar: document.getElementById("editorToolbar"),
+          vectorGraphDialog: document.getElementById("vectorGraphDialog"),
+          vectorGraphModeSelect: document.getElementById("vectorGraphModeSelect"),
+          vectorGraphSvg: document.getElementById("vectorGraphSvg"),
+          vectorGraphGrid: document.getElementById("vectorGraphGrid"),
+          vectorGraphLines: document.getElementById("vectorGraphLines"),
+          vectorGraphPreview: document.getElementById("vectorGraphPreview"),
+          vectorGraphActionButtons: Array.from(document.querySelectorAll("[data-vector-graph-action]")),
           notebookEditorBook: document.getElementById("notebookEditorBook"),
           notebookTextSurface: document.getElementById("notebookTextSurface"),
           notebookQuestionSurface: document.getElementById("notebookQuestionSurface"),
@@ -4793,7 +4982,12 @@
             if (insertType === "image") {
               elements.problemImageInput?.click();
             }
+            if (insertType === "vector-graph") {
+              openVectorGraphDialog();
+            }
           });
+
+          initializeVectorGraphEditor();
 
           elements.problemEditor.addEventListener("input", () => {
             updateEditorCounts();
@@ -4862,6 +5056,230 @@
           });
 
           updateProblemPreview();
+        }
+
+        function initializeVectorGraphEditor() {
+          if (!elements.vectorGraphSvg) {
+            return;
+          }
+          renderVectorGraphGrid();
+          renderVectorGraphLines();
+          elements.vectorGraphSvg.addEventListener("pointerdown", handleVectorGraphPointerDown);
+          elements.vectorGraphSvg.addEventListener("pointermove", handleVectorGraphPointerMove);
+          elements.vectorGraphSvg.addEventListener("pointerup", finishVectorGraphPointer);
+          elements.vectorGraphSvg.addEventListener("pointercancel", finishVectorGraphPointer);
+          elements.vectorGraphActionButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              handleVectorGraphAction(button.dataset.vectorGraphAction || "");
+            });
+          });
+        }
+
+        function openVectorGraphDialog() {
+          state.vectorGraphLines = [];
+          state.vectorGraphPointerState = null;
+          renderVectorGraphGrid();
+          renderVectorGraphLines();
+          showDialog(elements.vectorGraphDialog, () => {
+            window.alert("グラフ作成ツールを開けませんでした。");
+          });
+        }
+
+        function handleVectorGraphAction(action) {
+          if (action === "cancel") {
+            closeDialog(elements.vectorGraphDialog);
+            return;
+          }
+          if (action === "undo") {
+            state.vectorGraphLines.pop();
+            renderVectorGraphLines();
+            return;
+          }
+          if (action === "clear") {
+            state.vectorGraphLines = [];
+            renderVectorGraphLines();
+            return;
+          }
+          if (action === "insert") {
+            insertVectorGraphIntoEditor();
+          }
+        }
+
+        function renderVectorGraphGrid() {
+          if (!elements.vectorGraphGrid) {
+            return;
+          }
+          const width = 640;
+          const height = 400;
+          const step = 40;
+          elements.vectorGraphGrid.innerHTML = "";
+          const fragment = document.createDocumentFragment();
+          for (let x = 0; x <= width; x += step) {
+            fragment.append(createSvgLine(x, 0, x, height, x === width / 2 ? "vector-axis-line" : "vector-grid-line"));
+          }
+          for (let y = 0; y <= height; y += step) {
+            fragment.append(createSvgLine(0, y, width, y, y === height / 2 ? "vector-axis-line" : "vector-grid-line"));
+          }
+          elements.vectorGraphGrid.append(fragment);
+        }
+
+        function renderVectorGraphLines() {
+          if (!elements.vectorGraphLines) {
+            return;
+          }
+          elements.vectorGraphLines.innerHTML = "";
+          const fragment = document.createDocumentFragment();
+          state.vectorGraphLines.forEach((line) => {
+            const element = createSvgLine(line.x1, line.y1, line.x2, line.y2, "vector-graph-line");
+            const kind = line.kind === "answer" ? "answer" : "vector";
+            element.dataset.lineKind = kind;
+            if (kind === "vector") {
+              element.setAttribute("marker-end", "url(#vectorGraphArrow)");
+            }
+            fragment.append(element);
+          });
+          elements.vectorGraphLines.append(fragment);
+          if (elements.vectorGraphPreview) {
+            elements.vectorGraphPreview.hidden = true;
+          }
+        }
+
+        function createSvgLine(x1, y1, x2, y2, className) {
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", String(x1));
+          line.setAttribute("y1", String(y1));
+          line.setAttribute("x2", String(x2));
+          line.setAttribute("y2", String(y2));
+          line.setAttribute("class", className);
+          return line;
+        }
+
+        function handleVectorGraphPointerDown(event) {
+          if (!(elements.vectorGraphSvg instanceof SVGSVGElement)) {
+            return;
+          }
+          event.preventDefault();
+          const point = getVectorGraphPointerPoint(event);
+          state.vectorGraphPointerState = {
+            pointerId: event.pointerId,
+            start: point,
+            current: point,
+          };
+          updateVectorGraphPreview(point, point);
+          try {
+            elements.vectorGraphSvg.setPointerCapture(event.pointerId);
+          } catch {
+            // Dragging continues with window pointer events where capture is unavailable.
+          }
+        }
+
+        function handleVectorGraphPointerMove(event) {
+          const pointerState = state.vectorGraphPointerState;
+          if (!pointerState || pointerState.pointerId !== event.pointerId) {
+            return;
+          }
+          event.preventDefault();
+          pointerState.current = getVectorGraphPointerPoint(event);
+          updateVectorGraphPreview(pointerState.start, pointerState.current);
+        }
+
+        function finishVectorGraphPointer(event) {
+          const pointerState = state.vectorGraphPointerState;
+          if (!pointerState || pointerState.pointerId !== event.pointerId) {
+            return;
+          }
+          event.preventDefault();
+          const end = getVectorGraphPointerPoint(event);
+          const length = Math.hypot(end.x - pointerState.start.x, end.y - pointerState.start.y);
+          if (length >= 16) {
+            state.vectorGraphLines.push({
+              x1: pointerState.start.x,
+              y1: pointerState.start.y,
+              x2: end.x,
+              y2: end.y,
+              kind: elements.vectorGraphModeSelect?.value === "answer" ? "answer" : "vector",
+            });
+          }
+          state.vectorGraphPointerState = null;
+          renderVectorGraphLines();
+          try {
+            elements.vectorGraphSvg?.releasePointerCapture(event.pointerId);
+          } catch {
+            // Nothing to release.
+          }
+        }
+
+        function updateVectorGraphPreview(start, end) {
+          if (!elements.vectorGraphPreview) {
+            return;
+          }
+          elements.vectorGraphPreview.hidden = false;
+          elements.vectorGraphPreview.setAttribute("x1", String(start.x));
+          elements.vectorGraphPreview.setAttribute("y1", String(start.y));
+          elements.vectorGraphPreview.setAttribute("x2", String(end.x));
+          elements.vectorGraphPreview.setAttribute("y2", String(end.y));
+        }
+
+        function getVectorGraphPointerPoint(event) {
+          const svg = elements.vectorGraphSvg;
+          if (!(svg instanceof SVGSVGElement)) {
+            return { x: 320, y: 200 };
+          }
+          const point = svg.createSVGPoint();
+          point.x = event.clientX;
+          point.y = event.clientY;
+          const matrix = svg.getScreenCTM();
+          const local = matrix ? point.matrixTransform(matrix.inverse()) : point;
+          return snapVectorGraphPoint(local.x, local.y);
+        }
+
+        function snapVectorGraphPoint(x, y) {
+          const step = 20;
+          return {
+            x: Math.max(0, Math.min(640, Math.round(x / step) * step)),
+            y: Math.max(0, Math.min(400, Math.round(y / step) * step)),
+          };
+        }
+
+        function insertVectorGraphIntoEditor() {
+          if (!state.vectorGraphLines.length) {
+            elements.proofreadingFeedback.textContent = "グラフに線を1本以上引いてください。";
+            return;
+          }
+          const svg = buildVectorGraphSvgText(state.vectorGraphLines);
+          const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+          insertProblemImageIntoEditor({
+            name: "グラフ・ベクトル",
+            dataUrl,
+          });
+          closeDialog(elements.vectorGraphDialog);
+          elements.proofreadingFeedback.textContent = "";
+        }
+
+        function buildVectorGraphSvgText(lines) {
+          const width = 640;
+          const height = 400;
+          const step = 40;
+          const gridLines = [];
+          for (let x = 0; x <= width; x += step) {
+            gridLines.push(
+              `<line x1="${x}" y1="0" x2="${x}" y2="${height}" stroke="${x === width / 2 ? "#8a95a3" : "#dce6ef"}" stroke-width="${x === width / 2 ? 2 : 1}" />`,
+            );
+          }
+          for (let y = 0; y <= height; y += step) {
+            gridLines.push(
+              `<line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="${y === height / 2 ? "#8a95a3" : "#dce6ef"}" stroke-width="${y === height / 2 ? 2 : 1}" />`,
+            );
+          }
+          const graphLines = lines
+            .map((line) => {
+              const kind = line.kind === "answer" ? "answer" : "vector";
+              const color = kind === "answer" ? "#0b7c4b" : "#1d4f91";
+              const marker = kind === "vector" ? ' marker-end="url(#vectorGraphExportArrow)"' : "";
+              return `<line x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" stroke="${color}" stroke-width="${kind === "answer" ? 5 : 4}" stroke-linecap="round" stroke-linejoin="round"${marker} />`;
+            })
+            .join("");
+          return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="グラフ・ベクトル"><defs><marker id="vectorGraphExportArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1d4f91"/></marker></defs><rect width="100%" height="100%" fill="#ffffff"/>${gridLines.join("")}${graphLines}</svg>`;
         }
 
         function initializeTextBlockList() {
@@ -5352,7 +5770,7 @@
           const textName = elements.textNameInput?.value.trim() || "";
           const questionNumber = elements.questionNumberInput?.value.trim() || "";
           const questionName = elements.questionNameInput?.value.trim() || "";
-          const contentText = (elements.problemEditor?.textContent || "").replace(/\s+/g, " ").trim();
+          const contentText = getProblemEditorContentText().replace(/\s+/g, " ").trim();
 
           const missingFields = [];
           if (!note) {
@@ -5376,6 +5794,17 @@
 
           elements.problemCreateForm?.classList.toggle("is-ready", missingFields.length === 0);
           setProblemStep(missingFields.length === 0 ? "confirm" : "create");
+        }
+
+        function getProblemEditorContentText() {
+          const text = (elements.problemEditor?.textContent || "").trim();
+          if (text) {
+            return text;
+          }
+          const imageLabels = Array.from(elements.problemEditor?.querySelectorAll("img") || [])
+            .map((image) => image.getAttribute("alt") || "画像")
+            .filter(Boolean);
+          return imageLabels.join(" ");
         }
 
         function setPreviewText(element, value, fallback) {
@@ -5487,7 +5916,7 @@
             }))
             .filter((block) => block.text);
           const contentHtml = normalizeEditorHtml(elements.problemEditor.innerHTML);
-          const contentText = elements.problemEditor.textContent.trim();
+          const contentText = getProblemEditorContentText();
 
           const missingFields = [];
           if (!note) {
@@ -5681,6 +6110,7 @@
           }
           elements.problemEditor.append(document.createElement("br"));
           updateEditorCounts();
+          updateProblemPreview();
         }
 
         function fileToDataUrl(file) {

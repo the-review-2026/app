@@ -423,6 +423,10 @@ const elements = {
   infoMenuNickname: document.getElementById("infoMenuNickname"),
   managerMenuLink: document.getElementById("managerMenuLink"),
   managerMount: document.getElementById("managerMount"),
+  legalInfoDialog: document.getElementById("legalInfoDialog"),
+  legalTermsContent: document.getElementById("legalTermsContent"),
+  legalPrivacyContent: document.getElementById("legalPrivacyContent"),
+  licenseInfoDialog: document.getElementById("licenseInfoDialog"),
   learnActionButtons: Array.from(document.querySelectorAll("[data-learn-action]")),
   reviewCoinBoard: document.getElementById("reviewCoinBoard"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
@@ -515,6 +519,7 @@ const elements = {
   homeCardSlides: Array.from(document.querySelectorAll("#homeCardTrack .home-card-slide")),
   homeCardNavButtons: Array.from(document.querySelectorAll("[data-home-card-nav]")),
   homeCardCarousel: document.querySelector(".home-card-carousel"),
+  homeCardProgress: document.getElementById("homeCardProgress"),
   homeCardProgressDots: Array.from(document.querySelectorAll("#homeCardProgress .home-card-progress-dot")),
   dailyLoginCard: document.getElementById("dailyLoginCard"),
   dailyLoginCount: document.getElementById("dailyLoginCount"),
@@ -531,6 +536,7 @@ const elements = {
   dailyLoginNextFarNode: document.getElementById("dailyLoginNextFarNode"),
   dailyLoginNextOuterNode: document.getElementById("dailyLoginNextOuterNode"),
   dailyTryPrompt: document.getElementById("dailyTryPrompt"),
+  dailyTryPanel: document.querySelector(".daily-try-panel.home-card-slide"),
   dailyTryChoiceList: document.getElementById("dailyTryChoiceList"),
   dailyTryFeedback: document.getElementById("dailyTryFeedback"),
   dailyTrySubmitBtn: document.getElementById("dailyTrySubmitBtn"),
@@ -584,6 +590,7 @@ let isFlashcardFocusMode = false;
 let isSelfcheckTimerFocusMode = false;
 let isLearnPopoverOpen = false;
 let pendingGuestModeAppState = null;
+let pendingAuthLoginRequiredAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
 let managerMigrationPromise = null;
@@ -600,6 +607,7 @@ let settingsEducationCodeScanActive = false;
 let settingsEducationCodeDetector = null;
 let settingsEducationCodeValidationTimerId = 0;
 let settingsEducationCodeValidationRequestId = 0;
+let legalInfoContentLoaded = false;
 let settingsEducationCodeValidationState = {
   value: "",
   isValid: true,
@@ -1187,9 +1195,11 @@ function bindHomeCardCarouselEvents() {
 }
 
 function getHomeCardSlides() {
-  return elements.homeCardSlides.length > 0
-    ? elements.homeCardSlides
-    : Array.from(elements.homeCardTrack?.querySelectorAll(".home-card-slide") ?? []);
+  const slides =
+    elements.homeCardSlides.length > 0
+      ? elements.homeCardSlides
+      : Array.from(elements.homeCardTrack?.querySelectorAll(".home-card-slide") ?? []);
+  return slides.filter((slide) => !slide.hidden);
 }
 
 function getHomeCardSlideLeft(track, slide) {
@@ -1249,9 +1259,14 @@ function updateHomeCardCarouselControls(activeIndex = getActiveHomeCardIndex()) 
 
   elements.homeCardProgressDots.forEach((dot, index) => {
     const isActive = index === activeIndex;
+    dot.hidden = index >= slides.length;
     dot.classList.toggle("is-active", isActive);
     dot.setAttribute("aria-current", isActive ? "step" : "false");
   });
+
+  if (elements.homeCardProgress) {
+    elements.homeCardProgress.hidden = slides.length <= 1;
+  }
 
   updateDailyTryNudgeState();
 }
@@ -1378,7 +1393,10 @@ function bindEvents() {
         return;
       }
       if (screen === "manager" && (!state.auth.isLoggedIn || state.auth.provider === "guest")) {
-        promptLoginForMypage();
+        showAuthLoginRequiredDialog({
+          targetScreen: "manager",
+          onboardingStep: "nickname",
+        });
         return;
       }
       activateScreen(screen);
@@ -1391,6 +1409,18 @@ function bindEvents() {
   elements.learnActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
       handleLearnMenuAction(button.dataset.learnAction);
+    });
+  });
+
+  document.querySelectorAll("[data-legal-dialog-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      elements.legalInfoDialog?.close();
+    });
+  });
+
+  document.querySelectorAll("[data-license-dialog-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      elements.licenseInfoDialog?.close();
     });
   });
 
@@ -1860,11 +1890,85 @@ function handleLearnMenuAction(action) {
   if (normalizedAction === "manager") {
     closeLearnPopover();
     if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
-      promptLoginForMypage();
+      showAuthLoginRequiredDialog({
+        targetScreen: "manager",
+        onboardingStep: "nickname",
+      });
       return;
     }
     activateScreen("manager");
+    return;
   }
+  if (normalizedAction === "legal") {
+    closeLearnPopover();
+    openLegalInfoDialog();
+    return;
+  }
+  if (normalizedAction === "licenses") {
+    closeLearnPopover();
+    openLicenseInfoDialog();
+  }
+}
+
+function openLegalInfoDialog() {
+  void populateLegalInfoDialog();
+  openAppDialog(elements.legalInfoDialog, () => {
+    window.alert("利用規約・プライバシーポリシーを表示できませんでした。");
+  });
+}
+
+function openLicenseInfoDialog() {
+  openAppDialog(elements.licenseInfoDialog, () => {
+    window.alert("ライセンス・謝辞を表示できませんでした。");
+  });
+}
+
+function openAppDialog(dialog, fallback) {
+  if (!dialog || typeof dialog.showModal !== "function") {
+    fallback?.();
+    return;
+  }
+  if (!dialog.open) {
+    dialog.showModal();
+  }
+}
+
+async function populateLegalInfoDialog() {
+  if (legalInfoContentLoaded) {
+    return;
+  }
+  legalInfoContentLoaded = true;
+  await Promise.all([
+    populateLegalInfoPanel(elements.legalTermsContent, "./terms.txt"),
+    populateLegalInfoPanel(elements.legalPrivacyContent, "./privacy-policy.txt"),
+  ]);
+}
+
+async function populateLegalInfoPanel(panel, src) {
+  if (!panel) {
+    return;
+  }
+  try {
+    const response = await fetch(src, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Failed to load ${src}`);
+    }
+    const text = await response.text();
+    panel.innerHTML = renderLegalInfoDocument(text);
+  } catch {
+    panel.innerHTML = "<p>文書の読み込みに失敗しました。</p>";
+  }
+}
+
+function renderLegalInfoDocument(text) {
+  const normalized = String(text || "").replace(/\r\n?/g, "\n").trim();
+  if (!normalized) {
+    return "<p>文書がありません。</p>";
+  }
+  return normalized
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br />")}</p>`)
+    .join("");
 }
 
 function createManagerDocumentFacade(root) {
@@ -2769,7 +2873,7 @@ function updateManagerMenuVisibilityFromAccess(access) {
     clearManagerAccessCache();
   }
   if (elements.managerMenuLink) {
-    elements.managerMenuLink.hidden = !hasManagerRole;
+    elements.managerMenuLink.hidden = false;
   }
   renderCoinBoard();
   renderMypageCoin();
@@ -2849,8 +2953,7 @@ async function updateManagerMenuVisibility() {
     return;
   }
   if (elements.managerMenuLink) {
-    const cachedRole = getManagerAccessRole(managerAccessState);
-    elements.managerMenuLink.hidden = !(managerAccessState?.canAccess !== false && cachedRole);
+    elements.managerMenuLink.hidden = false;
   }
 
   const accessToken = await withTimeout(
@@ -2987,7 +3090,13 @@ function isAuth0LoginRequiredError(error) {
   return candidates.some((value) => value.includes("login_required") || value.includes("login required"));
 }
 
-function showAuthLoginRequiredDialog() {
+function showAuthLoginRequiredDialog(appState = {}) {
+  pendingAuthLoginRequiredAppState = {
+    targetScreen: "mypage",
+    targetMypagePage: "top",
+    onboardingStep: "nickname",
+    ...appState,
+  };
   const dialog = ensureAuthLoginRequiredDialog();
   if (!dialog) {
     window.alert("ログインが必要です。ログインフォームで認証を完了してください。");
@@ -3032,17 +3141,24 @@ function ensureAuthLoginRequiredDialog() {
       return;
     }
     if (button.dataset.authLoginRequiredAction === "login") {
+      const appState = pendingAuthLoginRequiredAppState
+        ? {
+            ...pendingAuthLoginRequiredAppState,
+          }
+        : {
+            targetScreen: "mypage",
+            targetMypagePage: "top",
+            onboardingStep: "nickname",
+          };
+      pendingAuthLoginRequiredAppState = null;
       dialog.close();
       void loginWithAuth0(
-        {
-          targetScreen: "mypage",
-          targetMypagePage: "top",
-          onboardingStep: "nickname",
-        },
+        appState,
         { provider: "auth0", screenHint: "" }
       );
       return;
     }
+    pendingAuthLoginRequiredAppState = null;
     dialog.close();
   });
   document.body.append(dialog);
@@ -8490,7 +8606,30 @@ function syncDailyTryByDate() {
 
 function renderDailyTryPanel() {
   syncDailyTryByDate();
+  const hasQuestion = dailyTryRun.questionIndex >= 0 && Boolean(DAILY_TRY_QUESTIONS[dailyTryRun.questionIndex]);
+  if (elements.dailyTryPanel) {
+    elements.dailyTryPanel.hidden = !hasQuestion;
+  }
+  elements.homeCardCarousel?.classList.toggle("is-daily-try-empty", !hasQuestion);
   updateDailyTryNudgeState();
+  if (!hasQuestion) {
+    if (elements.dailyTryPrompt) {
+      elements.dailyTryPrompt.innerHTML =
+        '<span class="daily-try-placeholder-lead">まずは問題を解いてみましょう。</span><span class="daily-try-placeholder-note">この問題にTRY!は今まで解いた問題から出題されます。</span>';
+    }
+    if (elements.dailyTryChoiceList) {
+      elements.dailyTryChoiceList.innerHTML = "";
+    }
+    if (elements.dailyTryFeedback) {
+      elements.dailyTryFeedback.textContent = "";
+    }
+    if (elements.dailyTrySubmitBtn) {
+      elements.dailyTrySubmitBtn.hidden = true;
+      elements.dailyTrySubmitBtn.disabled = true;
+    }
+    updateHomeCardCarouselControls();
+    return;
+  }
   if (elements.dailyTryPrompt) {
     elements.dailyTryPrompt.innerHTML =
       '<span class="daily-try-placeholder-lead">まずは問題を解いてみましょう。</span><span class="daily-try-placeholder-note">この問題にTRY!は今まで解いた問題から出題されます。</span>';
@@ -8562,6 +8701,57 @@ function renderHomeGreeting() {
 
 function getHomeGreetingMessage(date) {
   const hour = date.getHours();
+  const context = {
+    hour,
+    minute: date.getMinutes(),
+    dateKey: keyFromDate(date),
+    nickname: getAuthNicknameText("").trim(),
+    streak: getConsecutiveLoginDayCount(date),
+    reviewCoin: state.reviewCoin,
+    isBusinessDay: isJapaneseBusinessDay(date),
+    hasDailyTry: dailyTryRun.questionIndex >= 0,
+    activeScreen,
+  };
+  return generateEmbeddedRanLine(context);
+}
+
+function generateEmbeddedRanLine(context) {
+  const lines = [];
+  const nickname = context.nickname && context.nickname !== "Guest Mode" ? `${context.nickname}さん、` : "";
+
+  if (context.hour < 6) {
+    lines.push(`${nickname}遅い時間までお疲れさまです。今日は短めに整えて、休む準備も忘れずに。`);
+  } else if (context.hour < 11) {
+    lines.push(`${nickname}おはようございます。最初の1問は、頭の準備運動くらいの気持ちでいきましょう。`);
+  } else if (context.hour < 18) {
+    lines.push(`${nickname}こんにちは。今の集中を少しだけノートに残しておくと、あとで効いてきます。`);
+  } else {
+    lines.push(`${nickname}こんばんは。今日の復習は、できたところをひとつ見つけるだけでも十分です。`);
+  }
+
+  if (context.streak >= 7) {
+    lines.push(`リビュー${context.streak}日目。続いている力、ちゃんと積み上がっています。`);
+  } else if (context.streak >= 2) {
+    lines.push(`リビュー${context.streak}日目です。この調子で、昨日の自分に少しだけ勝ちましょう。`);
+  }
+
+  if (!context.hasDailyTry) {
+    lines.push("まずは問題を解いて、TRYできる問題を少しずつ増やしていきましょう。");
+  }
+  if (context.reviewCoin >= 100) {
+    lines.push(`Review Coinが${REVIEW_COIN_FORMATTER.format(context.reviewCoin)}枚あります。テーマやアイテムも見てみましょう。`);
+  }
+  if (!context.isBusinessDay) {
+    lines.push("今日は休日ペースで大丈夫です。軽く振り返るだけでも、記憶は起きてくれます。");
+  }
+  if (context.activeScreen === "settings") {
+    lines.push("設定を整えるのも学習環境づくりです。使いやすい形にしておきましょう。");
+  }
+
+  lines.push("わからない問題は、今わからないと名前をつけられた時点で一歩前進です。");
+  const seedSource = `${context.dateKey}:${context.hour}:${Math.floor(context.minute / 10)}:${context.streak}:${context.reviewCoin}:${context.activeScreen}`;
+  const seed = Array.from(seedSource).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return lines[seed % lines.length];
 }
 
 function isJapaneseBusinessDay(date) {
