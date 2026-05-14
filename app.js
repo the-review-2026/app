@@ -112,6 +112,11 @@ const AVATER_CATEGORY_LABELS = {
   glasses: "めがね",
   accessory: "アクセサリー",
 };
+const LEARN_AVATER_CATEGORY_ICONS = {
+  clothes: "checkroom",
+  glasses: "eyeglasses",
+  accessory: "auto_awesome",
+};
 const MANAGER_MIGRATED_DATA = Object.freeze({
   defaultStoreConfig: Object.freeze({
     avatarStatus: "preparing",
@@ -627,6 +632,7 @@ let reviewDataCloudPullCompleted = false;
 let isApplyingRemoteReviewData = false;
 let lastReviewDataCloudRefreshAt = 0;
 let activeAvaterCategory = "clothes";
+let activeLearnAvaterCategory = "";
 let isAvaterScrollLocked = false;
 let draggingAvaterItemId = "";
 let avaterLayerDragState = null;
@@ -1427,6 +1433,7 @@ function bindEvents() {
       handleLearnMenuAction(button.dataset.learnAction);
     });
   });
+  elements.learnScreen?.addEventListener("click", handleLearnAvaterDockClick);
 
   document.querySelectorAll("[data-legal-dialog-action]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2098,6 +2105,7 @@ function renderLearnOverview() {
   if (elements.learnGreetingMessage) {
     elements.learnGreetingMessage.textContent = getHomeGreetingMessage(new Date());
   }
+  renderLearnAvaterDock();
 
   if (elements.learnScheduleList) {
     elements.learnScheduleList.replaceChildren();
@@ -2105,6 +2113,122 @@ function renderLearnOverview() {
     item.textContent = "直近の予定はまだ登録されていません。";
     elements.learnScheduleList.append(item);
   }
+}
+
+function handleLearnAvaterDockClick(event) {
+  if (!(event.target instanceof Element)) {
+    return;
+  }
+  const categoryButton = event.target.closest("[data-learn-avater-category]");
+  if (categoryButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    const category = normalizeAvaterCategory(categoryButton.dataset.learnAvaterCategory);
+    if (!category) {
+      return;
+    }
+    activeLearnAvaterCategory = activeLearnAvaterCategory === category ? "" : category;
+    renderLearnAvaterDock();
+    return;
+  }
+
+  const noneButton = event.target.closest("[data-learn-avater-none-category]");
+  if (noneButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    const category = normalizeAvaterCategory(noneButton.dataset.learnAvaterNoneCategory);
+    if (!category) {
+      return;
+    }
+    activeLearnAvaterCategory = category;
+    handleAvaterNoneAction(category);
+    return;
+  }
+
+  const itemButton = event.target.closest("[data-learn-avater-item]");
+  if (itemButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    const itemId = itemButton.dataset.learnAvaterItem || "";
+    const item = getAvaterItem(itemId);
+    if (!isLearnAvaterItemOwned(item)) {
+      return;
+    }
+    activeLearnAvaterCategory = item.category;
+    handleAvaterItemAction(item.id, { forceEquip: true });
+  }
+}
+
+function renderLearnAvaterDock() {
+  if (!elements.learnScreen) {
+    return;
+  }
+  state.avater = normalizeAvaterState(state.avater);
+  let dock = elements.learnScreen.querySelector(".learn-avater-dock");
+  if (!dock) {
+    dock = document.createElement("div");
+    dock.className = "learn-avater-dock";
+    dock.setAttribute("aria-label", "Avater");
+    elements.learnScreen.append(dock);
+  }
+  const categoryButtons = AVATER_CATEGORY_ORDER.map((category) => {
+    const label = AVATER_CATEGORY_LABELS[category] || category;
+    const icon = LEARN_AVATER_CATEGORY_ICONS[category] || "auto_awesome";
+    const isActive = activeLearnAvaterCategory === category;
+    const isEquipped = Boolean(state.avater.equipped?.[category]);
+    return `
+      <button class="learn-avater-category-btn ${isActive ? "is-active" : ""} ${isEquipped ? "is-equipped" : ""}" type="button" data-learn-avater-category="${escapeHtml(category)}" aria-label="${escapeHtml(label)}" aria-pressed="${String(isActive)}">
+        <span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(icon)}</span>
+      </button>
+    `;
+  }).join("");
+  const picker = activeLearnAvaterCategory ? renderLearnAvaterPicker(activeLearnAvaterCategory) : "";
+  dock.innerHTML = `
+    <div class="learn-avater-actions">${categoryButtons}</div>
+    ${picker}
+  `;
+}
+
+function renderLearnAvaterPicker(category) {
+  const normalizedCategory = normalizeAvaterCategory(category);
+  if (!normalizedCategory) {
+    return "";
+  }
+  const label = AVATER_CATEGORY_LABELS[normalizedCategory] || normalizedCategory;
+  const ownedItems = getAvailableAvaterItems().filter(
+    (item) => item.category === normalizedCategory && isLearnAvaterItemOwned(item)
+  );
+  const isNoneEquipped = !state.avater.equipped?.[normalizedCategory];
+  const noneChoice = `
+    <button class="learn-avater-choice ${isNoneEquipped ? "is-equipped" : ""}" type="button" data-learn-avater-none-category="${escapeHtml(normalizedCategory)}">
+      <span class="learn-avater-choice-sample avater-item-sample avater-item-sample-none" aria-hidden="true"></span>
+      <span class="learn-avater-choice-name">なし</span>
+    </button>
+  `;
+  const itemChoices = ownedItems.map((item) => {
+    const isEquipped = state.avater.equipped?.[item.category] === item.id;
+    const sampleImage = item.image?.dataUrl
+      ? `<img class="avater-item-sample-image" src="${escapeHtml(item.image.dataUrl)}" alt="" />`
+      : "";
+    return `
+      <button class="learn-avater-choice ${isEquipped ? "is-equipped" : ""}" type="button" data-learn-avater-item="${escapeHtml(item.id)}">
+        <span class="learn-avater-choice-sample avater-item-sample ${escapeHtml(item.className)} avater-category-${escapeHtml(item.category)}${sampleImage ? " has-custom-image" : ""}" aria-hidden="true">${sampleImage}</span>
+        <span class="learn-avater-choice-name">${escapeHtml(item.name)}</span>
+      </button>
+    `;
+  }).join("");
+  return `
+    <div class="learn-avater-picker" role="dialog" aria-label="${escapeHtml(label)}">
+      <div class="learn-avater-picker-track">${noneChoice}${itemChoices}</div>
+    </div>
+  `;
+}
+
+function isLearnAvaterItemOwned(item) {
+  if (!item) {
+    return false;
+  }
+  return item.cost === 0 || Boolean(state.avater.unlockedItems?.[item.id]);
 }
 
 function activateScreen(screen) {
@@ -4766,10 +4890,11 @@ function renderFlashcardNotebook() {
 
   const controls = document.createElement("div");
   controls.className = "flashcard-note-reader-controls";
+  controls.setAttribute("aria-label", "Review Menu");
 
-  const choiceModeButton = createFlashcardNotebookMenuButton("checklist", "3択ボタン", "choice");
-  const textModeButton = createFlashcardNotebookMenuButton("keyboard", "文字入力ボタン", "text");
-  const voiceModeButton = createFlashcardNotebookMenuButton("mic", "音声入力ボタン", "voice");
+  const choiceModeButton = createFlashcardNotebookMenuButton("checklist", "3択", "choice");
+  const textModeButton = createFlashcardNotebookMenuButton("keyboard", "入力", "text");
+  const voiceModeButton = createFlashcardNotebookMenuButton("mic", "音声", "voice");
   const avatarPreview = createFlashcardNotebookAvatarPreview();
   const answerButton = document.createElement("button");
   answerButton.type = "button";
@@ -4815,8 +4940,8 @@ function createFlashcardNotebookMenuButton(iconName, label, mode) {
   button.type = "button";
   button.className = "flashcard-note-reader-mode-btn";
   button.dataset.flashcardNoteMode = mode;
-  button.setAttribute("aria-label", label);
-  button.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${iconName}</span>`;
+  button.setAttribute("aria-label", `${label}ボタン`);
+  button.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${iconName}</span><span class="flashcard-note-reader-mode-label">${label}</span>`;
   return button;
 }
 
@@ -6675,6 +6800,7 @@ function renderStoreConfig() {
 function renderAvater() {
   state.avater = normalizeAvaterState(state.avater);
   elements.avaterPreviews.forEach(renderAvaterPreview);
+  renderLearnAvaterDock();
   renderAvaterItemList(elements.loginAvaterItemList, { storeMode: false });
   renderAvaterItemList(elements.storeAvatarHint, { storeMode: true });
   updateAvaterControlState();
