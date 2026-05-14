@@ -536,7 +536,7 @@
 
       <section id="screen-manager" class="screen manager-integrated-screen">
         <div class="page-title-row">
-          <h1 class="page-script-title">Manager</h1>
+          <h1 class="page-script-title">制作チーム用管理プログラム</h1>
         </div>
         <section class="manager-integrated-shell" aria-label="制作チーム用管理プログラム">
           <div id="managerMount" class="manager-migrated-mount" aria-live="polite">
@@ -771,6 +771,12 @@
         --danger: #1d1d1d;
         --success: #1d1d1d;
         --shadow: 0 16px 30px rgba(0, 0, 0, 0.12);
+        background: #ffffff;
+        color: #000000;
+      }
+
+      .manager-migrated-root .aurora {
+        display: none !important;
       }
 
       .manager-migrated-root[data-theme="manager"] .screens {
@@ -805,7 +811,10 @@
       .manager-migrated-root .manager-nav .top-nav-item {
         width: auto;
         min-height: 58px;
+        border: 1px solid #000000 !important;
         border-radius: 14px;
+        background: #ffffff !important;
+        color: #000000 !important;
         padding: 0.44rem 0.2rem;
         font-size: 0.74rem;
         line-height: 1.2;
@@ -813,8 +822,8 @@
       }
 
       .manager-migrated-root .manager-nav .top-nav-item.is-active {
-        color: #ffffff;
-        background: #1d1d1d;
+        color: #ffffff !important;
+        background: #1d1d1d !important;
       }
 
       .manager-migrated-root .manager-home-grid {
@@ -901,10 +910,10 @@
 
       .manager-migrated-root .manager-problem-tab {
         appearance: none;
-        border: 1px solid rgba(0, 0, 0, 0.18);
+        border: 1px solid #000000 !important;
         border-radius: 999px;
-        background: #ffffff;
-        color: #1d1d1d;
+        background: #ffffff !important;
+        color: #000000 !important;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -918,8 +927,8 @@
       }
 
       .manager-migrated-root .manager-problem-tab.is-active {
-        background: #1d1d1d;
-        color: #ffffff;
+        background: #1d1d1d !important;
+        color: #ffffff !important;
       }
 
       .manager-migrated-root .manager-problem-tab .manager-role-tag {
@@ -1025,18 +1034,18 @@
 
       .manager-migrated-root .published-note-button {
         width: 100%;
-        border: 1px solid rgba(0, 0, 0, 0.18);
+        border: 1px solid #000000 !important;
         border-radius: 11px;
-        background: #ffffff;
-        color: #1d1d1d;
+        background: #ffffff !important;
+        color: #000000 !important;
         padding: 0.5rem 0.58rem;
         text-align: left;
         font-weight: 700;
       }
 
       .manager-migrated-root .published-note-button.is-active {
-        background: #1d1d1d;
-        color: #ffffff;
+        background: #1d1d1d !important;
+        color: #ffffff !important;
       }
 
       .manager-migrated-root .published-question-main {
@@ -1910,10 +1919,25 @@
         box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
       }
 
-      .manager-migrated-root .manager-image-adjust-stage img {
+      .manager-migrated-root .manager-image-adjust-guide {
         position: absolute;
         left: 50%;
         top: 50%;
+        z-index: 0;
+        width: 86%;
+        height: 86%;
+        object-fit: contain;
+        opacity: 0.32;
+        transform: translate(-50%, -50%);
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .manager-migrated-root .manager-image-adjust-stage #avaterItemAdjustImage {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 1;
         max-width: 78%;
         max-height: 78%;
         object-fit: contain;
@@ -2114,6 +2138,37 @@
         grid-template-columns: minmax(0, 1fr);
         gap: 0.95rem;
         align-items: start;
+      }
+
+      .manager-migrated-root .manager-store-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        margin: 0.7rem 0 0.9rem;
+      }
+
+      .manager-migrated-root .manager-store-tab,
+      .manager-migrated-root .avater-category-tab {
+        appearance: none;
+        border: 1px solid #000000 !important;
+        border-radius: 999px;
+        background: #ffffff !important;
+        color: #000000 !important;
+        min-height: 2.32rem;
+        padding: 0.36rem 0.74rem;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .manager-migrated-root .manager-store-tab.is-active,
+      .manager-migrated-root .avater-category-tab.is-active {
+        background: #1d1d1d !important;
+        color: #ffffff !important;
+      }
+
+      .manager-migrated-root [data-store-tab-panel][hidden] {
+        display: none !important;
       }
 
       .manager-migrated-root .manager-store-list {
@@ -2656,11 +2711,12 @@
         width: auto !important;
         min-height: 2.6rem;
         border-radius: 10px !important;
-        color: rgba(29, 29, 29, 0.74);
+        background: #ffffff !important;
+        color: #000000 !important;
       }
 
       .manager-migrated-root.is-embedded-manager .manager-nav .top-nav-item.is-active {
-        color: #ffffff;
+        color: #ffffff !important;
         background: #1d1d1d !important;
         box-shadow: 0 8px 16px rgba(29, 29, 29, 0.18) !important;
       }
@@ -2683,7 +2739,7 @@
       }
 
       .manager-migrated-root #screen-home .page-script-title::after {
-        content: "Manager";
+        content: "制作チーム用管理プログラム";
       }
     </style>
     <template id="managerMigratedTemplate">
@@ -2752,7 +2808,7 @@
     <main class="screens">
       <section id="screen-home" class="screen is-active">
         <div class="page-title-row">
-          <h1 class="page-script-title">Manager</h1>
+          <h1 class="page-script-title">制作チーム用管理プログラム</h1>
         </div>
         <div class="panel">
           <h2>トップ</h2>
@@ -3028,14 +3084,18 @@
         <div class="page-title-row">
           <h1 class="page-script-title">Store</h1>
         </div>
+        <div class="manager-store-tabs" role="tablist" aria-label="ストアメニュー">
+          <button class="manager-store-tab is-active" type="button" role="tab" aria-selected="true" data-store-tab="create">アイテムを作成する</button>
+          <button class="manager-store-tab" type="button" role="tab" aria-selected="false" data-store-tab="manage">アイテムを管理する</button>
+        </div>
         <div class="manager-store-layout">
-          <section class="panel manager-published-items-panel">
+          <section class="panel manager-published-items-panel" data-store-tab-panel="manage" hidden>
             <div class="manager-title-row">
               <h2>配信しているアイテム</h2>
             </div>
             <div id="managerAvaterItemList" class="manager-store-list manager-published-avater-list"></div>
           </section>
-          <section class="panel">
+          <section class="panel manager-store-create-panel" data-store-tab-panel="create">
             <div class="manager-title-row">
               <h2>ストアを管理する</h2>
               <span class="manager-role-tags" aria-label="対象ロール">
@@ -3095,6 +3155,7 @@
         <h3 id="avaterItemImageAdjustTitle">アイテム画像を調整</h3>
         <div class="manager-image-adjust-preview" aria-label="調整プレビュー">
           <div class="manager-image-adjust-stage">
+            <img class="manager-image-adjust-guide" src="./assets/avater/らーん1-1.png" alt="" aria-hidden="true" />
             <img id="avaterItemAdjustImage" alt="" />
           </div>
         </div>
@@ -3241,6 +3302,7 @@
           managerAccess: null,
           managerMembers: [],
           activeAvaterCategory: "clothes",
+          activeStoreTab: "create",
           infoMenuCloseTimerId: null,
           draggingId: null,
           lastDragOverKey: null,
@@ -3284,6 +3346,8 @@
           createdQuestionList: document.getElementById("createdQuestionList"),
           problemTabButtons: Array.from(document.querySelectorAll("[data-problem-tab]")),
           problemTabPanels: Array.from(document.querySelectorAll("[data-problem-tab-panel]")),
+          storeTabButtons: Array.from(document.querySelectorAll("[data-store-tab]")),
+          storeTabPanels: Array.from(document.querySelectorAll("[data-store-tab-panel]")),
           problemCreateForm: document.getElementById("problemCreateForm"),
           problemSteps: Array.from(document.querySelectorAll("[data-problem-step]")),
           pendingQuestionList: document.getElementById("pendingQuestionList"),
@@ -3384,6 +3448,7 @@
           initializeNavigation();
           initializeManagerMembers();
           initializeStoreSettings();
+          initializeStoreTabs();
           renderStoreSettings();
           renderManagerAccess();
           window.addEventListener("the-review-manager-access", (event) => {
@@ -3646,6 +3711,31 @@
             state.activeStoreItemId = state.activeStoreItemId === itemId ? "" : itemId;
             renderManagerAvaterItems();
           });
+        }
+
+        function initializeStoreTabs() {
+          elements.storeTabButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              setManagerStoreTab(button.dataset.storeTab || "create");
+            });
+          });
+          setManagerStoreTab(state.activeStoreTab);
+        }
+
+        function setManagerStoreTab(tabName) {
+          const normalizedTab = tabName === "manage" ? "manage" : "create";
+          state.activeStoreTab = normalizedTab;
+          elements.storeTabButtons.forEach((button) => {
+            const isActive = button.dataset.storeTab === normalizedTab;
+            button.classList.toggle("is-active", isActive);
+            button.setAttribute("aria-selected", String(isActive));
+          });
+          elements.storeTabPanels.forEach((panel) => {
+            panel.hidden = panel.dataset.storeTabPanel !== normalizedTab;
+          });
+          if (normalizedTab === "manage") {
+            renderManagerAvaterItems();
+          }
         }
 
         function normalizeManagerRoleValue(value) {

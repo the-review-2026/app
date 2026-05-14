@@ -597,7 +597,7 @@ let managerMigrationPromise = null;
 let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
 let isSavingAccountEditNickname = false;
-let isAccountPasswordVisible = false;
+let isAccountPasswordVisible = true;
 let isAccountEditPasswordVisible = false;
 let settingsEducationCodeEditingCode = "";
 let pendingSettingsEducationCodeRemovalCode = "";
@@ -3202,6 +3202,7 @@ async function syncAuthStateFromAuth0(options = {}) {
       "Auth0 User",
     nickname: getStoredNicknameForAuth0User(user, state.auth?.nickname),
     email: typeof user?.email === "string" && user.email.trim() ? user.email : null,
+    password: state.auth?.password,
   });
   saveState({ skipTouch: true, skipRemoteSync: true });
   await syncReviewAccountProfileToApi({ skipTouch: true });
@@ -7078,8 +7079,11 @@ function renderMypageSettings() {
   }
   if (elements.authPasswordText) {
     const passwordText = normalizeAccountPasswordText(state.auth.password);
-    elements.authPasswordText.textContent =
-      state.auth.isLoggedIn && passwordText && isAccountPasswordVisible ? passwordText : "*****";
+    elements.authPasswordText.textContent = state.auth.isLoggedIn && passwordText
+      ? isAccountPasswordVisible
+        ? passwordText
+        : "*****"
+      : "未設定";
   }
   syncAccountPasswordToggle(elements.authPasswordToggleBtn, isAccountPasswordVisible, "パスワード");
   if (elements.authLoginStatusText) {
