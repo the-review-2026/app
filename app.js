@@ -494,6 +494,7 @@ const elements = {
   reviewDataImportBtn: document.getElementById("reviewDataImportBtn"),
   reviewDataImportInput: document.getElementById("reviewDataImportInput"),
   avaterPreviews: Array.from(document.querySelectorAll("[data-avater-preview]")),
+  navCharacter: document.querySelector(".top-nav-character"),
   avaterNudgeButtons: Array.from(document.querySelectorAll("[data-avater-nudge]")),
   loginAvaterItemList: document.getElementById("loginAvaterItemList"),
   guestModeDialog: document.getElementById("guestModeDialog"),
@@ -1290,10 +1291,6 @@ function injectTabScriptLabels() {
       label: "Login",
     },
     {
-      selector: "#mypageFlashcardPanel",
-      label: "Flashcards",
-    },
-    {
       selector: "#mypageQuestPanel",
       label: "Quest",
     },
@@ -1405,6 +1402,25 @@ function bindEvents() {
       }
     });
   });
+
+  if (elements.navCharacter instanceof HTMLElement) {
+    elements.navCharacter.removeAttribute("aria-hidden");
+    elements.navCharacter.setAttribute("role", "button");
+    elements.navCharacter.setAttribute("tabindex", "0");
+    elements.navCharacter.setAttribute("aria-label", "らーん");
+    const activateNavCharacter = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleLearnPopover();
+    };
+    elements.navCharacter.addEventListener("click", activateNavCharacter);
+    elements.navCharacter.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      activateNavCharacter(event);
+    });
+  }
 
   elements.learnActionButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -1792,7 +1808,9 @@ function bindEvents() {
 
     const clickedInsideLearn = elements.learnScreen?.contains(event.target);
     const clickedLearnButton = event.target instanceof Element && Boolean(event.target.closest('[data-screen="learn"]'));
-    if (isLearnPopoverOpen && !clickedInsideLearn && !clickedLearnButton) {
+    const clickedLearnCharacter =
+      event.target instanceof Element && Boolean(event.target.closest(".top-nav-character"));
+    if (isLearnPopoverOpen && !clickedInsideLearn && !clickedLearnButton && !clickedLearnCharacter) {
       closeLearnPopover();
     }
 
@@ -1822,6 +1840,9 @@ function bindEvents() {
   window.addEventListener("resize", () => {
     renderDailyLogin();
     updateHomeCardCarouselControls();
+    if (activeFlashcardNotebookState?.note && isFlashcardDirectNoteMode()) {
+      setFlashcardDirectNotebookGeometry(activeFlashcardNotebookState.note);
+    }
   });
 
   window.addEventListener("storage", (event) => {
@@ -2075,12 +2096,7 @@ function openLearnTimerPage() {
 
 function renderLearnOverview() {
   if (elements.learnGreetingMessage) {
-    const now = new Date();
-    const weekdayNames = ["日", "月", "火", "水", "木", "金", "土"];
-    const hour = now.getHours();
-    const greeting = hour < 11 ? "おはようございます" : hour < 18 ? "こんにちは" : "こんばんは";
-    const todayText = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日（${weekdayNames[now.getDay()]}）`;
-    elements.learnGreetingMessage.textContent = `${greeting}。今日は${todayText}です。短い集中をひとつ積み上げていきましょう。`;
+    elements.learnGreetingMessage.textContent = getHomeGreetingMessage(new Date());
   }
 
   if (elements.learnScheduleList) {
@@ -4323,8 +4339,8 @@ function setFlashcardDirectNotebookGeometry(note) {
   const viewportWidth = Math.max(0, document.documentElement.clientWidth || window.innerWidth || 0);
   const viewportHeight = Math.max(0, document.documentElement.clientHeight || window.innerHeight || 0);
   const pageGap = Math.max(8, Math.min(12, viewportWidth * 0.018));
-  const bottomReserved = Math.max(164, Math.min(220, viewportHeight * 0.24));
-  const availableHeight = Math.max(220, viewportHeight - bottomReserved - 16);
+  const bottomReserved = Math.max(112, Math.min(168, viewportHeight * 0.18));
+  const availableHeight = Math.max(220, viewportHeight - bottomReserved - 40);
   const maxPageWidthByViewport = Math.max(132, (viewportWidth - pageGap - 16) / 2);
   const maxPageWidthByHeight = Math.max(132, availableHeight / Math.SQRT2);
   const targetWidth = Math.max(
@@ -4333,17 +4349,22 @@ function setFlashcardDirectNotebookGeometry(note) {
   );
   const targetHeight = targetWidth * Math.SQRT2;
   const spreadWidth = targetWidth * 2 + pageGap;
-  const safeTop = Math.max(8, Math.round((viewportHeight - bottomReserved - targetHeight) / 2));
+  const safeTop = Math.max(8, Math.round((viewportHeight - targetHeight) / 2));
   const spreadLeft = Math.max(8, Math.round((viewportWidth - spreadWidth) / 2));
   const rightPageLeft = Math.round(viewportWidth / 2 - targetWidth / 2);
   const safeLeft = Math.round(rightPageLeft - targetWidth - pageGap);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-left", `${Math.round(safeLeft)}px`);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-spread-left", `${Math.round(spreadLeft)}px`);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-right-left", `${Math.round(safeLeft)}px`);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-top", `${Math.round(safeTop)}px`);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-width", `${Math.round(targetWidth)}px`);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-page-width", `${Math.round(targetWidth)}px`);
-  activeFlashcardBinderElement.style.setProperty("--flashcard-direct-note-gap", `${Math.round(pageGap)}px`);
+  const geometryTargets = [activeFlashcardBinderElement, flashcardBinderStageElement].filter(
+    (target, index, targets) => target instanceof HTMLElement && targets.indexOf(target) === index
+  );
+  geometryTargets.forEach((target) => {
+    target.style.setProperty("--flashcard-direct-note-left", `${Math.round(safeLeft)}px`);
+    target.style.setProperty("--flashcard-direct-note-spread-left", `${Math.round(spreadLeft)}px`);
+    target.style.setProperty("--flashcard-direct-note-right-left", `${Math.round(safeLeft)}px`);
+    target.style.setProperty("--flashcard-direct-note-top", `${Math.round(safeTop)}px`);
+    target.style.setProperty("--flashcard-direct-note-width", `${Math.round(targetWidth)}px`);
+    target.style.setProperty("--flashcard-direct-note-page-width", `${Math.round(targetWidth)}px`);
+    target.style.setProperty("--flashcard-direct-note-gap", `${Math.round(pageGap)}px`);
+  });
 }
 
 function setLiftedFlashcardBinder(nextBinder) {
@@ -4537,6 +4558,7 @@ function openFlashcardNotebook(note) {
     activeFlashcardBinderElement.classList.add("is-active-binder");
     setFlashcardDirectNotebookGeometry(note);
     mountFlashcardBinderStage(activeFlashcardBinderElement, binderList);
+    setFlashcardDirectNotebookGeometry(note);
     setFlashcardBinderFocusMode(true);
   }
   setLiftedFlashcardNote(note);
@@ -4552,6 +4574,7 @@ function openFlashcardNotebook(note) {
     pageIndex: 0,
     leftVisible: false,
     pageTurnDirection: "",
+    pageTurnPreview: null,
   };
   activeFlashcardBinderElement.classList.add("is-opening-note");
   window.setTimeout(() => {
@@ -4577,6 +4600,7 @@ function closeFlashcardNotebook(options = {}) {
   } else if (binderList) {
     Array.from(binderList.querySelectorAll(".flashcard-note-reader")).forEach((reader) => reader.remove());
   }
+  flashcardBinderStageElement?.querySelectorAll(".flashcard-note-reader").forEach((reader) => reader.remove());
   flashcardBinderStageElement?.querySelectorAll(".flashcard-note-reader-close-btn").forEach((button) => button.remove());
 
   if (binderList) {
@@ -4643,16 +4667,23 @@ function turnFlashcardNotebookPage(offset) {
   }
   const spreads = buildFlashcardNotebookSpreads(activeFlashcardNotebookState.note);
   const maxPageIndex = Math.max(0, spreads.length - 1);
+  const currentPageIndex = activeFlashcardNotebookState.pageIndex;
   const nextPageIndex = Math.max(
     0,
-    Math.min(maxPageIndex, activeFlashcardNotebookState.pageIndex + Math.trunc(normalizedOffset))
+    Math.min(maxPageIndex, currentPageIndex + Math.trunc(normalizedOffset))
   );
-  if (nextPageIndex === activeFlashcardNotebookState.pageIndex) {
+  if (nextPageIndex === currentPageIndex) {
     return;
   }
+  const direction = normalizedOffset > 0 ? "next" : "prev";
+  activeFlashcardNotebookState.pageTurnPreview = {
+    direction,
+    from: spreads[currentPageIndex] ?? createBlankFlashcardNotebookSpread(),
+    to: spreads[nextPageIndex] ?? createBlankFlashcardNotebookSpread(),
+  };
   activeFlashcardNotebookState.pageIndex = nextPageIndex;
   activeFlashcardNotebookState.leftVisible = false;
-  activeFlashcardNotebookState.pageTurnDirection = normalizedOffset > 0 ? "next" : "prev";
+  activeFlashcardNotebookState.pageTurnDirection = direction;
   renderFlashcardNotebook();
   recordActiveFlashcardNotebookProgress();
 }
@@ -4663,6 +4694,7 @@ function renderFlashcardNotebook() {
   }
 
   Array.from(activeFlashcardBinderElement.querySelectorAll(".flashcard-note-reader")).forEach((reader) => reader.remove());
+  flashcardBinderStageElement?.querySelectorAll(".flashcard-note-reader").forEach((reader) => reader.remove());
   flashcardBinderStageElement?.querySelectorAll(".flashcard-note-reader-close-btn").forEach((button) => button.remove());
 
   const spreads = buildFlashcardNotebookSpreads(activeFlashcardNotebookState.note);
@@ -4674,7 +4706,9 @@ function renderFlashcardNotebook() {
   const spread = spreads[activeFlashcardNotebookState.pageIndex] ?? createBlankFlashcardNotebookSpread();
   const isLeftVisible = Boolean(activeFlashcardNotebookState.leftVisible);
   const pageTurnDirection = normalizeFlashcardText(activeFlashcardNotebookState.pageTurnDirection);
+  const pageTurnPreview = activeFlashcardNotebookState.pageTurnPreview;
   activeFlashcardNotebookState.pageTurnDirection = "";
+  activeFlashcardNotebookState.pageTurnPreview = null;
 
   const reader = document.createElement("section");
   reader.className = "flashcard-note-reader";
@@ -4692,7 +4726,6 @@ function renderFlashcardNotebook() {
   closeButton.className = "flashcard-note-reader-close-btn";
   closeButton.dataset.flashcardNoteReaderAction = "close";
   closeButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span><span>ノートを閉じる</span>';
-  (flashcardBinderStageElement ?? reader).append(closeButton);
 
   const pageWrap = document.createElement("div");
   pageWrap.className = "flashcard-note-reader-pages";
@@ -4700,6 +4733,7 @@ function renderFlashcardNotebook() {
     createFlashcardNotebookPageElement(spread.left, "left"),
     createFlashcardNotebookPageElement(spread.right, "right")
   );
+  pageWrap.append(closeButton);
   const leftToggleButton = document.createElement("button");
   leftToggleButton.type = "button";
   leftToggleButton.className = "flashcard-note-left-toggle-btn";
@@ -4709,10 +4743,7 @@ function renderFlashcardNotebook() {
     : '<span class="material-symbols-rounded" aria-hidden="true">chevron_left</span><span>テキストを見る</span>';
   pageWrap.append(leftToggleButton);
   if (pageTurnDirection === "next" || pageTurnDirection === "prev") {
-    const turnSheet = document.createElement("span");
-    turnSheet.className = "flashcard-note-page-turn-sheet";
-    turnSheet.setAttribute("aria-hidden", "true");
-    pageWrap.append(turnSheet);
+    pageWrap.append(createFlashcardNotebookTurnSheet(pageTurnPreview, pageTurnDirection));
   }
   reader.append(pageWrap);
 
@@ -4748,7 +4779,35 @@ function renderFlashcardNotebook() {
 
   controls.append(choiceModeButton, textModeButton, voiceModeButton, avatarPreview, answerButton);
   reader.append(controls);
-  activeFlashcardBinderElement.append(reader);
+  const readerHost = flashcardBinderStageElement?.classList.contains("is-direct-note-stage")
+    ? flashcardBinderStageElement
+    : activeFlashcardBinderElement;
+  readerHost.append(reader);
+}
+
+function createFlashcardNotebookTurnSheet(preview, direction) {
+  const safeDirection = direction === "prev" ? "prev" : "next";
+  const fallbackPreview = {
+    from: createBlankFlashcardNotebookSpread(),
+    to: createBlankFlashcardNotebookSpread(),
+  };
+  const turnPreview = preview && typeof preview === "object" ? preview : fallbackPreview;
+  const frontPage = safeDirection === "next" ? turnPreview.from?.right : turnPreview.from?.left;
+  const backPage = safeDirection === "next" ? turnPreview.to?.left : turnPreview.to?.right;
+  const turnSheet = document.createElement("div");
+  turnSheet.className = `flashcard-note-page-turn-sheet flashcard-note-page-turn-sheet-${safeDirection}`;
+  turnSheet.setAttribute("aria-hidden", "true");
+
+  const frontFace = document.createElement("div");
+  frontFace.className = "flashcard-note-page-turn-face is-front";
+  frontFace.append(createFlashcardNotebookPageElement(frontPage, "turn-front"));
+
+  const backFace = document.createElement("div");
+  backFace.className = "flashcard-note-page-turn-face is-back";
+  backFace.append(createFlashcardNotebookPageElement(backPage, "turn-back"));
+
+  turnSheet.append(frontFace, backFace);
+  return turnSheet;
 }
 
 function createFlashcardNotebookMenuButton(iconName, label, mode) {

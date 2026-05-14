@@ -11605,3 +11605,339 @@ body.learn-popover-open .home-greeting {
   visibility: visible;
   transform: translate(-50%, 0);
 }
+
+/* 2026-05-14 notebook, learn popover, and bottom navigation polish. */
+#mypageFlashcardPanel {
+  overflow: visible !important;
+  padding-top: clamp(72px, 12vw, 98px);
+}
+
+#mypageFlashcardPanel > .tab-script {
+  display: none !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  top: 0.18rem;
+  overflow: visible;
+  transform: translateX(-50%);
+}
+
+#screen-mypage .mypage-menu-action,
+body.learn-popover-open #screen-learn .learn-menu-action {
+  align-items: center;
+  gap: 0.62rem;
+}
+
+#screen-mypage .mypage-menu-action::before,
+body.learn-popover-open #screen-learn .learn-menu-action::before {
+  content: "chevron_right";
+  display: inline-grid;
+  place-items: center;
+  width: 1.08rem;
+  height: 1.08rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+  font-family: "Material Symbols Rounded";
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1;
+  transform: none;
+  font-variation-settings: "FILL" 0, "wght" 600, "GRAD" 0, "opsz" 24;
+  flex: 0 0 auto;
+}
+
+.top-nav-character,
+.top-nav .top-nav-character,
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-manager.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character {
+  width: clamp(148px, 29vw, 184px) !important;
+  aspect-ratio: 350 / 520 !important;
+  bottom: max(-0.38rem, calc(env(safe-area-inset-bottom) - 0.38rem)) !important;
+  overflow: hidden !important;
+  cursor: pointer;
+  pointer-events: auto !important;
+  transform: translateX(-50%) translateY(0) !important;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease,
+    visibility 180ms ease;
+}
+
+.top-nav-character img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  transform: translateY(9%);
+}
+
+body.learn-popover-open .top-nav-character,
+body.learn-popover-open .top-nav .top-nav-character {
+  transform: translateX(-50%) translateY(-1.15rem) scale(1.03) !important;
+}
+
+body.learn-popover-open #screen-learn {
+  isolation: isolate;
+  padding-bottom: 1.72rem;
+}
+
+body.learn-popover-open #screen-learn > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.learn-popover-open #screen-learn .page-title-row {
+  position: static;
+}
+
+body.learn-popover-open #screen-learn .page-title-row::after {
+  right: 0.82rem;
+  bottom: 0.5rem;
+  z-index: 0;
+  opacity: 0.3;
+  transform: none;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+  top: var(--flashcard-direct-note-top, 50%) !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-left,
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible .flashcard-note-paper-left {
+  opacity: 1 !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
+  left: calc(var(--note-open-page-width) + var(--note-page-gap)) !important;
+  top: 50% !important;
+  width: 2.35rem;
+  min-width: 2.35rem;
+  min-height: 7.2rem;
+  display: inline-flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.32rem;
+  padding: 0.66rem 0.28rem;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  transform: translate(-50%, -50%) !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn .material-symbols-rounded {
+  writing-mode: horizontal-tb;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn span:not(.material-symbols-rounded) {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-close-btn {
+  position: absolute;
+  left: calc(var(--note-open-page-width) + var(--note-page-gap) + 0.72rem);
+  top: 0.7rem;
+  z-index: 22;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  text-shadow: 0 2px 8px rgba(5, 10, 18, 0.64);
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-close-btn .material-symbols-rounded {
+  color: inherit;
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
+.flashcard-note-reader-side-nav.home-card-nav-btn {
+  position: absolute !important;
+  top: auto !important;
+  bottom: 0.78rem;
+  left: auto !important;
+  right: 0.78rem;
+  z-index: 20;
+  transform: none !important;
+}
+
+.flashcard-note-reader-side-nav-prev.home-card-nav-btn {
+  right: 3.72rem !important;
+}
+
+.flashcard-note-reader-side-nav-next.home-card-nav-btn {
+  right: 0.78rem !important;
+}
+
+.flashcard-note-reader-side-nav.home-card-nav-btn:disabled {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+  left: 50vw !important;
+  bottom: max(0.45rem, env(safe-area-inset-bottom)) !important;
+  width: min(456px, calc(100vw - 1rem)) !important;
+  transform: translateX(-50%) !important;
+}
+
+.flashcard-note-page-turn-sheet {
+  position: absolute;
+  top: 0;
+  width: var(--note-open-page-width);
+  aspect-ratio: 1 / 1.4142135623730951;
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  z-index: 18;
+}
+
+.flashcard-note-page-turn-sheet-next {
+  left: calc(var(--note-open-page-width) + var(--note-page-gap));
+  transform-origin: left center;
+}
+
+.flashcard-note-page-turn-sheet-prev {
+  left: 0;
+  transform-origin: right center;
+}
+
+.flashcard-note-page-turn-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.flashcard-note-page-turn-face.is-back {
+  transform: rotateY(180deg);
+}
+
+.flashcard-note-page-turn-face .flashcard-note-paper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  overflow: hidden;
+  box-shadow: 0 20px 36px rgba(5, 10, 18, 0.24);
+}
+
+.flashcard-note-page-turn-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.2), transparent 18%, rgba(255, 255, 255, 0.12) 55%, rgba(0, 0, 0, 0.18));
+  mix-blend-mode: multiply;
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.flashcard-note-reader.is-turning-next .flashcard-note-page-turn-sheet-next {
+  animation: flashcard-note-page-turn-next-real 620ms cubic-bezier(0.2, 0.78, 0.18, 1) both;
+}
+
+.flashcard-note-reader.is-turning-prev .flashcard-note-page-turn-sheet-prev {
+  animation: flashcard-note-page-turn-prev-real 620ms cubic-bezier(0.2, 0.78, 0.18, 1) both;
+}
+
+@keyframes flashcard-note-page-turn-next-real {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+  48% {
+    filter: brightness(0.92);
+  }
+  100% {
+    transform: rotateY(-180deg);
+    filter: brightness(1);
+  }
+}
+
+@keyframes flashcard-note-page-turn-prev-real {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+  48% {
+    filter: brightness(0.92);
+  }
+  100% {
+    transform: rotateY(180deg);
+    filter: brightness(1);
+  }
+}
+
+@media (max-width: 760px) {
+  .top-nav {
+    gap: 0.24rem !important;
+    padding-inline: 0.52rem !important;
+  }
+
+  .top-nav-item,
+  .top-nav-item[data-screen="home"],
+  .top-nav-item[data-screen="learn"],
+  .top-nav-item[data-screen="notice"] {
+    width: clamp(56px, 20.5vw, 86px) !important;
+    min-width: 0;
+    min-height: 56px;
+    padding-inline: 0.18rem;
+    flex: 0 0 clamp(56px, 20.5vw, 86px);
+  }
+
+  .top-nav-item[data-screen="learn"] {
+    width: clamp(66px, 22vw, 96px) !important;
+    flex-basis: clamp(66px, 22vw, 96px);
+  }
+
+  .top-nav-character,
+  .top-nav .top-nav-character,
+  body:has(#screen-notice.is-active) .top-nav-character,
+  body:has(#screen-settings.is-active) .top-nav-character,
+  body:has(#screen-manager.is-active) .top-nav-character,
+  body:has(#screen-mypage.is-active) .top-nav-character {
+    width: clamp(116px, 31vw, 146px) !important;
+    bottom: max(-0.34rem, calc(env(safe-area-inset-bottom) - 0.34rem)) !important;
+  }
+
+  .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-close-btn {
+    left: calc(var(--note-open-page-width) + var(--note-page-gap) + 0.42rem);
+    top: 0.48rem;
+    font-size: 0.68rem;
+  }
+
+  .flashcard-binder-stage.is-direct-note-stage .flashcard-note-left-toggle-btn {
+    width: 2.05rem;
+    min-width: 2.05rem;
+    min-height: 6.45rem;
+    font-size: 0.66rem;
+  }
+
+  .flashcard-note-reader-side-nav.home-card-nav-btn {
+    bottom: 0.5rem;
+  }
+
+  .flashcard-note-reader-side-nav-prev.home-card-nav-btn {
+    right: 3.32rem !important;
+  }
+
+  .flashcard-note-reader-side-nav-next.home-card-nav-btn {
+    right: 0.5rem !important;
+  }
+}
