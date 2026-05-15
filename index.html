@@ -29,7 +29,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./app.css?v=20260512-1" />
+    <link rel="stylesheet" href="./app.css?v=20260515-1" />
     <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
   </head>
   <body data-theme="sea">
@@ -431,6 +431,24 @@
                   <span>インポート</span>
                 </button>
               </div>
+            </div>
+          </section>
+
+        <section
+          id="settingsPanelUpdate"
+          class="panel settings-section settings-tab-panel"
+          data-settings-panel="update"
+        >
+            <h2>Update</h2>
+            <div class="settings-section-content app-update-setting-content">
+              <p class="hint-text app-update-description">
+                アップデートがあるか確認できます。更新が見つかった場合は、翌日0時にも自動で反映されます。
+              </p>
+              <button id="appUpdateCheckBtn" class="primary app-update-check-btn" type="button">
+                <span class="material-symbols-rounded" aria-hidden="true">system_update</span>
+                <span>アップデートを確認する</span>
+              </button>
+              <p id="appUpdateStatus" class="app-update-status" aria-live="polite"></p>
             </div>
           </section>
       </section>
@@ -7235,8 +7253,8 @@
       })();
     </script>
     <script src="./auth0-config.js?v=20260426-1"></script>
-    <script src="./app.js?v=20260512-1" charset="UTF-8"></script>
-    <script src="./pwa.js?v=20260511-1" charset="UTF-8"></script>
+    <script src="./app.js?v=20260515-1" charset="UTF-8"></script>
+    <script src="./pwa.js?v=20260515-1" charset="UTF-8"></script>
     <script>
   function isElementActuallyVisible(element) {
     if (!element) return false;

@@ -12560,3 +12560,66 @@ body.learn-popover-open #screen-learn .learn-avater-dock {
     width: min(330px, calc(100vw - 1.6rem));
   }
 }
+
+/* 2026-05-15 note reader sizing and app update settings. */
+.app-update-setting-content {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.app-update-description {
+  margin-top: 0;
+  line-height: 1.6;
+}
+
+.app-update-check-btn {
+  min-height: 2.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  justify-self: start;
+  border-radius: 12px;
+}
+
+.app-update-check-btn:disabled {
+  opacity: 0.68;
+  cursor: wait;
+}
+
+.app-update-status {
+  min-height: 1.45em;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.app-update-status.is-success {
+  color: #2c7a52;
+}
+
+.app-update-status.is-error {
+  color: #b84b4b;
+}
+
+@media (max-width: 760px) {
+  .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+    --note-open-page-width: min(
+      var(--flashcard-direct-note-page-width, calc(100vw - 1.5rem)),
+      calc(100vw - 1.5rem)
+    ) !important;
+  }
+
+  .flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-close-btn {
+    left: var(--flashcard-direct-note-close-left, 50%) !important;
+  }
+
+  body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+    bottom: max(3.75rem, calc(env(safe-area-inset-bottom) + 1.1rem)) !important;
+  }
+
+  .app-update-check-btn {
+    width: 100%;
+  }
+}

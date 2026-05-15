@@ -52,7 +52,7 @@ const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
 const MYPAGE_PAGE_IDS = ["top"];
 const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings", "manager"];
-const SETTINGS_TAB_IDS = ["account", "education-code", "review-data"];
+const SETTINGS_TAB_IDS = ["account", "education-code", "review-data", "update"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const DAILY_LOGIN_REWARD_RULES = Object.freeze({
   firstDay: 10,
@@ -1324,7 +1324,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
-  const settingsLabels = ["Review Account", "Education Code", "Review Data"];
+  const settingsLabels = ["Review Account", "Education Code", "Review Data", "Update"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -4498,22 +4498,40 @@ function setFlashcardDirectNotebookGeometry(note) {
   if (!(note instanceof HTMLElement) || !(activeFlashcardBinderElement instanceof HTMLElement)) {
     return;
   }
-  const viewportWidth = Math.max(0, document.documentElement.clientWidth || window.innerWidth || 0);
-  const viewportHeight = Math.max(0, document.documentElement.clientHeight || window.innerHeight || 0);
+  const visualViewport = window.visualViewport;
+  const viewportWidth = Math.max(
+    0,
+    Math.round(visualViewport?.width || document.documentElement.clientWidth || window.innerWidth || 0)
+  );
+  const viewportHeight = Math.max(
+    0,
+    Math.round(visualViewport?.height || document.documentElement.clientHeight || window.innerHeight || 0)
+  );
+  const isMobileViewport = viewportWidth <= 760;
   const pageGap = Math.max(8, Math.min(12, viewportWidth * 0.018));
-  const bottomReserved = Math.max(112, Math.min(168, viewportHeight * 0.18));
-  const availableHeight = Math.max(220, viewportHeight - bottomReserved - 40);
-  const maxPageWidthByViewport = Math.max(132, (viewportWidth - pageGap - 16) / 2);
+  const topReserved = isMobileViewport ? 44 : 8;
+  const bottomReserved = isMobileViewport
+    ? Math.max(148, Math.min(178, viewportHeight * 0.22))
+    : Math.max(112, Math.min(168, viewportHeight * 0.18));
+  const availableHeight = Math.max(220, viewportHeight - topReserved - bottomReserved);
+  const maxPageWidthByViewport = isMobileViewport
+    ? Math.max(178, viewportWidth - 24)
+    : Math.max(132, (viewportWidth - pageGap - 16) / 2);
   const maxPageWidthByHeight = Math.max(132, availableHeight / Math.SQRT2);
+  const minPageWidth = isMobileViewport
+    ? Math.min(178, maxPageWidthByViewport, maxPageWidthByHeight)
+    : 132;
   const targetWidth = Math.max(
-    132,
+    minPageWidth,
     Math.min(getFlashcardBinderTargetNoteWidth(), maxPageWidthByViewport, maxPageWidthByHeight)
   );
   const targetHeight = targetWidth * Math.SQRT2;
   const spreadWidth = targetWidth * 2 + pageGap;
-  const safeTop = Math.max(8, Math.round((viewportHeight - targetHeight) / 2));
+  const safeTop = Math.max(topReserved, Math.round(topReserved + (availableHeight - targetHeight) / 2));
   const spreadLeft = Math.max(8, Math.round((viewportWidth - spreadWidth) / 2));
-  const rightPageLeft = Math.round(viewportWidth / 2 - targetWidth / 2);
+  const rightPageLeft = isMobileViewport
+    ? Math.max(12, Math.round((viewportWidth - targetWidth) / 2))
+    : Math.round(viewportWidth / 2 - targetWidth / 2);
   const safeLeft = Math.round(rightPageLeft - targetWidth - pageGap);
   const geometryTargets = [activeFlashcardBinderElement, flashcardBinderStageElement].filter(
     (target, index, targets) => target instanceof HTMLElement && targets.indexOf(target) === index
@@ -4526,6 +4544,10 @@ function setFlashcardDirectNotebookGeometry(note) {
     target.style.setProperty("--flashcard-direct-note-width", `${Math.round(targetWidth)}px`);
     target.style.setProperty("--flashcard-direct-note-page-width", `${Math.round(targetWidth)}px`);
     target.style.setProperty("--flashcard-direct-note-gap", `${Math.round(pageGap)}px`);
+    target.style.setProperty(
+      "--flashcard-direct-note-close-left",
+      `${Math.round(targetWidth + pageGap + targetWidth / 2)}px`
+    );
   });
 }
 
