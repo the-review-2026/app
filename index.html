@@ -439,15 +439,23 @@
           class="panel settings-section settings-tab-panel"
           data-settings-panel="update"
         >
-            <h2>Update</h2>
+            <h2 class="app-update-title">
+              <span>Update</span>
+              <button
+                id="appUpdateCheckBtn"
+                class="app-update-check-btn"
+                type="button"
+                aria-label="アップデートを確認する"
+                title="アップデートを確認する"
+              >
+                <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
+                <span class="sr-only">アップデートを確認する</span>
+              </button>
+            </h2>
             <div class="settings-section-content app-update-setting-content">
               <p class="hint-text app-update-description">
-                アップデートがあるか確認できます。更新が見つかった場合は、翌日0時にも自動で反映されます。
+                現在のバージョン: <strong id="appCurrentVersion">2026.05.15.1</strong>
               </p>
-              <button id="appUpdateCheckBtn" class="primary app-update-check-btn" type="button">
-                <span class="material-symbols-rounded" aria-hidden="true">system_update</span>
-                <span>アップデートを確認する</span>
-              </button>
               <p id="appUpdateStatus" class="app-update-status" aria-live="polite"></p>
             </div>
           </section>

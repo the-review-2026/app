@@ -12567,19 +12567,46 @@ body.learn-popover-open #screen-learn .learn-avater-dock {
   gap: 0.62rem;
 }
 
+.app-update-title {
+  padding-right: 3.2rem !important;
+}
+
+.app-update-title > span {
+  min-width: 0;
+}
+
 .app-update-description {
   margin-top: 0;
   line-height: 1.6;
 }
 
 .app-update-check-btn {
-  min-height: 2.82rem;
-  display: inline-flex;
+  appearance: none;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  width: 2rem;
+  height: 2rem;
+  min-width: 0;
+  min-height: 0;
+  display: inline-grid;
   align-items: center;
   justify-content: center;
-  gap: 0.42rem;
-  justify-self: start;
-  border-radius: 12px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-main);
+  font: inherit;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.app-update-check-btn .material-symbols-rounded {
+  font-size: 1.32rem;
+  font-variation-settings: "FILL" 0, "wght" 650, "GRAD" 0, "opsz" 24;
 }
 
 .app-update-check-btn:disabled {
@@ -12593,6 +12620,27 @@ body.learn-popover-open #screen-learn .learn-avater-dock {
   color: var(--text-soft);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.app-update-status.is-checking {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.app-update-loader.ball-scale {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 0.92rem;
+  height: 0.92rem;
+  flex: 0 0 auto;
+}
+
+.app-update-loader.ball-scale > div {
+  width: 0.72rem;
+  height: 0.72rem;
+  background-color: currentColor;
 }
 
 .app-update-status.is-success {
@@ -12619,7 +12667,37 @@ body.learn-popover-open #screen-learn .learn-avater-dock {
     bottom: max(3.75rem, calc(env(safe-area-inset-bottom) + 1.1rem)) !important;
   }
 
-  .app-update-check-btn {
-    width: 100%;
+  .app-update-title {
+    padding-right: 2.85rem !important;
   }
+}
+
+/* 2026-05-15 requested settings header refinements. */
+.account-panel-title {
+  position: relative;
+  overflow: visible !important;
+  padding-right: 3rem !important;
+}
+
+.account-title-main {
+  justify-content: flex-start !important;
+  flex: 0 1 auto !important;
+  padding-right: 0 !important;
+}
+
+.account-title-main > span {
+  flex: 0 0 auto !important;
+}
+
+.account-title-main .account-status-badge,
+.account-status-badge {
+  margin-left: 0 !important;
+}
+
+.account-panel-title .account-edit-button,
+.account-edit-button {
+  position: absolute !important;
+  top: 0.46rem !important;
+  right: 1rem !important;
+  z-index: 4;
 }

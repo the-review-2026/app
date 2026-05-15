@@ -1,4 +1,5 @@
 (() => {
+  const APP_VERSION = "2026.05.15.1";
   const SERVICE_WORKER_URL = "./sw.js?v=20260515-1";
   const AUTO_UPDATE_STORAGE_KEY = "the-review-pwa-auto-update-v1";
   const UPDATE_READY_MESSAGE = "アップデートがあります。更新するか、翌日0時の自動更新を待てます。";
@@ -42,6 +43,11 @@
 
   function bindSettingsUpdateControls() {
     const bind = () => {
+      const versionElement = document.getElementById("appCurrentVersion");
+      if (versionElement) {
+        versionElement.textContent = APP_VERSION;
+      }
+
       const checkButton = document.getElementById("appUpdateCheckBtn");
       if (!checkButton || checkButton.dataset.updateBound === "1") {
         return;
@@ -111,7 +117,7 @@
       if (checkButton) {
         checkButton.disabled = true;
       }
-      setUpdateStatus("アップデートを確認しています...");
+      setUpdateStatus("確認中…", "checking");
 
       if (!("serviceWorker" in navigator)) {
         setUpdateStatus("この環境ではアップデート確認を利用できません。", "error");
@@ -368,6 +374,13 @@
     statusElement.textContent = message || "";
     statusElement.classList.toggle("is-success", status === "success");
     statusElement.classList.toggle("is-error", status === "error");
+    statusElement.classList.toggle("is-checking", status === "checking");
+    if (status === "checking") {
+      statusElement.innerHTML = `
+        <span class="app-update-loader ball-scale" aria-hidden="true"><div></div></span>
+        <span>${message || "確認中…"}</span>
+      `;
+    }
   }
 
   function formatLocalDateTime(date) {
