@@ -1,6 +1,6 @@
 (() => {
-  const APP_VERSION = "2026.05.15.1";
-  const SERVICE_WORKER_URL = "./sw.js?v=20260515-1";
+  const APP_VERSION = "2026.05.15.2";
+  const SERVICE_WORKER_URL = "./sw.js?v=20260515-2";
   const AUTO_UPDATE_STORAGE_KEY = "the-review-pwa-auto-update-v1";
   const UPDATE_READY_MESSAGE = "アップデートがあります。更新するか、翌日0時の自動更新を待てます。";
   const UPDATE_CHECK_TIMEOUT_MS = 8000;
@@ -11,6 +11,7 @@
   let serviceWorkerRegistration = null;
   let registrationPromise = null;
   let autoUpdateTimerId = 0;
+  let reloadOnlyUpdateAvailable = false;
   const observedRegistrations = new WeakSet();
 
   window.TheReviewPwaUpdate = {
@@ -71,7 +72,7 @@
     }
 
     registrationPromise = navigator.serviceWorker
-      .register(SERVICE_WORKER_URL)
+      .register(SERVICE_WORKER_URL, { updateViaCache: "none" })
       .then((registration) => {
         serviceWorkerRegistration = registration;
         observeRegistration(registration);
@@ -124,7 +125,7 @@
         return false;
       }
 
-      const registration = await ensureServiceWorkerRegistration();
+      let registration = await ensureServiceWorkerRegistration();
       if (!navigator.serviceWorker.controller) {
         setUpdateStatus("アップデート確認の準備が完了しました。次回以降に確認できます。", "success");
         return false;
@@ -135,20 +136,25 @@
         return true;
       }
 
+      const latestServiceWorkerVersion = await fetchLatestServiceWorkerVersion();
+      const hasRemoteUpdate = isDifferentVersion(latestServiceWorkerVersion, APP_VERSION);
       await registration.update();
-      await waitForUpdateCandidate(registration);
+      registration = await waitForUpdateReady(registration);
 
       if (registration.waiting) {
         markUpdateAvailable(registration.waiting, { showDialog: true });
         return true;
       }
 
-      if (registration.installing) {
-        const isReady = await waitForWorkerInstalled(registration.installing);
-        if (isReady && registration.waiting) {
-          markUpdateAvailable(registration.waiting, { showDialog: true });
-          return true;
-        }
+      registration = await refreshServiceWorkerRegistration(registration);
+      if (registration?.waiting) {
+        markUpdateAvailable(registration.waiting, { showDialog: true });
+        return true;
+      }
+
+      if (hasRemoteUpdate) {
+        markReloadUpdateAvailable(latestServiceWorkerVersion, { showDialog: true });
+        return true;
       }
 
       setUpdateStatus(isManual ? "現在は最新バージョンです。" : "", "success");
@@ -164,63 +170,96 @@
     }
   }
 
-  function waitForUpdateCandidate(registration) {
-    if (registration.waiting || registration.installing) {
-      return Promise.resolve();
+  async function waitForUpdateReady(registration) {
+    const deadline = Date.now() + UPDATE_CHECK_TIMEOUT_MS;
+    let currentRegistration = registration;
+
+    while (Date.now() < deadline) {
+      currentRegistration = await refreshServiceWorkerRegistration(currentRegistration);
+      if (currentRegistration?.waiting) {
+        return currentRegistration;
+      }
+      if (currentRegistration?.installing?.state === "installed") {
+        await delay(50);
+        currentRegistration = await refreshServiceWorkerRegistration(currentRegistration);
+        if (currentRegistration?.waiting) {
+          return currentRegistration;
+        }
+      }
+      await delay(Math.min(220, Math.max(0, deadline - Date.now())));
     }
 
+    return refreshServiceWorkerRegistration(currentRegistration);
+  }
+
+  async function refreshServiceWorkerRegistration(fallbackRegistration = serviceWorkerRegistration) {
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        serviceWorkerRegistration = registration;
+        observeRegistration(registration);
+        return registration;
+      }
+    } catch {
+      return fallbackRegistration;
+    }
+    return fallbackRegistration;
+  }
+
+  async function fetchLatestServiceWorkerVersion() {
+    const url = new URL("./sw.js", window.location.href);
+    url.searchParams.set("update-check", String(Date.now()));
+    try {
+      const response = await fetch(url.toString(), {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+      if (!response.ok) {
+        return "";
+      }
+      const text = await response.text();
+      const versionMatch = text.match(/APP_SHELL_VERSION\s*=\s*["']([^"']+)["']/);
+      return normalizeVersion(versionMatch?.[1]);
+    } catch {
+      return "";
+    }
+  }
+
+  function isDifferentVersion(leftVersion, rightVersion) {
+    const left = normalizeVersion(leftVersion);
+    const right = normalizeVersion(rightVersion);
+    return Boolean(left && right && left !== right);
+  }
+
+  function normalizeVersion(value) {
+    return String(value || "").trim();
+  }
+
+  function delay(ms) {
     return new Promise((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        window.clearTimeout(timeoutId);
-        registration.removeEventListener("updatefound", onUpdateFound);
-        resolve();
-      };
-      const onUpdateFound = () => finish();
-      const timeoutId = window.setTimeout(finish, UPDATE_CHECK_TIMEOUT_MS);
-      registration.addEventListener("updatefound", onUpdateFound);
+      window.setTimeout(resolve, Math.max(0, ms));
     });
   }
 
-  function waitForWorkerInstalled(worker) {
-    if (!worker) {
-      return Promise.resolve(false);
-    }
-    if (worker.state === "installed") {
-      return Promise.resolve(true);
-    }
-    if (worker.state === "activated" || worker.state === "redundant") {
-      return Promise.resolve(false);
-    }
+  function markReloadUpdateAvailable(remoteVersion, { showDialog = false } = {}) {
+    reloadOnlyUpdateAvailable = true;
+    const pendingUpdate = ensurePendingAutoUpdate();
+    const scheduledDate = pendingUpdate?.scheduledAt ? new Date(pendingUpdate.scheduledAt) : null;
+    const scheduledLabel = scheduledDate ? formatLocalDateTime(scheduledDate) : "翌日0時";
+    const versionLabel = remoteVersion ? ` (${remoteVersion})` : "";
+    const shouldApplyNow = scheduledDate instanceof Date && scheduledDate.getTime() <= Date.now();
+    setUpdateStatus(`アップデート${versionLabel}を検出しました。自動更新予定: ${scheduledLabel}`, "success");
+    schedulePendingAutoUpdate();
 
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = (result) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        window.clearTimeout(timeoutId);
-        worker.removeEventListener("statechange", onStateChange);
-        resolve(result);
-      };
-      const onStateChange = () => {
-        if (worker.state === "installed") {
-          finish(true);
-        } else if (worker.state === "activated" || worker.state === "redundant") {
-          finish(false);
-        }
-      };
-      const timeoutId = window.setTimeout(() => finish(false), UPDATE_CHECK_TIMEOUT_MS);
-      worker.addEventListener("statechange", onStateChange);
-    });
+    if (showDialog && !shouldApplyNow) {
+      showPwaUpdateDialog(null);
+    }
   }
 
   function markUpdateAvailable(worker, { showDialog = false } = {}) {
+    reloadOnlyUpdateAvailable = false;
     waitingWorker = worker;
     const pendingUpdate = ensurePendingAutoUpdate();
     const scheduledDate = pendingUpdate?.scheduledAt ? new Date(pendingUpdate.scheduledAt) : null;
@@ -320,7 +359,7 @@
     const pendingUpdate = readPendingAutoUpdate();
     const scheduledTime = Date.parse(pendingUpdate?.scheduledAt || "");
     const worker = waitingWorker || serviceWorkerRegistration?.waiting;
-    if (!worker || !Number.isFinite(scheduledTime)) {
+    if ((!worker && !reloadOnlyUpdateAvailable) || !Number.isFinite(scheduledTime)) {
       return;
     }
 
