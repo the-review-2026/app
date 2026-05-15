@@ -536,9 +536,9 @@
 
       <section id="screen-manager" class="screen manager-integrated-screen">
         <div class="page-title-row">
-          <h1 class="page-script-title">制作チーム用管理プログラム</h1>
+          <h1 class="page-script-title">トップ</h1>
         </div>
-        <section class="manager-integrated-shell" aria-label="制作チーム用管理プログラム">
+        <section class="manager-integrated-shell" aria-label="The Review Manager">
           <div id="managerMount" class="manager-migrated-mount" aria-live="polite">
             <p class="hint-text">制作チーム用管理プログラムを読み込んでいます。</p>
           </div>
@@ -771,6 +771,9 @@
         --primary-hover: #1d1d1d;
         --danger: #1d1d1d;
         --success: #1d1d1d;
+        --band-tab-base: #1d1d1d;
+        --band-tab-background: linear-gradient(90deg, #1d1d1d, #1d1d1d);
+        --band-tab-background-blend: normal;
         --shadow: 0 16px 30px rgba(0, 0, 0, 0.12);
         background: #ffffff;
         color: #000000;
@@ -1795,6 +1798,7 @@
 
       .manager-migrated-root .manager-image-dropzone {
         width: 100%;
+        aspect-ratio: 4 / 3;
         min-height: clamp(180px, 36vw, 300px);
         border: 2px dashed rgba(0, 0, 0, 0.24);
         border-radius: 14px;
@@ -1845,8 +1849,9 @@
 
       .manager-migrated-root .manager-store-item .manager-store-item-image {
         display: block;
-        width: 4.1rem !important;
-        height: 4.1rem !important;
+        width: 5.2rem !important;
+        height: 3.9rem !important;
+        aspect-ratio: 4 / 3;
         top: auto;
         left: auto;
         border-radius: 12px;
@@ -1912,7 +1917,7 @@
 
       .manager-migrated-root .manager-image-adjust-stage {
         width: min(280px, 72vw);
-        aspect-ratio: 1;
+        aspect-ratio: 4 / 3;
         position: relative;
         overflow: hidden;
         border-radius: 14px;
@@ -2642,6 +2647,60 @@
         }
       }
 
+      @media (max-width: 760px) {
+        .manager-migrated-root .app-logo.manager-logo {
+          width: clamp(270px, 27vw, 375px);
+          max-width: 375px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .manager-migrated-root .manager-member-actions,
+        .manager-migrated-root .manager-member-detail-actions,
+        .manager-migrated-root .problem-field-row,
+        .manager-migrated-root .problem-stepper {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .manager-migrated-root .problem-manage-grid,
+        .manager-migrated-root .published-question-layout {
+          grid-template-columns: minmax(180px, 0.38fr) minmax(0, 1fr);
+        }
+
+        .manager-migrated-root .profile-card {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .manager-migrated-root .problem-preview-panel {
+          position: sticky;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .manager-migrated-root .manager-nav {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          width: min(560px, 100%);
+          row-gap: 0.32rem;
+        }
+
+        .manager-migrated-root .manager-nav .top-nav-item {
+          min-height: 58px;
+          padding: 0.44rem 0.18rem;
+          font-size: 0.68rem;
+        }
+
+        .manager-migrated-root .text-block-card,
+        .manager-migrated-root .manager-store-item {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+      }
+
+      .manager-migrated-root .manager-store-item .manager-store-item-image.avater-item-custom {
+        background: var(--band-tab-background) !important;
+        background-blend-mode: var(--band-tab-background-blend) !important;
+        border-color: #1d1d1d !important;
+      }
+
       #screen-manager .manager-integrated-shell {
         min-height: 0;
         overflow: visible;
@@ -2740,7 +2799,7 @@
       }
 
       .manager-migrated-root #screen-home .page-script-title::after {
-        content: "制作チーム用管理プログラム";
+        content: "トップ";
       }
     </style>
     <template id="managerMigratedTemplate">
@@ -2809,7 +2868,7 @@
     <main class="screens">
       <section id="screen-home" class="screen is-active">
         <div class="page-title-row">
-          <h1 class="page-script-title">制作チーム用管理プログラム</h1>
+          <h1 class="page-script-title">トップ</h1>
         </div>
         <div class="panel">
           <h2>トップ</h2>
@@ -2852,7 +2911,7 @@
 
       <section id="screen-members" class="screen" hidden>
         <div class="page-title-row">
-          <h1 class="page-script-title">Users</h1>
+          <h1 class="page-script-title">ユーザー</h1>
         </div>
           <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
             <div class="manager-members-head">
@@ -2877,7 +2936,7 @@
 
       <section id="screen-problem" class="screen" hidden>
         <div class="page-title-row">
-          <h1 class="page-script-title">Question</h1>
+          <h1 class="page-script-title">問題</h1>
         </div>
         <div class="manager-problem-tabs" role="tablist" aria-label="問題メニュー">
           <button class="manager-problem-tab is-active" type="button" role="tab" aria-selected="true" data-problem-tab="create">問題を作成する</button>
@@ -3083,7 +3142,7 @@
 
       <section id="screen-store" class="screen" hidden>
         <div class="page-title-row">
-          <h1 class="page-script-title">Store</h1>
+          <h1 class="page-script-title">ストア</h1>
         </div>
         <div class="manager-store-tabs" role="tablist" aria-label="ストアメニュー">
           <button class="manager-store-tab is-active" type="button" role="tab" aria-selected="true" data-store-tab="create">アイテムを作成する</button>
@@ -3294,6 +3353,12 @@
           approved: "公開済み",
           rejected: "差し戻し",
         };
+        const MANAGER_SCREEN_TITLES = {
+          home: "トップ",
+          members: "ユーザー",
+          problem: "問題",
+          store: "ストア",
+        };
 
         const state = {
           activeScreen: "home",
@@ -3476,6 +3541,7 @@
           renderTextBlocks();
           renderAvaterItemImagePreview();
           updateEditorCounts();
+          notifyManagerScreenChange(state.activeScreen);
           window.setTimeout(() => {
             if (elements.appLoader) {
               elements.appLoader.style.display = "none";
@@ -4066,13 +4132,15 @@
           }
           try {
             const dataUrl = await fileToDataUrl(file);
+            const transform = createDefaultAvaterImageTransform();
+            const adjusted = await renderAdjustedAvaterImage(dataUrl, transform);
             state.avaterItemImageData = {
               name: file.name,
               type: file.type,
-              size: file.size,
-              dataUrl,
+              size: adjusted.size,
+              dataUrl: adjusted.dataUrl,
               sourceDataUrl: dataUrl,
-              transform: createDefaultAvaterImageTransform(),
+              transform,
             };
             renderAvaterItemImagePreview();
             openAvaterItemImageAdjustDialog();
@@ -4205,18 +4273,19 @@
         async function renderAdjustedAvaterImage(sourceDataUrl, transform) {
           const image = await loadImageElement(sourceDataUrl);
           const canvas = document.createElement("canvas");
-          const size = 512;
-          canvas.width = size;
-          canvas.height = size;
+          const width = 512;
+          const height = 384;
+          canvas.width = width;
+          canvas.height = height;
           const context = canvas.getContext("2d");
           if (!context) {
             throw new Error("canvas-context-unavailable");
           }
-          context.clearRect(0, 0, size, size);
+          context.clearRect(0, 0, width, height);
           context.save();
-          context.translate(size / 2 + transform.offsetX * 1.7, size / 2 + transform.offsetY * 1.7);
+          context.translate(width / 2 + transform.offsetX * 1.7, height / 2 + transform.offsetY * 1.7);
           context.rotate((transform.rotate * Math.PI) / 180);
-          const baseScale = 390 / Math.max(1, image.naturalWidth, image.naturalHeight);
+          const baseScale = 340 / Math.max(1, image.naturalWidth, image.naturalHeight);
           const scale = transform.scale / 100;
           context.scale(baseScale * scale * (transform.scaleX / 100), baseScale * scale * (transform.scaleY / 100));
           context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
@@ -4896,6 +4965,24 @@
           if (screenName === "members") {
             void loadManagerMembers();
           }
+          notifyManagerScreenChange(screenName);
+        }
+
+        function notifyManagerScreenChange(screenName) {
+          const normalizedScreen = Object.prototype.hasOwnProperty.call(MANAGER_SCREEN_TITLES, screenName) ? screenName : "home";
+          const title = MANAGER_SCREEN_TITLES[normalizedScreen];
+          const hostTitle = window.document.querySelector("#screen-manager > .page-title-row .page-script-title");
+          if (hostTitle) {
+            hostTitle.textContent = title;
+          }
+          window.dispatchEvent(
+            new CustomEvent("the-review-manager-screen-change", {
+              detail: {
+                screen: normalizedScreen,
+                title,
+              },
+            })
+          );
         }
 
         function initializePublishedFilters() {

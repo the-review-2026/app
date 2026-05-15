@@ -104,6 +104,8 @@ const DEFAULT_STORE_CONFIG = {
   avatarStatus: "published",
   avatarMessage: "Avaterアイテムを選べます。",
 };
+const APP_LOGO_SRC = "./assets/logos/original.png?v=20260326-1";
+const MANAGER_LOGO_SRC = "./assets/logos/manager.png?v=20260326-1";
 const AVATER_BASE_IMAGE = "./assets/avater/らーん1-1.png";
 const AVATER_ITEMS = [];
 const AVATER_CATEGORY_ORDER = ["clothes", "glasses", "accessory"];
@@ -116,6 +118,12 @@ const LEARN_AVATER_CATEGORY_ICONS = {
   clothes: "checkroom",
   glasses: "eyeglasses",
   accessory: "auto_awesome",
+};
+const MANAGER_HOST_SCREEN_TITLES = {
+  home: "トップ",
+  members: "ユーザー",
+  problem: "問題",
+  store: "ストア",
 };
 const MANAGER_MIGRATED_DATA = Object.freeze({
   defaultStoreConfig: Object.freeze({
@@ -413,6 +421,7 @@ const AUTH0_CONFIG = normalizeAuth0Config(window.AUTH0_CONFIG);
 
 const elements = {
   appLoader: document.getElementById("appLoader"),
+  appLogo: document.querySelector(".app-header .app-logo"),
   navButtons: Array.from(document.querySelectorAll("[data-screen]")),
   mypageNavButton: document.querySelector('[data-screen="mypage"]'),
   mypageSubmenu: document.getElementById("mypageSubmenu"),
@@ -428,6 +437,7 @@ const elements = {
   infoMenuNickname: document.getElementById("infoMenuNickname"),
   managerMenuLink: document.getElementById("managerMenuLink"),
   managerMount: document.getElementById("managerMount"),
+  managerPageTitle: document.querySelector("#screen-manager > .page-title-row .page-script-title"),
   legalInfoDialog: document.getElementById("legalInfoDialog"),
   legalTermsContent: document.getElementById("legalTermsContent"),
   legalPrivacyContent: document.getElementById("legalPrivacyContent"),
@@ -1356,6 +1366,10 @@ function bindBeforeUnloadPrompt() {
 }
 
 function bindEvents() {
+  window.addEventListener("the-review-manager-screen-change", (event) => {
+    updateManagerHostTitle(event.detail?.screen);
+  });
+
   if (elements.infoMenuTrigger) {
     elements.infoMenuTrigger.addEventListener("click", toggleInfoMenu);
   }
@@ -2231,6 +2245,28 @@ function isLearnAvaterItemOwned(item) {
   return item.cost === 0 || Boolean(state.avater.unlockedItems?.[item.id]);
 }
 
+function updateAppLogoForScreen(screen) {
+  if (!elements.appLogo) {
+    return;
+  }
+  const isManager = screen === "manager";
+  elements.appLogo.src = isManager ? MANAGER_LOGO_SRC : APP_LOGO_SRC;
+  elements.appLogo.alt = isManager ? "The Review Manager" : "The Review";
+}
+
+function updateManagerHostTitle(screenName = "home") {
+  if (!elements.managerPageTitle) {
+    return;
+  }
+  const normalizedScreen = String(screenName || "").trim();
+  elements.managerPageTitle.textContent = MANAGER_HOST_SCREEN_TITLES[normalizedScreen] || MANAGER_HOST_SCREEN_TITLES.home;
+}
+
+function getActiveManagerHostScreen() {
+  const activeManagerScreen = elements.managerMount?.querySelector(".manager-migrated-root .screen.is-active");
+  return activeManagerScreen?.id?.replace(/^screen-/, "") || "";
+}
+
 function activateScreen(screen) {
   const normalizedScreen = normalizeScreen(screen);
   if (normalizedScreen !== "learn") {
@@ -2241,6 +2277,7 @@ function activateScreen(screen) {
     stopSettingsEducationCodeScanner();
   }
   activeScreen = normalizedScreen;
+  updateAppLogoForScreen(normalizedScreen);
   elements.screens.forEach((element) => {
     element.classList.toggle("is-active", element.id === `screen-${normalizedScreen}`);
   });
@@ -2267,6 +2304,7 @@ function activateScreen(screen) {
     setSettingsTab(activeSettingsTab);
   }
   if (normalizedScreen === "manager") {
+    updateManagerHostTitle(getActiveManagerHostScreen() || "home");
     void loadMigratedManager();
   }
   renderFlashcardFocusMode();

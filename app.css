@@ -9313,7 +9313,7 @@ body.manager-page #screen-profile .page-script-title::after {
 }
 
 #screen-manager .page-script-title::after {
-  content: "制作チーム用管理プログラム";
+  content: none;
 }
 
 body.manager-page #screen-problem .page-script-title::after {
@@ -12303,5 +12303,260 @@ body.learn-popover-open #screen-learn .learn-overview {
 
   .learn-avater-picker {
     width: min(308px, calc(100vw - 1.25rem));
+  }
+}
+
+/* 2026-05-15 requested Avater, Learn bubble, Manager, and mobile unification refinements. */
+.avater-item-custom:not(.has-custom-image),
+.avater-item-custom.avater-category-clothes:not(.has-custom-image),
+.avater-item-custom.avater-category-glasses:not(.has-custom-image),
+.avater-item-custom.avater-category-accessory:not(.has-custom-image),
+.avater-item-school-blue,
+.avater-item-lab-coat,
+.avater-item-mint-ribbon,
+.avater-item-star-pin {
+  background: var(--band-tab-background);
+  background-blend-mode: var(--band-tab-background-blend);
+  border: 1px solid color-mix(in srgb, var(--band-tab-base, var(--primary)) 62%, #ffffff);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.avater-item-round-glasses,
+.avater-item-aqua-glasses {
+  border-color: var(--band-tab-base, var(--primary));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--band-tab-base, var(--primary)) 34%, transparent);
+}
+
+.avater-item-sample,
+.avater-item-sample.avater-item-custom,
+.avater-item-sample.avater-item-custom.avater-category-clothes,
+.avater-item-sample.avater-item-custom.avater-category-glasses,
+.avater-item-sample.avater-item-custom.avater-category-accessory,
+.learn-avater-choice-sample {
+  width: 4rem;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  top: auto;
+  left: auto;
+  border-radius: 10px;
+}
+
+.learn-avater-choice-sample {
+  width: 3.35rem;
+}
+
+.avater-item-sample-image,
+.learn-avater-choice-sample .avater-item-sample-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.avater-item-card {
+  grid-template-columns: 4rem minmax(0, 1fr) minmax(4.5rem, auto);
+}
+
+body.learn-popover-open #screen-learn {
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: min(42dvh, 360px) !important;
+  align-content: start;
+  padding: 0.62rem 0.74rem 0.74rem !important;
+}
+
+body.learn-popover-open #screen-learn::after {
+  left: 50%;
+  bottom: -0.04rem;
+  width: 1rem;
+  height: 0.36rem;
+  border: 0 !important;
+  background: rgba(29, 29, 29, 0.9);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform: translateX(-50%);
+}
+
+body:has(#screen-manager.is-active) .review-coin-board {
+  display: none;
+}
+
+body:has(#screen-manager.is-active) .app-logo {
+  width: min(330px, calc(100vw - 2.2rem));
+  max-width: 330px;
+}
+
+body.learn-popover-open #screen-learn .page-title-row {
+  min-height: 2.05rem;
+  margin: 0 0 0.28rem !important;
+  padding: 0 6.9rem 0 0 !important;
+}
+
+body.learn-popover-open #screen-learn .page-title-row::after {
+  right: auto;
+  left: 0;
+  bottom: -0.2rem;
+  opacity: 0.18;
+}
+
+body.learn-popover-open #screen-learn .learn-overview {
+  max-height: min(28dvh, 210px) !important;
+  padding-top: 0 !important;
+}
+
+body.learn-popover-open #screen-learn .learn-overview-section {
+  padding: 0 !important;
+  border-top: 0 !important;
+}
+
+body.learn-popover-open #screen-learn .learn-overview-message {
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.learn-avater-dock {
+  top: 0.48rem;
+  right: 0.58rem;
+}
+
+body.learn-popover-open #screen-learn .learn-avater-dock {
+  position: absolute !important;
+  top: 0.48rem;
+  right: 0.58rem;
+}
+
+.learn-avater-actions {
+  gap: 0.18rem;
+}
+
+.learn-avater-category-btn,
+.learn-avater-category-btn.is-equipped,
+.learn-avater-category-btn.is-active {
+  width: 1.78rem;
+  height: 1.78rem;
+  border: 0 !important;
+  border-radius: 6px;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.learn-avater-category-btn.is-active {
+  color: color-mix(in srgb, var(--band-tab-base, var(--primary)) 42%, #ffffff);
+}
+
+.learn-avater-category-btn .material-symbols-rounded {
+  font-size: 1.12rem;
+}
+
+@media (max-width: 760px) {
+  body {
+    --page-pad-x: 1rem;
+    padding: 0 var(--page-pad-x) calc(6.2rem + env(safe-area-inset-bottom));
+  }
+
+  .app-header {
+    min-height: auto;
+    padding: 2.5rem max(1.05rem, calc((100vw - var(--app-content-width)) / 2 + 1.05rem));
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-menu-block {
+    position: static;
+    display: grid;
+    justify-items: end;
+    flex: 1;
+    width: auto;
+    gap: 0.45rem;
+  }
+
+  .app-logo {
+    width: clamp(270px, 27vw, 375px);
+    max-width: 375px;
+  }
+
+  .review-coin-board {
+    min-height: auto;
+    padding: 0.3rem 0.56rem;
+    gap: 0.34rem;
+  }
+
+  .review-coin-icon {
+    width: 25px;
+  }
+
+  .review-coin-value {
+    font-size: 1.14rem;
+  }
+
+  .review-coin-unit {
+    font-size: 0.86rem;
+  }
+
+  .top-nav {
+    left: max(0.8rem, env(safe-area-inset-left));
+    right: max(0.8rem, env(safe-area-inset-right));
+    bottom: max(0.65rem, env(safe-area-inset-bottom));
+    max-width: 560px;
+    gap: clamp(0.42rem, 2vw, 0.7rem);
+    padding: 0.78rem 0.68rem 0.86rem;
+  }
+
+  .top-nav-item,
+  .top-nav-item[data-screen="home"],
+  .top-nav-item[data-screen="learn"],
+  .top-nav-item[data-screen="notice"],
+  .top-nav-item[data-screen="settings"],
+  .top-nav-item[data-screen="manager"],
+  .top-nav-item[data-screen="store"] {
+    width: clamp(82px, 29%, 220px);
+    min-height: 64px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.94rem;
+  }
+
+  .top-nav-character,
+  .top-nav .top-nav-character,
+  body:has(#screen-notice.is-active) .top-nav-character,
+  body:has(#screen-settings.is-active) .top-nav-character,
+  body:has(#screen-manager.is-active) .top-nav-character,
+  body:has(#screen-mypage.is-active) .top-nav-character {
+    width: clamp(148px, 29vw, 184px) !important;
+    bottom: max(-0.38rem, calc(env(safe-area-inset-bottom) - 0.38rem)) !important;
+    transform: translateX(-50%) translateY(0) !important;
+  }
+
+  #screen-settings > .page-title-row {
+    min-height: clamp(4.35rem, 13vw, 5.35rem);
+    margin-bottom: 0.86rem;
+    padding: 0.66rem 0.9rem 1.16rem;
+  }
+
+  #screen-home .home-greeting-hero .page-script-title,
+  #screen-notice > .page-title-row .page-script-title,
+  #screen-settings > .page-title-row .page-script-title {
+    text-indent: 0;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .learn-avater-dock {
+    top: 0.48rem;
+    right: 0.58rem;
+  }
+
+  body.learn-popover-open #screen-learn .learn-avater-dock {
+    top: 0.48rem;
+    right: 0.58rem;
+  }
+
+  .learn-avater-category-btn {
+    width: 1.78rem;
+    height: 1.78rem;
+  }
+
+  .learn-avater-picker {
+    width: min(330px, calc(100vw - 1.6rem));
   }
 }
