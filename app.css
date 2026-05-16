@@ -15079,3 +15079,71 @@ body.learn-popover-open .flashcard-note-reader-avatar .avater-layer {
     --review-sheet-width: calc(var(--review-viewport-width, 100vw) - 96px);
   }
 }
+
+/* 2026-05-17 Home flashcard spacing and sheet-width final pass. */
+:root {
+  --review-sheet-width: min(456px, calc(var(--review-viewport-width, 100vw) - 96px));
+  --review-flashcard-tab-width: var(--review-sheet-width);
+}
+
+#screen-home .home-flashcard-slot {
+  width: var(--review-sheet-width) !important;
+  max-width: var(--review-sheet-width) !important;
+  margin-top: clamp(2.95rem, 7.5vw, 3.75rem) !important;
+  margin-inline: auto !important;
+}
+
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel {
+  width: var(--review-sheet-width) !important;
+  max-width: var(--review-sheet-width) !important;
+  box-sizing: border-box !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library {
+  width: calc(100% + 2rem) !important;
+  max-width: calc(100% + 2rem) !important;
+  margin-left: -1rem !important;
+  margin-right: -1rem !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scroll-padding-bottom: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list,
+#mypageFlashcardPanel .flashcard-series-index,
+#mypageFlashcardPanel .flashcard-note {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-list {
+  left: 0 !important;
+  right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-en {
+  right: 1rem !important;
+  max-width: 62% !important;
+  font-size: clamp(1.05rem, 3.55vw, 1.46rem) !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+#mypageFlashcardPanel .flashcard-note:last-child {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 552px) {
+  :root {
+    --review-sheet-width: calc(var(--review-viewport-width, 100vw) - 96px);
+  }
+}

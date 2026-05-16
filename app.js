@@ -230,6 +230,10 @@ const FLASHCARD_REMOTE_SUBJECT_ALIASES = {
   "mathematics c": "refine-math-c",
   "math-c": "refine-math-c",
   "math c": "refine-math-c",
+  "数学c": "refine-math-c",
+  "数学ｃ": "refine-math-c",
+  "数学Ｃ": "refine-math-c",
+  "refine-math-c": "refine-math-c",
   physics: "physics-basic",
   "basic-physics": "physics-basic",
   biology: "bio-basic",
@@ -5563,14 +5567,23 @@ function normalizeRemoteFlashcardQuestionArray(questions) {
 
 function resolveRemoteFlashcardDeckId(question) {
   const rawSubject = normalizeFlashcardText(
-    question.deckId ?? question.subjectId ?? question.subject ?? question.deck ?? question.bookId ?? question.binder
+    question.deckId ??
+      question.subjectId ??
+      question.note ??
+      question.subjectLabel ??
+      question.subjectName ??
+      question.subject ??
+      question.deck ??
+      question.deckLabel ??
+      question.bookId ??
+      question.binder
   );
   if (!rawSubject) {
     return FLASHCARD_REMOTE_DEFAULT_DECK_ID;
   }
 
-  const lowerSubject = rawSubject.toLowerCase();
-  const hyphenSubject = lowerSubject.replace(/\s+/g, "-");
+  const lowerSubject = rawSubject.normalize("NFKC").toLowerCase();
+  const hyphenSubject = lowerSubject.replace(/[\s_]+/g, "-");
   const alias = FLASHCARD_REMOTE_SUBJECT_ALIASES[lowerSubject] ?? FLASHCARD_REMOTE_SUBJECT_ALIASES[hyphenSubject];
   if (alias) {
     return alias;
@@ -5587,6 +5600,7 @@ function resolveRemoteFlashcardDeckId(question) {
 
 function createRemoteFlashcardDeckId(value) {
   return normalizeFlashcardText(value)
+    .normalize("NFKC")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -5595,7 +5609,13 @@ function createRemoteFlashcardDeckId(value) {
 function createRemoteFlashcardSource(deckId, question) {
   const catalogEntry = getFlashcardSubjectCatalogEntry(deckId);
   const rawLabel = normalizeFlashcardText(
-    question.subjectLabel ?? question.subjectName ?? question.deckLabel ?? question.bookLabel ?? question.subject
+    question.subjectLabel ??
+      question.subjectName ??
+      question.note ??
+      question.deckLabel ??
+      question.bookLabel ??
+      question.subject ??
+      question.binder
   );
   return {
     id: deckId,

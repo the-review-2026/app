@@ -133,6 +133,50 @@ const QUESTION_SUBMISSION_SELECT_FIELDS = [
   "updated_at",
 ].join(",");
 const QUESTION_SUBMISSION_STATUSES = ["draft", "pending", "approved", "rejected"];
+const QUESTION_SUBJECT_ALIASES = {
+  "refine-math-c": {
+    deckId: "refine-math-c",
+    subjectLabel: "数学Ｃ",
+    subjectName: "Mathematics C",
+    seriesId: "review-2nd-edition",
+    seriesLabel: "Refine 2nd Edition",
+  },
+  "mathematics-c": {
+    deckId: "refine-math-c",
+    subjectLabel: "数学Ｃ",
+    subjectName: "Mathematics C",
+    seriesId: "review-2nd-edition",
+    seriesLabel: "Refine 2nd Edition",
+  },
+  "mathematics c": {
+    deckId: "refine-math-c",
+    subjectLabel: "数学Ｃ",
+    subjectName: "Mathematics C",
+    seriesId: "review-2nd-edition",
+    seriesLabel: "Refine 2nd Edition",
+  },
+  "math-c": {
+    deckId: "refine-math-c",
+    subjectLabel: "数学Ｃ",
+    subjectName: "Mathematics C",
+    seriesId: "review-2nd-edition",
+    seriesLabel: "Refine 2nd Edition",
+  },
+  "math c": {
+    deckId: "refine-math-c",
+    subjectLabel: "数学Ｃ",
+    subjectName: "Mathematics C",
+    seriesId: "review-2nd-edition",
+    seriesLabel: "Refine 2nd Edition",
+  },
+  "数学c": {
+    deckId: "refine-math-c",
+    subjectLabel: "数学Ｃ",
+    subjectName: "Mathematics C",
+    seriesId: "review-2nd-edition",
+    seriesLabel: "Refine 2nd Edition",
+  },
+};
 const MANAGER_USER_ROLE = "user";
 const MANAGER_ROLES = ["owner", "developer", "checker", "system_designer", "character_designer"];
 const MANAGER_ROLE_PERMISSIONS = {
@@ -1928,8 +1972,16 @@ function serializeQuestionForApp(row) {
   }
   const payload = normalizeJsonObject(submission.payload);
   const questionText = submission.contentText || stripHtmlText(submission.contentHtml);
-  const subjectLabel = payload.subjectLabel || submission.note || submission.binder || "The Review";
-  const deckId = payload.deckId || payload.subjectId || subjectLabel;
+  const subjectAlias = getQuestionSubjectAlias(
+    payload.deckId ||
+      payload.subjectId ||
+      payload.subjectLabel ||
+      payload.subjectName ||
+      submission.note ||
+      submission.binder
+  );
+  const subjectLabel = payload.subjectLabel || subjectAlias?.subjectLabel || submission.note || submission.binder || "The Review";
+  const deckId = subjectAlias?.deckId || payload.deckId || payload.subjectId || subjectLabel;
   const unitLabel = [submission.textNumber, submission.textName].filter(Boolean).join(" ") || submission.chapter || "The Review Manager";
   const choices = normalizeSupabaseTextArray(payload.choices);
   const answers = normalizeSupabaseTextArray(
@@ -1942,12 +1994,12 @@ function serializeQuestionForApp(row) {
     id: submission.id,
     subject: subjectLabel,
     subjectLabel,
-    subjectName: payload.subjectName || subjectLabel,
+    subjectName: payload.subjectName || subjectAlias?.subjectName || subjectLabel,
     subjectId: payload.subjectId || deckId,
     deckId,
     deckLabel: subjectLabel,
-    seriesId: payload.seriesId || "",
-    seriesLabel: payload.seriesLabel || "",
+    seriesId: payload.seriesId || subjectAlias?.seriesId || "",
+    seriesLabel: payload.seriesLabel || subjectAlias?.seriesLabel || "",
     binder: submission.binder,
     note: submission.note,
     unit: unitLabel,
@@ -1964,6 +2016,16 @@ function serializeQuestionForApp(row) {
     h: explanation,
     status: submission.status,
   };
+}
+
+function getQuestionSubjectAlias(value) {
+  const text = normalizeSupabaseText(value);
+  if (!text) {
+    return null;
+  }
+  const normalized = text.normalize("NFKC").toLowerCase();
+  const hyphenated = normalized.replace(/[\s_]+/g, "-");
+  return QUESTION_SUBJECT_ALIASES[normalized] || QUESTION_SUBJECT_ALIASES[hyphenated] || null;
 }
 
 function stripHtmlText(value) {
