@@ -120,10 +120,10 @@ const LEARN_AVATER_CATEGORY_ICONS = {
   accessory: "auto_awesome",
 };
 const MANAGER_HOST_SCREEN_TITLES = {
-  home: "トップ",
-  members: "ユーザー",
-  problem: "問題",
-  store: "ストア",
+  home: { en: "Top", ja: "トップ" },
+  members: { en: "Users", ja: "ユーザー" },
+  problem: { en: "Problems", ja: "問題" },
+  store: { en: "Store", ja: "ストア" },
 };
 const MANAGER_MIGRATED_DATA = Object.freeze({
   defaultStoreConfig: Object.freeze({
@@ -2294,7 +2294,9 @@ function updateManagerHostTitle(screenName = "home") {
     return;
   }
   const normalizedScreen = String(screenName || "").trim();
-  elements.managerPageTitle.textContent = MANAGER_HOST_SCREEN_TITLES[normalizedScreen] || MANAGER_HOST_SCREEN_TITLES.home;
+  const title = MANAGER_HOST_SCREEN_TITLES[normalizedScreen] || MANAGER_HOST_SCREEN_TITLES.home;
+  elements.managerPageTitle.textContent = title.en;
+  elements.managerPageTitle.dataset.pageTitleJa = title.ja;
   updateManagerMenuState(normalizedScreen);
 }
 

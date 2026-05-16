@@ -51,7 +51,7 @@
 
         <nav class="top-nav" aria-label="モード切替">
           <button class="top-nav-item is-active" type="button" data-screen="home">
-            <span class="top-nav-icon top-nav-icon-home" aria-hidden="true"></span>
+            <span class="material-symbols-rounded top-nav-material-icon" aria-hidden="true">home</span>
             <span>ホーム</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="learn" aria-label="らーん">
@@ -61,7 +61,7 @@
             <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
           </div>
           <button class="top-nav-item" type="button" data-screen="mypage">
-            <span class="top-nav-icon top-nav-icon-mypage" aria-hidden="true"></span>
+            <span class="material-symbols-rounded top-nav-material-icon" aria-hidden="true">person</span>
             <span>マイページ</span>
           </button>
         </nav>
@@ -562,7 +562,7 @@
 
       <section id="screen-manager" class="screen manager-integrated-screen">
         <div class="page-title-row">
-          <h1 class="page-script-title">トップ</h1>
+          <h1 class="page-script-title" data-page-title-ja="トップ">Top</h1>
         </div>
         <section class="manager-integrated-shell" aria-label="The Review Manager">
           <div id="managerMount" class="manager-migrated-mount" aria-live="polite">
@@ -3061,6 +3061,55 @@
                     </div>
                   </fieldset>
 
+                  <fieldset class="problem-fieldset problem-notebook-fieldset">
+                    <legend>Let's Review! ノート</legend>
+                    <p class="hint-text">ノート上をクリックして直接追加できます。ブロックは長押し、またはドラッグで移動できます。</p>
+                    <div class="notebook-editor-shell">
+                      <div id="notebookEditorToolbar" class="notebook-editor-toolbar" role="toolbar" aria-label="ノートに追加する項目">
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="heading">
+                          <span class="material-symbols-rounded" aria-hidden="true">title</span>
+                          <span>見出し</span>
+                        </button>
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="text">
+                          <span class="material-symbols-rounded" aria-hidden="true">notes</span>
+                          <span>本文</span>
+                        </button>
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="question">
+                          <span class="material-symbols-rounded" aria-hidden="true">help</span>
+                          <span>問題文</span>
+                        </button>
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="formula">
+                          <span class="material-symbols-rounded" aria-hidden="true">functions</span>
+                          <span>数式</span>
+                        </button>
+                      </div>
+                      <div id="notebookEditorBook" class="notebook-editor-book" aria-label="Let's Review! ノート編集">
+                        <section class="notebook-editor-page notebook-editor-page-text" aria-label="テキストページ">
+                          <header class="notebook-editor-page-head">
+                            <div>
+                              <p id="notebookTextSubject" class="notebook-editor-page-title">ノート</p>
+                              <p class="notebook-editor-page-subtitle">Text</p>
+                            </div>
+                            <time id="notebookEditorDate" class="notebook-editor-date" data-notebook-editor-date datetime=""></time>
+                          </header>
+                          <div id="notebookTextSurface" class="notebook-page-grid" data-notebook-page-surface="text" aria-label="テキスト本文"></div>
+                          <p class="notebook-editor-watermark">Text</p>
+                        </section>
+                        <section class="notebook-editor-page notebook-editor-page-question" aria-label="問題ページ">
+                          <header class="notebook-editor-page-head">
+                            <div>
+                              <p id="notebookQuestionSubject" class="notebook-editor-page-title">ノート</p>
+                              <p class="notebook-editor-page-subtitle">Question</p>
+                            </div>
+                            <time class="notebook-editor-date" data-notebook-editor-date datetime=""></time>
+                          </header>
+                          <div id="notebookQuestionSurface" class="notebook-page-grid" data-notebook-page-surface="question" aria-label="問題本文"></div>
+                          <p class="notebook-editor-watermark">Question</p>
+                        </section>
+                      </div>
+                    </div>
+                  </fieldset>
+
                   <fieldset class="problem-fieldset">
                     <legend>テキスト</legend>
                     <div class="problem-field-row">
@@ -3517,12 +3566,14 @@
           vectorGraphLines: document.getElementById("vectorGraphLines"),
           vectorGraphPreview: document.getElementById("vectorGraphPreview"),
           vectorGraphActionButtons: Array.from(document.querySelectorAll("[data-vector-graph-action]")),
+          notebookEditorToolbar: document.getElementById("notebookEditorToolbar"),
           notebookEditorBook: document.getElementById("notebookEditorBook"),
           notebookTextSurface: document.getElementById("notebookTextSurface"),
           notebookQuestionSurface: document.getElementById("notebookQuestionSurface"),
           notebookTextSubject: document.getElementById("notebookTextSubject"),
           notebookQuestionSubject: document.getElementById("notebookQuestionSubject"),
           notebookEditorDate: document.getElementById("notebookEditorDate"),
+          notebookEditorDates: Array.from(document.querySelectorAll("[data-notebook-editor-date]")),
           editorWordCount: document.getElementById("editorWordCount"),
           editorCharCount: document.getElementById("editorCharCount"),
           proofreadingFeedback: document.getElementById("proofreadingFeedback"),
@@ -5189,6 +5240,15 @@
           });
           initializeTextBlockList();
 
+          elements.notebookEditorToolbar?.addEventListener("click", (event) => {
+            const button = event.target instanceof Element ? event.target.closest("[data-add-notebook-block]") : null;
+            if (!button) {
+              return;
+            }
+            event.preventDefault();
+            addNotebookBlock(button.dataset.addNotebookBlock || "text");
+          });
+
           elements.editorToolbar?.addEventListener("click", (event) => {
             const button = event.target instanceof Element ? event.target.closest("button") : null;
             if (!button) {
@@ -5754,6 +5814,10 @@
           setTextContent(elements.notebookTextSubject, note);
           setTextContent(elements.notebookQuestionSubject, note);
           setTextContent(elements.notebookEditorDate, dateLabel);
+          elements.notebookEditorDates?.forEach((dateElement) => {
+            dateElement.textContent = dateLabel;
+            dateElement.dateTime = date.toISOString();
+          });
         }
 
         function renderNotebookEditor() {
@@ -6156,6 +6220,18 @@
               text: String(block.text || "").trim(),
             }))
             .filter((block) => block.text);
+          const notebookBlocks = state.notebookBlocks
+            .map((block) => ({
+              id: block.id,
+              type: block.type,
+              page: block.page,
+              x: block.x,
+              y: block.y,
+              w: block.w,
+              h: block.h,
+              text: String(block.text || "").trim(),
+            }))
+            .filter((block) => block.text);
           const contentHtml = normalizeEditorHtml(elements.problemEditor.innerHTML);
           const contentText = getProblemEditorContentText();
 
@@ -6203,7 +6279,7 @@
             image,
             contentHtml,
             contentText,
-            notebookBlocks: [],
+            notebookBlocks,
             submittedAt: toJstIsoString(),
             status,
             remoteId: null,

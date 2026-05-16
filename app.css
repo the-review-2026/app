@@ -14527,3 +14527,260 @@ body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
     padding-right: 0.62rem;
   }
 }
+
+/* 2026-05-16 correction pass: tab width, Google icons, avatar masking, and Manager title. */
+:root {
+  --review-menu-width: 560px;
+  --review-menu-fixed-width: min(var(--review-menu-width), calc(100vw - 1.6rem));
+  --review-flashcard-tab-width: min(456px, calc(100vw - 2rem));
+}
+
+.home-flashcard-slot {
+  width: var(--review-flashcard-tab-width) !important;
+  max-width: var(--review-flashcard-tab-width) !important;
+  margin-inline: auto !important;
+}
+
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel {
+  width: var(--review-flashcard-tab-width) !important;
+  max-width: var(--review-flashcard-tab-width) !important;
+  box-sizing: border-box;
+}
+
+#mypageFlashcardPanel {
+  --review-flashcard-header-space: clamp(82px, 18vw, 106px);
+}
+
+#mypageFlashcardPanel .flashcard-panel {
+  overflow: hidden !important;
+  border-radius: inherit;
+  padding-top: var(--review-flashcard-header-space) !important;
+}
+
+#mypageFlashcardPanel .flashcard-header-guard {
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: var(--review-flashcard-header-space) !important;
+  border-radius: inherit !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  max-width: calc(100% - 1rem) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library {
+  width: calc(100% + 2rem) !important;
+  height: clamp(360px, 54dvh, 590px) !important;
+  margin-left: -1rem !important;
+  margin-right: -1rem !important;
+  margin-top: calc(-1 * var(--review-flashcard-header-space)) !important;
+  padding-top: var(--review-flashcard-header-space) !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  scroll-padding-top: var(--review-flashcard-header-space) !important;
+  scroll-padding-bottom: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-list {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.top-nav-icon-home::before,
+.top-nav-icon-home::after,
+.top-nav-icon-mypage::before,
+.top-nav-icon-mypage::after {
+  content: none !important;
+  display: none !important;
+}
+
+.top-nav-material-icon {
+  display: inline-grid !important;
+  place-items: center;
+  color: currentColor;
+  font-family: "Material Symbols Rounded" !important;
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+}
+
+.top-nav-item.is-active:not([data-screen="learn"]) .top-nav-material-icon {
+  color: color-mix(in srgb, var(--primary) 70%, #ffffff);
+}
+
+.top-nav-character,
+.top-nav .top-nav-character,
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-manager.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character {
+  height: auto !important;
+  aspect-ratio: 350 / 520 !important;
+  overflow: visible !important;
+  clip-path: none !important;
+  bottom: calc(max(0.65rem, env(safe-area-inset-bottom)) - var(--review-nav-character-hidden-offset, 86px)) !important;
+  z-index: 4700 !important;
+}
+
+.top-nav-character img,
+.top-nav-character .avater-base-image,
+.top-nav-character .avater-layer {
+  clip-path: none !important;
+}
+
+body.learn-popover-open .top-nav-character,
+body.learn-popover-open .top-nav .top-nav-character {
+  z-index: 5000 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  clip-path: none !important;
+  filter: none !important;
+}
+
+body.learn-popover-open::after {
+  z-index: 4300 !important;
+}
+
+body.learn-popover-open #screen-learn {
+  z-index: 5100 !important;
+}
+
+#screen-mypage > .mypage-page-head .page-script-title {
+  position: relative;
+}
+
+#screen-mypage > .mypage-page-head .page-script-title::after {
+  content: "マイページ";
+  position: absolute;
+  right: 0.82rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  text-align: right;
+  white-space: nowrap;
+}
+
+body:has(#screen-manager.is-active) #screen-manager > .page-title-row {
+  background: none !important;
+}
+
+body:has(#screen-manager.is-active) #screen-manager > .page-title-row::before {
+  background:
+    var(--band-tab-grain),
+    linear-gradient(135deg, #f4f6f8, #d8dde3 58%, #aab3bd) !important;
+  background-blend-mode: soft-light, normal !important;
+}
+
+body:has(#screen-manager.is-active) #screen-manager > .page-title-row .page-script-title {
+  color: #707780 !important;
+  font-family: "Corinthia-Regular", cursive !important;
+  text-shadow: 0 8px 18px rgba(65, 72, 82, 0.18) !important;
+}
+
+#screen-manager .page-script-title::after {
+  content: attr(data-page-title-ja) !important;
+  position: absolute;
+  right: 0.82rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #6f7882 !important;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.manager-bottom-menu {
+  width: var(--review-menu-fixed-width) !important;
+  max-width: var(--review-menu-fixed-width) !important;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --review-flashcard-tab-width: min(456px, calc(100vw - 2rem));
+  }
+
+  #mypageFlashcardPanel {
+    --review-flashcard-header-space: clamp(78px, 21vw, 96px);
+  }
+
+  #mypageFlashcardPanel .flashcard-note-library {
+    height: clamp(348px, 52dvh, 560px) !important;
+  }
+}
+
+.manager-migrated-root .problem-notebook-fieldset {
+  background:
+    repeating-linear-gradient(135deg, rgba(109, 124, 146, 0.045) 0 1px, transparent 1px 7px),
+    #f7f8fa !important;
+}
+
+.manager-migrated-root .problem-notebook-fieldset > .hint-text {
+  margin-top: -0.24rem !important;
+}
+
+.manager-migrated-root .notebook-editor-toolbar {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.manager-migrated-root .notebook-editor-tool {
+  min-height: 3rem !important;
+  border-color: rgba(80, 91, 105, 0.22) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+.manager-migrated-root .notebook-editor-book {
+  border-color: #59616c !important;
+  background: #59616c !important;
+  box-shadow: 0 14px 28px rgba(39, 45, 52, 0.18) !important;
+}
+
+.manager-migrated-root .notebook-editor-page {
+  background:
+    linear-gradient(180deg, rgba(245, 247, 250, 0.96) 0 68px, transparent 68px),
+    linear-gradient(transparent 31px, rgba(109, 124, 146, 0.16) 32px) 0 0 / 100% 32px,
+    #ffffff !important;
+}
+
+.manager-migrated-root .notebook-editor-page:first-child,
+.manager-migrated-root .notebook-editor-page:last-child {
+  border-color: #8c98a6 !important;
+}
+
+.manager-migrated-root .notebook-editor-page-title::before {
+  background: radial-gradient(circle at 34% 32%, var(--primary), #1f2d54 68%) !important;
+}
+
+@media (max-width: 860px) {
+  .manager-migrated-root .notebook-editor-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .manager-migrated-root .notebook-editor-book {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+
+  .manager-migrated-root .notebook-editor-page {
+    min-height: 420px !important;
+  }
+}
