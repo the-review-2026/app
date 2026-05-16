@@ -13247,3 +13247,348 @@ body.learn-popover-open #screen-learn .learn-avater-dock {
     width: min(var(--review-nav-character-width), 44vw) !important;
   }
 }
+
+/* 2026-05-16 careful follow-up alignment fixes. */
+:root {
+  --review-floating-menu-height: 88px;
+  --review-nav-character-visible-cut: 36%;
+}
+
+.account-panel-title {
+  grid-template-columns: var(--band-tab-dot-size) minmax(0, 1fr) 2.2rem !important;
+  align-items: start !important;
+  min-height: 2.45rem;
+  padding: 0.48rem 0.9rem !important;
+  gap: 0.42rem !important;
+}
+
+.account-panel-title::before {
+  align-self: start !important;
+  justify-self: start;
+  margin: 0.22rem 0 0 !important;
+}
+
+.account-title-main {
+  grid-column: 2;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 0.34rem !important;
+  min-width: 0;
+  min-height: 2rem;
+}
+
+.account-panel-title .account-edit-button,
+.account-edit-button {
+  grid-column: 3;
+  justify-self: end;
+  align-self: center !important;
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  padding: 0 !important;
+  margin-top: 0.02rem !important;
+}
+
+.account-title-main > span:first-child,
+.account-status-badge {
+  white-space: nowrap;
+}
+
+.account-title-main > span:first-child {
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  font-size: 1rem;
+}
+
+.account-status-badge {
+  flex: 0 0 auto;
+  padding: 0.11rem 0.34rem !important;
+  font-size: 0.64rem !important;
+  line-height: 1.08 !important;
+}
+
+.home-card-carousel {
+  padding-bottom: 0 !important;
+}
+
+.home-card-progress {
+  left: calc(clamp(2.35rem, 8vw, 3.1rem) + 1rem) !important;
+  bottom: 0.72rem !important;
+  z-index: 10;
+}
+
+.daily-login-card-body {
+  gap: clamp(0.72rem, 2.4vw, 1rem) !important;
+}
+
+.daily-login-progress-area {
+  margin-top: clamp(0.04rem, 0.8vw, 0.18rem) !important;
+  padding-bottom: clamp(1.72rem, 6.8vw, 2.2rem) !important;
+}
+
+.daily-login-scale {
+  height: 1.26em !important;
+}
+
+.daily-login-track {
+  margin-top: 0.14rem !important;
+}
+
+.daily-login-scale li.is-active::before {
+  top: -0.26rem;
+  height: clamp(3.18rem, 10.8vw, 4rem);
+}
+
+#mypageFlashcardPanel {
+  margin-top: clamp(1.25rem, 3.8vw, 2rem) !important;
+  padding-top: clamp(76px, 10.6vw, 94px) !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  left: 50% !important;
+  top: 0 !important;
+  width: max-content !important;
+  max-width: calc(100% - 1rem) !important;
+  transform: translate(-50%, -42%) !important;
+  text-align: center !important;
+  line-height: 0.9 !important;
+}
+
+#mypageFlashcardPanel .flashcard-static-message {
+  margin: 0 0 0.38rem !important;
+}
+
+#settingsPanelUpdate {
+  position: relative;
+  padding-bottom: 2.15rem;
+}
+
+#settingsPanelUpdate .app-update-title {
+  position: relative;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 2.2rem;
+  padding-right: 3.2rem !important;
+}
+
+#settingsPanelUpdate .app-update-check-btn {
+  position: absolute !important;
+  top: 0.42rem !important;
+  right: 0.9rem !important;
+  transform: none !important;
+}
+
+#settingsPanelUpdate .app-update-status {
+  position: static !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 0.36rem 0 auto;
+  text-align: right;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+#settingsPanelUpdate .app-update-status:empty {
+  display: none;
+}
+
+#settingsPanelUpdate .tab-script {
+  right: 1rem;
+  bottom: 0.28rem;
+}
+
+.top-nav {
+  height: var(--review-floating-menu-height) !important;
+  min-height: var(--review-floating-menu-height) !important;
+  max-height: var(--review-floating-menu-height) !important;
+  grid-template-columns:
+    minmax(82px, 1fr)
+    minmax(132px, var(--review-nav-character-width))
+    minmax(82px, 1fr) !important;
+}
+
+.top-nav-item,
+.top-nav-item[data-screen="home"],
+.top-nav-item[data-screen="learn"],
+.top-nav-item[data-screen="mypage"],
+.top-nav-item[data-screen="notice"],
+.top-nav-item[data-screen="settings"],
+.top-nav-item[data-screen="manager"],
+.top-nav-item[data-screen="store"] {
+  min-height: 60px !important;
+}
+
+.top-nav-item[data-screen="home"] {
+  grid-column: 1;
+}
+
+.top-nav-item[data-screen="learn"] {
+  grid-column: 2;
+}
+
+.top-nav-item[data-screen="mypage"] {
+  grid-column: 3;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  height: auto !important;
+  min-height: 60px !important;
+  border-radius: 22px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  z-index: 2 !important;
+}
+
+.top-nav-item[data-screen="mypage"] span {
+  transform: none !important;
+}
+
+.top-nav-item[data-screen="mypage"] > span:last-child {
+  white-space: nowrap;
+  font-size: 0.82rem;
+  line-height: 1.05;
+}
+
+.top-nav-avatar-label {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.top-nav-icon-mypage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.08rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.top-nav-icon-mypage::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0.04rem;
+  width: 0.86rem;
+  height: 0.52rem;
+  border: 2px solid currentColor;
+  border-top-left-radius: 999px;
+  border-top-right-radius: 999px;
+  border-bottom: 0;
+  transform: translateX(-50%);
+}
+
+.top-nav-character,
+.top-nav .top-nav-character,
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-manager.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character,
+.flashcard-note-reader-avatar {
+  clip-path: inset(0 0 var(--review-nav-character-visible-cut) 0) !important;
+}
+
+body.learn-popover-open .top-nav-character,
+body.learn-popover-open .top-nav .top-nav-character,
+body.learn-popover-open .flashcard-note-reader-avatar {
+  clip-path: inset(0 0 0 0) !important;
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+  height: var(--review-floating-menu-height) !important;
+  min-height: var(--review-floating-menu-height) !important;
+  max-height: var(--review-floating-menu-height) !important;
+  bottom: max(0.65rem, env(safe-area-inset-bottom)) !important;
+  box-sizing: border-box;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+  left: var(--flashcard-direct-note-right-left, var(--flashcard-direct-note-left, 0)) !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible {
+  left: var(--flashcard-direct-note-spread-left, var(--flashcard-direct-note-left, 0)) !important;
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-mode-btn,
+.flashcard-note-reader-answer-btn {
+  min-height: 60px !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-left {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible .flashcard-note-paper-left {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-close-btn {
+  left: calc(var(--note-open-page-width) + var(--note-page-gap) + 0.04rem) !important;
+  top: 0.5rem !important;
+  transform: none !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage
+  .flashcard-note-reader:not(.is-left-visible)
+  .flashcard-note-left-toggle-btn {
+  transform: translate(0, -50%) !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage
+  .flashcard-note-reader.is-left-visible
+  .flashcard-note-left-toggle-btn {
+  transform: translate(-50%, -50%) !important;
+}
+
+.flashcard-note-reader-side-nav.home-card-nav-btn,
+.flashcard-note-reader-side-nav.home-card-nav-btn:hover,
+.flashcard-note-reader-side-nav.home-card-nav-btn:hover:not(:disabled),
+.flashcard-note-reader-side-nav.home-card-nav-btn:active {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --review-floating-menu-height: 88px;
+  }
+
+  .home-card-progress {
+    left: calc(clamp(1.45rem, 6vw, 2.2rem) + 0.92rem) !important;
+    bottom: 0.68rem !important;
+  }
+
+  #mypageFlashcardPanel {
+    padding-top: clamp(72px, 22vw, 92px) !important;
+  }
+
+  #mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+    font-size: clamp(72px, 22vw, 92px) !important;
+  }
+
+  #settingsPanelUpdate .app-update-status {
+    font-size: 0.78rem;
+  }
+
+  .top-nav {
+    grid-template-columns:
+      minmax(70px, 1fr)
+      minmax(116px, var(--review-nav-character-width))
+      minmax(70px, 1fr) !important;
+  }
+}

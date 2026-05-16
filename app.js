@@ -1332,7 +1332,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
-  const settingsLabels = ["Review Account", "Education Code", "Review Data", "アップデート"];
+  const settingsLabels = ["Review Account", "Education Code", "Review Data", "Update"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -4607,7 +4607,7 @@ function setFlashcardDirectNotebookGeometry(note) {
     target.style.setProperty("--flashcard-direct-note-gap", `${Math.round(pageGap)}px`);
     target.style.setProperty(
       "--flashcard-direct-note-close-left",
-      `${Math.round(targetWidth + pageGap + targetWidth / 2)}px`
+      `${Math.round(targetWidth + pageGap)}px`
     );
   });
 }

@@ -55,14 +55,14 @@
             <span>ホーム</span>
           </button>
           <button class="top-nav-item" type="button" data-screen="learn" aria-label="らーん">
-              <span class="top-nav-avatar-label">マイページ</span>
+              <span class="top-nav-avatar-label">らーん</span>
           </button>
           <div class="top-nav-character avater-preview avater-preview-nav" data-avater-preview aria-hidden="true">
             <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
           </div>
-          <button class="top-nav-item" type="button" data-screen="notice">
-            <span class="top-nav-icon top-nav-icon-store" aria-hidden="true"></span>
-            <span>ストア</span>
+          <button class="top-nav-item" type="button" data-screen="mypage">
+            <span class="top-nav-icon top-nav-icon-mypage" aria-hidden="true"></span>
+            <span>マイページ</span>
           </button>
         </nav>
       </div>
@@ -445,6 +445,7 @@
         >
             <h2 class="app-update-title">
               <span>アップデート</span>
+              <span id="appUpdateStatus" class="app-update-status" aria-live="polite"></span>
               <button
                 id="appUpdateCheckBtn"
                 class="app-update-check-btn"
@@ -458,7 +459,6 @@
             </h2>
             <div class="settings-section-content app-update-setting-content">
               <p class="app-update-version"><strong id="appCurrentVersion">2026.05.16.1</strong></p>
-              <p id="appUpdateStatus" class="app-update-status" aria-live="polite"></p>
             </div>
           </section>
       </section>

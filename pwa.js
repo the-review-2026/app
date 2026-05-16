@@ -127,7 +127,7 @@
 
       let registration = await ensureServiceWorkerRegistration();
       if (!navigator.serviceWorker.controller) {
-        setUpdateStatus("アップデート確認の準備が完了しました。次回以降に確認できます。", "success");
+        setUpdateStatus("", "");
         return false;
       }
 
