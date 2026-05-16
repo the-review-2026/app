@@ -748,6 +748,7 @@ async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation
 }
 
 async function init() {
+  syncViewportWidthForLayout();
   const isAuthCallback = hasAuth0CallbackParams();
   const shouldWaitForAuth = isAuthCallback || !state.auth.isLoggedIn;
   const authInitialization = initializeAuth(shouldWaitForAuth ? {} : { preserveExistingSession: true });
@@ -798,7 +799,13 @@ async function init() {
   void initializeFlashcardsAfterFirstPaint();
 }
 
+function syncViewportWidthForLayout() {
+  const width = Math.max(0, Math.round(window.innerWidth || document.documentElement.clientWidth || 0));
+  document.documentElement.style.setProperty("--review-viewport-width", `${width}px`);
+}
+
 async function initLoginPage() {
+  syncViewportWidthForLayout();
   const isAuthCallback = hasAuth0CallbackParams();
   const requestedOnboardingStep = getRequestedLoginOnboardingStep();
   const explicitLogout = consumeExplicitLogoutIntent();
@@ -1158,7 +1165,7 @@ function bindSharedDataAndGuestDialogEvents() {
     elements.avaterScrollLockBtn.addEventListener("click", toggleAvaterScrollLock);
   }
   elements.guestModeActionButtons.forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       handleGuestModeDialogAction(button.dataset.guestModeAction);
     });
   });
@@ -1388,6 +1395,9 @@ function bindBeforeUnloadPrompt() {
 }
 
 function bindEvents() {
+  window.addEventListener("resize", syncViewportWidthForLayout);
+  window.visualViewport?.addEventListener("resize", syncViewportWidthForLayout);
+
   window.addEventListener("the-review-manager-screen-change", (event) => {
     updateManagerHostTitle(event.detail?.screen);
   });
@@ -1411,7 +1421,7 @@ function bindEvents() {
   }
 
   elements.navButtons.forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const screen = button.dataset.screen;
       if (!screen) {
         return;
@@ -1437,6 +1447,16 @@ function bindEvents() {
           onboardingStep: "nickname",
         });
         return;
+      }
+      if (screen === "manager" && !managerAccessState) {
+        await updateManagerMenuVisibility();
+        if (!managerAccessState) {
+          showAuthLoginRequiredDialog({
+            targetScreen: "manager",
+            onboardingStep: "nickname",
+          });
+          return;
+        }
       }
       activateScreen(screen);
       if (screen === "mypage") {
@@ -1946,7 +1966,7 @@ function closeLearnPopover() {
   });
 }
 
-function handleLearnMenuAction(action) {
+async function handleLearnMenuAction(action) {
   const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
   if (normalizedAction === "mypage") {
     closeLearnPopover();
@@ -1971,6 +1991,16 @@ function handleLearnMenuAction(action) {
         onboardingStep: "nickname",
       });
       return;
+    }
+    if (!managerAccessState) {
+      await updateManagerMenuVisibility();
+      if (!managerAccessState) {
+        showAuthLoginRequiredDialog({
+          targetScreen: "manager",
+          onboardingStep: "nickname",
+        });
+        return;
+      }
     }
     activateScreen("manager");
     return;
@@ -2317,6 +2347,23 @@ function updateManagerMenuState(screenName = "home") {
 }
 
 async function navigateManagerHostScreen(screenName = "home") {
+  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+    showAuthLoginRequiredDialog({
+      targetScreen: "manager",
+      onboardingStep: "nickname",
+    });
+    return;
+  }
+  if (!managerAccessState) {
+    await updateManagerMenuVisibility();
+  }
+  if (!managerAccessState) {
+    showAuthLoginRequiredDialog({
+      targetScreen: "manager",
+      onboardingStep: "nickname",
+    });
+    return;
+  }
   const normalizedScreen = Object.prototype.hasOwnProperty.call(MANAGER_HOST_SCREEN_TITLES, screenName)
     ? screenName
     : "home";
@@ -2375,7 +2422,11 @@ function activateScreen(screen) {
 }
 
 function promptLoginForMypage() {
-  activateScreen("login");
+  showAuthLoginRequiredDialog({
+    targetScreen: "mypage",
+    targetMypagePage: "top",
+    onboardingStep: "nickname",
+  });
 }
 
 function requestGuestModeLogin(appState = {}) {
@@ -3422,10 +3473,10 @@ function ensureAuthLoginRequiredDialog() {
   dialog.innerHTML = `
     <form method="dialog" class="text-reset-dialog-body">
       <h3 id="authLoginRequiredDialogTitle">ログインが必要です</h3>
-      <p>Review Accountを利用するにはログインが必要です。ログインフォームで認証を完了してください。</p>
+      <p>Review Accountのログイン状態を確認できませんでした。もう一度ログインしてから続行してください。</p>
       <div class="guest-mode-actions pwa-update-actions">
         <button class="secondary" type="button" data-auth-login-required-action="close">閉じる</button>
-        <button class="primary" type="button" data-auth-login-required-action="login">ログインする</button>
+        <button class="primary" type="button" data-auth-login-required-action="login">もう一度ログインする</button>
       </div>
     </form>
   `;
@@ -4605,8 +4656,13 @@ function getFlashcardBinderTargetNoteWidth() {
   const targetRect = elements.mypageFlashcardPanel?.getBoundingClientRect();
   const viewportWidth = Math.max(0, document.documentElement.clientWidth || window.innerWidth || 0);
   const measuredWidth = Number.isFinite(targetRect?.width) && targetRect.width > 0 ? targetRect.width : 0;
-  const fallbackWidth = Math.min(560, Math.max(178, viewportWidth - 32));
-  return Math.max(178, Math.round(measuredWidth || fallbackWidth));
+  const fallbackWidth = getResponsiveReviewSheetWidth(viewportWidth);
+  return Math.max(0, Math.round(measuredWidth || fallbackWidth));
+}
+
+function getResponsiveReviewSheetWidth(viewportWidth = window.innerWidth) {
+  const safeViewportWidth = Math.max(0, Number(viewportWidth) || 0);
+  return Math.max(0, Math.min(456, safeViewportWidth - 96));
 }
 
 function updateFlashcardBinderTargetWidth(binder = activeFlashcardBinderElement) {
@@ -4631,30 +4687,20 @@ function setFlashcardDirectNotebookGeometry(note) {
   );
   const isMobileViewport = viewportWidth <= 760;
   const pageGap = Math.max(8, Math.min(12, viewportWidth * 0.018));
-  const topReserved = isMobileViewport ? 44 : 8;
+  const topReserved = isMobileViewport ? 44 : 12;
   const bottomReserved = isMobileViewport
-    ? Math.max(148, Math.min(178, viewportHeight * 0.22))
-    : Math.max(112, Math.min(168, viewportHeight * 0.18));
+    ? Math.max(116, Math.min(156, viewportHeight * 0.2))
+    : Math.max(104, Math.min(142, viewportHeight * 0.16));
   const availableHeight = Math.max(220, viewportHeight - topReserved - bottomReserved);
-  const maxPageWidthByViewport = isMobileViewport
-    ? Math.max(178, viewportWidth - 24)
-    : Math.max(132, (viewportWidth - pageGap - 16) / 2);
-  const maxPageWidthByHeight = Math.max(132, availableHeight / Math.SQRT2);
-  const minPageWidth = isMobileViewport
-    ? Math.min(178, maxPageWidthByViewport, maxPageWidthByHeight)
-    : 132;
-  const targetWidth = Math.max(
-    minPageWidth,
-    Math.min(getFlashcardBinderTargetNoteWidth(), maxPageWidthByViewport, maxPageWidthByHeight)
-  );
+  const requestedPageWidth = getResponsiveReviewSheetWidth(viewportWidth);
+  const maxPageWidthByHeight = Math.max(0, availableHeight / Math.SQRT2);
+  const targetWidth = Math.max(0, Math.min(requestedPageWidth, maxPageWidthByHeight));
   const targetHeight = targetWidth * Math.SQRT2;
   const spreadWidth = targetWidth * 2 + pageGap;
   const safeTop = Math.max(topReserved, Math.round(topReserved + (availableHeight - targetHeight) / 2));
-  const spreadLeft = Math.max(8, Math.round((viewportWidth - spreadWidth) / 2));
-  const rightPageLeft = isMobileViewport
-    ? Math.max(12, Math.round((viewportWidth - targetWidth) / 2))
-    : Math.round(viewportWidth / 2 - targetWidth / 2);
-  const leftPageCenteredLeft = Math.max(8, Math.round((viewportWidth - targetWidth) / 2));
+  const spreadLeft = Math.round((viewportWidth - spreadWidth) / 2);
+  const rightPageLeft = Math.round((viewportWidth - targetWidth) / 2);
+  const leftPageCenteredLeft = Math.round((viewportWidth - targetWidth) / 2);
   const safeLeft = Math.round(rightPageLeft - targetWidth - pageGap);
   const geometryTargets = [activeFlashcardBinderElement, flashcardBinderStageElement].filter(
     (target, index, targets) => target instanceof HTMLElement && targets.indexOf(target) === index
@@ -7516,6 +7562,14 @@ function openStoreFromCoinBoard() {
   closeMypageSubmenu();
   if (!state.auth.isLoggedIn) {
     promptLoginForMypage();
+    return;
+  }
+  if (state.auth.provider !== "guest" && !hasUnlimitedReviewCoins() && !managerAccessState) {
+    showAuthLoginRequiredDialog({
+      targetScreen: "mypage",
+      targetMypagePage: "top",
+      onboardingStep: "nickname",
+    });
     return;
   }
   activateScreen("notice");

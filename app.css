@@ -14878,3 +14878,204 @@ body.learn-popover-open .flashcard-note-reader-avatar .avater-layer {
   font-size: 1.12rem !important;
   font-weight: 500 !important;
 }
+
+/* 2026-05-16 notebook width, page alignment, and login-gated interaction corrections. */
+:root {
+  --review-sheet-width: min(456px, calc(var(--review-viewport-width, 100vw) - 96px));
+  --review-sheet-gap: 12px;
+  --review-flashcard-tab-width: var(--review-sheet-width);
+}
+
+.home-flashcard-slot,
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel {
+  width: var(--review-sheet-width) !important;
+  max-width: var(--review-sheet-width) !important;
+  box-sizing: border-box;
+}
+
+#mypageFlashcardPanel .flashcard-note-library {
+  width: calc(100% + 2rem) !important;
+  max-width: calc(100% + 2rem) !important;
+  margin-left: -1rem !important;
+  margin-right: -1rem !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 0 !important;
+  scroll-padding-bottom: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list,
+#mypageFlashcardPanel .flashcard-series-index,
+#mypageFlashcardPanel .flashcard-note {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+#mypageFlashcardPanel .flashcard-note-list {
+  padding-bottom: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-note:last-child {
+  margin-bottom: 0 !important;
+}
+
+.flashcard-binder-stage.flashcard-binder-list.is-bookshelf.is-binder-open {
+  overflow: visible !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+  --note-page-gap: var(--flashcard-direct-note-gap, var(--review-sheet-gap));
+  --note-open-page-width: var(--flashcard-direct-note-page-width, var(--review-sheet-width));
+  --note-page-height: calc(var(--note-open-page-width) * 1.4142135623730951);
+  --note-rule-size: calc(var(--note-page-height) / 23);
+  left: var(--flashcard-direct-note-right-left, var(--flashcard-direct-note-left, 0px)) !important;
+  top: var(--flashcard-direct-note-top, 5.2rem) !important;
+  width: calc((var(--note-open-page-width) * 2) + var(--note-page-gap)) !important;
+  height: var(--note-page-height) !important;
+  min-height: var(--note-page-height) !important;
+  transition: left 360ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader.is-left-visible {
+  left: var(--flashcard-direct-note-left-page-left, var(--flashcard-direct-note-spread-left, 0px)) !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader-pages {
+  width: calc((var(--note-open-page-width) * 2) + var(--note-page-gap)) !important;
+  height: var(--note-page-height) !important;
+  min-height: var(--note-page-height) !important;
+  overflow: visible !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper,
+.flashcard-note-page-turn-face .flashcard-note-paper {
+  width: var(--note-open-page-width) !important;
+  height: var(--note-page-height) !important;
+  min-height: var(--note-page-height) !important;
+  max-height: var(--note-page-height) !important;
+  aspect-ratio: auto !important;
+  box-sizing: border-box;
+  background:
+    linear-gradient(90deg, transparent 0 2.48rem, rgba(209, 91, 91, 0.24) 2.48rem 2.54rem, transparent 2.54rem),
+    linear-gradient(transparent calc(var(--note-rule-size) - 1px), rgba(122, 145, 173, 0.22) var(--note-rule-size)) 0 0 / 100% var(--note-rule-size),
+    #ffffff !important;
+}
+
+.flashcard-note-paper {
+  --note-page-height: calc(var(--note-open-page-width, var(--review-sheet-width)) * 1.4142135623730951);
+  --note-rule-size: calc(var(--note-page-height) / 23);
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-left {
+  left: 0 !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-paper-right {
+  margin-left: calc(var(--note-open-page-width) + var(--note-page-gap)) !important;
+}
+
+.flashcard-note-paper-inner {
+  grid-template-rows: calc(var(--note-rule-size) * 3) calc(var(--note-rule-size) * 20) !important;
+  padding: 0 1rem 0 3.05rem !important;
+}
+
+.flashcard-note-paper.is-problem .flashcard-note-paper-inner {
+  grid-template-rows: calc(var(--note-rule-size) * 3) calc(var(--note-rule-size) * 10) calc(var(--note-rule-size) * 10) !important;
+}
+
+.flashcard-note-paper-header {
+  min-height: calc(var(--note-rule-size) * 3) !important;
+  align-items: center !important;
+  padding: 0 !important;
+}
+
+.flashcard-note-paper-main,
+.flashcard-note-answer-area {
+  gap: 0 !important;
+  padding-top: calc(var(--note-rule-size) * 0.42) !important;
+}
+
+.flashcard-note-paper-title {
+  line-height: var(--note-rule-size) !important;
+}
+
+.flashcard-note-paper-body {
+  line-height: var(--note-rule-size) !important;
+}
+
+.flashcard-note-answer-area {
+  border-top: 0 !important;
+}
+
+.flashcard-note-answer-choice-list {
+  gap: calc(var(--note-rule-size) * 0.18) !important;
+}
+
+.flashcard-note-answer-voice-btn {
+  min-height: calc(var(--note-rule-size) * 1.45) !important;
+}
+
+.flashcard-note-answer-transcript {
+  min-height: calc(var(--note-rule-size) * 1.45) !important;
+}
+
+.flashcard-note-page-turn-sheet {
+  width: var(--note-open-page-width) !important;
+  height: var(--note-page-height) !important;
+  aspect-ratio: auto !important;
+  transform-style: preserve-3d;
+  will-change: transform, filter;
+}
+
+.flashcard-note-page-turn-sheet-next {
+  left: calc(var(--note-open-page-width) + var(--note-page-gap)) !important;
+}
+
+.flashcard-note-page-turn-sheet-prev {
+  left: 0 !important;
+}
+
+.flashcard-note-reader.is-turning-next .flashcard-note-page-turn-sheet-next {
+  animation: review-page-turn-next 560ms cubic-bezier(0.2, 0.72, 0.24, 1) both !important;
+}
+
+.flashcard-note-reader.is-turning-prev .flashcard-note-page-turn-sheet-prev {
+  animation: review-page-turn-prev 560ms cubic-bezier(0.2, 0.72, 0.24, 1) both !important;
+}
+
+@keyframes review-page-turn-next {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+  52% {
+    filter: brightness(0.9);
+  }
+  100% {
+    transform: rotateY(-180deg);
+    filter: brightness(1);
+  }
+}
+
+@keyframes review-page-turn-prev {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+  52% {
+    filter: brightness(0.9);
+  }
+  100% {
+    transform: rotateY(180deg);
+    filter: brightness(1);
+  }
+}
+
+@media (max-width: 552px) {
+  :root {
+    --review-sheet-width: calc(var(--review-viewport-width, 100vw) - 96px);
+  }
+}
