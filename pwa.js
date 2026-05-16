@@ -1,6 +1,6 @@
 (() => {
-  const APP_VERSION = "2026.05.15.2";
-  const SERVICE_WORKER_URL = "./sw.js?v=20260515-2";
+  const APP_VERSION = "2026.05.16.1";
+  const SERVICE_WORKER_URL = "./sw.js?v=20260516-1";
   const AUTO_UPDATE_STORAGE_KEY = "the-review-pwa-auto-update-v1";
   const UPDATE_READY_MESSAGE = "アップデートがあります。更新するか、翌日0時の自動更新を待てます。";
   const UPDATE_CHECK_TIMEOUT_MS = 8000;
