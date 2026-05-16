@@ -364,6 +364,23 @@ $migration$;
   end if;
 end $$;
 
+update public.users
+set avater = jsonb_set(
+  case
+    when jsonb_typeof(coalesce(avater, '{}'::jsonb)) = 'object' then coalesce(avater, '{}'::jsonb)
+    else '{}'::jsonb
+  end,
+  '{equipped}',
+  case
+    when jsonb_typeof(avater->'equipped') = 'object' and avater->'equipped' <> '{}'::jsonb then avater->'equipped'
+    when jsonb_typeof(equipped_avater) = 'object' then equipped_avater
+    else '{}'::jsonb
+  end,
+  true
+)
+where jsonb_typeof(avater->'equipped') = 'object'
+   or jsonb_typeof(equipped_avater) = 'object';
+
 alter table public.users
   drop column if exists display_name,
   drop column if exists review_storage_key,
@@ -374,6 +391,7 @@ alter table public.users
   drop column if exists learning_progress,
   drop column if exists high_contrast,
   drop column if exists monochrome,
+  drop column if exists equipped_avater,
   drop column if exists coin_grant_5000_applied;
 
 drop table if exists public.answers;

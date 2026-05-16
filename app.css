@@ -12998,3 +12998,252 @@ body:has(#screen-mypage.is-active) .top-nav-character {
     font-size: 2rem !important;
   }
 }
+
+/* 2026-05-16 review-day card, Learn, and Review Menu alignment pass. */
+:root {
+  --review-floating-menu-height: 86px;
+}
+
+.home-card-carousel {
+  padding-bottom: 1.18rem;
+}
+
+.home-card-progress {
+  position: absolute;
+  left: calc(clamp(2.35rem, 8vw, 3.1rem) + 0.76rem);
+  bottom: 0.44rem;
+  z-index: 8;
+  justify-content: flex-start;
+  min-height: 0.72rem;
+}
+
+.home-card-progress-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+}
+
+.home-card-nav-btn:disabled,
+.flashcard-note-reader-side-nav.home-card-nav-btn:disabled {
+  display: none !important;
+}
+
+.daily-login-card-body {
+  gap: clamp(1.05rem, 3.1vw, 1.36rem);
+  padding-bottom: clamp(1.42rem, 5vw, 1.9rem);
+}
+
+.daily-login-count-wrap {
+  position: relative;
+  z-index: 2;
+}
+
+#dailyLoginCount {
+  font-size: clamp(5.05rem, 31vw, 7.85rem) !important;
+}
+
+.daily-login-progress-area {
+  z-index: 1;
+  overflow: visible;
+  margin-top: clamp(0.28rem, 1.6vw, 0.58rem);
+  padding-bottom: clamp(2.08rem, 8vw, 2.62rem);
+}
+
+.daily-login-scale {
+  height: 1.68em;
+  font-size: clamp(0.96rem, 5vw, 1.36rem);
+  overflow: visible;
+}
+
+.daily-login-scale li.is-active {
+  z-index: 4;
+  isolation: isolate;
+  font-size: 1.16em;
+  line-height: 1;
+}
+
+.daily-login-scale li.is-active::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -0.16rem;
+  z-index: -1;
+  width: clamp(1.78rem, 7.8vw, 2.42rem);
+  height: clamp(3.72rem, 13vw, 4.74rem);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(20, 40, 58, 0.1);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.daily-login-track {
+  z-index: 2;
+  margin-top: 0.48rem;
+}
+
+.daily-login-current-node {
+  z-index: 5;
+}
+
+#mypageFlashcardPanel {
+  margin-top: clamp(1rem, 3.2vw, 1.7rem) !important;
+  padding-top: clamp(112px, 14vw, 134px) !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  top: -0.56rem !important;
+  line-height: 0.88 !important;
+  text-align: center !important;
+}
+
+.top-nav,
+body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+  min-height: var(--review-floating-menu-height) !important;
+}
+
+body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+  left: 50vw !important;
+  bottom: max(0.65rem, env(safe-area-inset-bottom)) !important;
+  width: min(560px, calc(100vw - 1.6rem)) !important;
+  max-width: min(560px, calc(100vw - 1.6rem)) !important;
+  transform: translateX(-50%) !important;
+  align-items: end !important;
+  padding: 0.7rem 0.68rem 0.75rem !important;
+  gap: clamp(0.22rem, 1.8vw, 0.54rem) !important;
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-mode-btn {
+  flex: 0 0 min(84px, 18%) !important;
+  width: min(84px, 18%) !important;
+  min-height: 60px !important;
+  padding: 0.44rem 0.28rem !important;
+  gap: 0.18rem !important;
+  border-radius: 16px !important;
+  font-size: 0.94rem !important;
+}
+
+.flashcard-note-reader-controls .flashcard-note-reader-mode-btn .material-symbols-rounded {
+  font-size: 1.32rem !important;
+}
+
+.flashcard-note-reader-mode-label {
+  font-size: 0.78rem !important;
+  line-height: 1.05 !important;
+}
+
+.flashcard-note-reader-answer-btn {
+  min-width: min(112px, 26%) !important;
+  min-height: 60px !important;
+  padding-inline: 0.74rem !important;
+  font-size: 0.96rem !important;
+}
+
+.top-nav-character,
+.top-nav .top-nav-character,
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-manager.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character,
+.flashcard-note-reader-avatar {
+  width: var(--review-nav-character-width) !important;
+  aspect-ratio: 350 / 520 !important;
+  clip-path: inset(0 0 43% 0);
+  overflow: visible !important;
+  cursor: pointer;
+  pointer-events: auto !important;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    clip-path 220ms ease,
+    opacity 180ms ease,
+    visibility 180ms ease;
+}
+
+.top-nav-character,
+.top-nav .top-nav-character,
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-manager.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character {
+  bottom: max(-0.38rem, calc(env(safe-area-inset-bottom) - 0.38rem)) !important;
+}
+
+.flashcard-note-reader-avatar {
+  bottom: max(-0.38rem, calc(env(safe-area-inset-bottom) - 0.38rem)) !important;
+  transform: translateX(-50%) !important;
+}
+
+body.learn-popover-open .top-nav-character,
+body.learn-popover-open .top-nav .top-nav-character,
+body.learn-popover-open .flashcard-note-reader-avatar {
+  clip-path: inset(0 0 0 0);
+  transform: translateX(-50%) translateY(-1.15rem) scale(1.03) !important;
+}
+
+body.learn-popover-open #screen-learn {
+  min-height: var(--review-floating-menu-height) !important;
+  padding: 0.62rem 0.74rem 1.38rem !important;
+}
+
+body.learn-popover-open #screen-learn .page-title-row::after {
+  right: 0.74rem !important;
+  left: auto !important;
+  bottom: -0.76rem !important;
+  opacity: 0.22 !important;
+  transform: none !important;
+}
+
+.learn-avater-dock,
+body.learn-popover-open #screen-learn .learn-avater-dock {
+  right: 1.02rem !important;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --review-floating-menu-height: 82px;
+  }
+
+  .home-card-progress {
+    left: calc(clamp(1.45rem, 6vw, 2.2rem) + 0.72rem);
+  }
+
+  #dailyLoginCount {
+    font-size: clamp(5rem, 32vw, 7.2rem) !important;
+  }
+
+  #mypageFlashcardPanel {
+    margin-top: clamp(1.18rem, 5vw, 1.9rem) !important;
+    padding-top: clamp(104px, 30vw, 136px) !important;
+  }
+
+  #mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+    top: -0.44rem !important;
+  }
+
+  body:has(.flashcard-binder-stage.is-note-open) .flashcard-note-reader-controls {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    padding: 0.58rem 0.5rem 0.64rem !important;
+  }
+
+  .flashcard-note-reader-controls .flashcard-note-reader-mode-btn {
+    flex-basis: min(58px, 18%) !important;
+    width: min(58px, 18%) !important;
+    min-height: 56px !important;
+  }
+
+  .flashcard-note-reader-answer-btn {
+    min-width: min(92px, 25%) !important;
+    min-height: 56px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .flashcard-note-reader-avatar,
+  .top-nav-character,
+  .top-nav .top-nav-character,
+  body:has(#screen-notice.is-active) .top-nav-character,
+  body:has(#screen-settings.is-active) .top-nav-character,
+  body:has(#screen-manager.is-active) .top-nav-character,
+  body:has(#screen-mypage.is-active) .top-nav-character {
+    width: min(var(--review-nav-character-width), 44vw) !important;
+  }
+}

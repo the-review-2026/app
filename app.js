@@ -1838,7 +1838,8 @@ function bindEvents() {
     const clickedInsideLearn = elements.learnScreen?.contains(event.target);
     const clickedLearnButton = event.target instanceof Element && Boolean(event.target.closest('[data-screen="learn"]'));
     const clickedLearnCharacter =
-      event.target instanceof Element && Boolean(event.target.closest(".top-nav-character"));
+      event.target instanceof Element &&
+      Boolean(event.target.closest(".top-nav-character, .flashcard-note-reader-avatar"));
     if (isLearnPopoverOpen && !clickedInsideLearn && !clickedLearnButton && !clickedLearnCharacter) {
       closeLearnPopover();
     }
@@ -4896,6 +4897,10 @@ function handleFlashcardNoteReaderAction(actionButton) {
     recordActiveFlashcardNotebookProgress();
     return;
   }
+  if (action === "learn") {
+    toggleLearnPopover();
+    return;
+  }
   if (action === "answer") {
     return;
   }
@@ -5068,7 +5073,10 @@ function createFlashcardNotebookMenuButton(iconName, label, mode) {
 function createFlashcardNotebookAvatarPreview() {
   const preview = document.createElement("div");
   preview.className = "flashcard-note-reader-avatar avater-preview";
-  preview.setAttribute("aria-hidden", "true");
+  preview.dataset.flashcardNoteReaderAction = "learn";
+  preview.setAttribute("role", "button");
+  preview.setAttribute("tabindex", "0");
+  preview.setAttribute("aria-label", "らーん");
   const baseImage = document.createElement("img");
   baseImage.className = "avater-base-image";
   baseImage.src = AVATER_BASE_IMAGE;
@@ -5079,6 +5087,13 @@ function createFlashcardNotebookAvatarPreview() {
     layer.removeAttribute("role");
     layer.removeAttribute("tabindex");
     layer.removeAttribute("aria-label");
+  });
+  preview.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    toggleLearnPopover();
   });
   return preview;
 }
@@ -10002,17 +10017,20 @@ function createReviewDataPayloadFromRemoteRecord(record) {
     }
   }
 
-  const avater = normalizePlainRemoteObject(record.avater);
-  const equippedAvater = normalizePlainRemoteObject(record.equippedAvater);
+  const avater = normalizePlainRemoteObject(record.avater ?? record.avatar);
+  const equippedAvater = normalizePlainRemoteObject(
+    record.equippedAvater ?? record.equipped_avater ?? avater.equipped
+  );
   const existingAvater = normalizePlainRemoteObject(data.avater ?? data.avatar);
   if (Object.keys(avater).length > 0 || Object.keys(equippedAvater).length > 0 || Object.keys(existingAvater).length > 0) {
     data.avater = {
       ...existingAvater,
       ...avater,
     };
-    if (Object.keys(equippedAvater).length > 0) {
-      data.avater.equipped = equippedAvater;
-    }
+    data.avater.equipped =
+      Object.keys(equippedAvater).length > 0
+        ? equippedAvater
+        : normalizePlainRemoteObject(avater.equipped ?? existingAvater.equipped);
   }
 
   if (remoteRecordHasAuthFields(record)) {

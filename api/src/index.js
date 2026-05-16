@@ -93,7 +93,6 @@ const USER_SELECT_FIELDS = [
   "settings",
   "education_codes",
   "avater",
-  "equipped_avater",
   "review_client_updated_at",
   "review_synced_at",
   "review_remote_updated_at",
@@ -387,12 +386,8 @@ async function updateManagerMember(request, env, memberId) {
     hasReviewDataPatch = true;
   }
   if (avaterPatch.has) {
-    patch.avater = avaterPatch.value;
-    patch.equipped_avater = normalizeJsonObject(avaterPatch.value.equipped);
-    setPersonalDataField("avater", {
-      ...patch.avater,
-      equipped: patch.equipped_avater,
-    });
+    patch.avater = normalizeAvaterForSupabase(avaterPatch.value);
+    setPersonalDataField("avater", patch.avater);
     hasReviewDataPatch = true;
   }
   if (reviewDataPatch.has) {
@@ -1052,8 +1047,7 @@ function extractReviewPersonalColumns(payload) {
   const data = normalizeJsonObject(payload);
   const settings = normalizeJsonObject(data.settings);
   const auth = normalizeJsonObject(data.auth);
-  const avater = normalizeJsonObject(data.avater ?? data.avatar);
-  const equippedAvater = normalizeJsonObject(avater.equipped);
+  const avater = normalizeAvaterForSupabase(data.avater ?? data.avatar);
   const reviewSettings = normalizeReviewSettingsForSupabase(settings);
   const reviewCoin = Number(data.reviewCoin);
   const isLoggedIn = Boolean(auth.isLoggedIn);
@@ -1072,7 +1066,17 @@ function extractReviewPersonalColumns(payload) {
     settings: reviewSettings,
     education_codes: Array.isArray(reviewSettings.educationCodes) ? reviewSettings.educationCodes : [],
     avater,
-    equipped_avater: equippedAvater,
+  };
+}
+
+function normalizeAvaterForSupabase(value) {
+  const avater = normalizeJsonObject(value);
+  if (Object.keys(avater).length === 0) {
+    return {};
+  }
+  return {
+    ...avater,
+    equipped: normalizeJsonObject(avater.equipped),
   };
 }
 
@@ -1104,7 +1108,6 @@ function createDefaultReviewDataColumns() {
     settings: {},
     education_codes: [],
     avater: {},
-    equipped_avater: {},
     review_client_updated_at: null,
     review_synced_at: null,
     review_remote_updated_at: null,
@@ -1344,8 +1347,8 @@ function serializeReviewDataRow(row) {
   const learningProgress = normalizeJsonObject(row.review_data);
   const settings = normalizeJsonObject(row.settings);
   const educationCodes = Array.isArray(row.education_codes) ? row.education_codes : [];
-  const avater = normalizeJsonObject(row.avater);
-  const equippedAvater = normalizeJsonObject(row.equipped_avater);
+  const avater = normalizeAvaterForSupabase(row.avater);
+  const equippedAvater = normalizeJsonObject(avater.equipped);
   const reviewCoin = Number.isFinite(Number(row.review_coin)) ? Number(row.review_coin) : 0;
   const auth = normalizeJsonObject(data.auth);
   const existingLearningProgress = normalizeJsonObject(data.learningProgress ?? data.progress ?? data.noteProgress);
@@ -1600,8 +1603,8 @@ function serializeManagerMemberRow(user) {
   const loginDays = normalizeJsonObject(reviewPeriod.loginDays ?? personalData.loginDays);
   const dailyLoginRewardDays = normalizeJsonObject(reviewPeriod.dailyLoginRewardDays ?? personalData.dailyLoginRewardDays);
   const settings = pickFirstNonEmptyJsonObject(user.settings, personalData.settings);
-  const avater = pickFirstNonEmptyJsonObject(user.avater, personalData.avater, personalData.avatar);
-  const equippedAvater = pickFirstNonEmptyJsonObject(user.equipped_avater, avater.equipped);
+  const avater = normalizeAvaterForSupabase(pickFirstNonEmptyJsonObject(user.avater, personalData.avater, personalData.avatar));
+  const equippedAvater = normalizeJsonObject(avater.equipped);
   const reviewData = pickFirstNonEmptyJsonObject(
     user.review_data,
     personalData.learningProgress,
