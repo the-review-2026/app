@@ -466,9 +466,11 @@ const elements = {
   authPasswordText: document.getElementById("authPasswordText"),
   authPasswordToggleBtn: document.getElementById("authPasswordToggleBtn"),
   authLoginStatusText: document.getElementById("authLoginStatusText"),
-  authNicknameRow: document.getElementById("authNicknameText")?.closest(".setting-row") ?? null,
-  authEmailRow: document.getElementById("authEmailText")?.closest(".setting-row") ?? null,
-  authPasswordRow: document.getElementById("authPasswordText")?.closest(".setting-row") ?? null,
+  authGoogleStatusText: document.getElementById("authGoogleStatusText"),
+  authNicknameRow: document.getElementById("authNicknameRow") ?? document.getElementById("authNicknameText")?.closest(".setting-row") ?? null,
+  authEmailRow: document.getElementById("authEmailRow") ?? document.getElementById("authEmailText")?.closest(".setting-row") ?? null,
+  authPasswordRow: document.getElementById("authPasswordRow") ?? document.getElementById("authPasswordText")?.closest(".setting-row") ?? null,
+  authGoogleRow: document.getElementById("authGoogleRow"),
   settingsEducationCodeStatusText: document.getElementById("settingsEducationCodeStatusText"),
   settingsEducationCodeList: document.getElementById("settingsEducationCodeList"),
   settingsEducationCodeAddBtn: document.getElementById("settingsEducationCodeAddBtn"),
@@ -493,10 +495,16 @@ const elements = {
   accountEditRow: document.getElementById("accountEditBtn")?.closest(".setting-row") ?? null,
   accountEditDialog: document.getElementById("accountEditDialog"),
   accountEditForm: document.querySelector("#accountEditDialog form"),
+  accountEditNicknameOption: document.getElementById("accountEditNicknameOption"),
+  accountEditEmailOption: document.getElementById("accountEditEmailOption"),
+  accountEditPasswordOption: document.getElementById("accountEditPasswordOption"),
+  accountEditGoogleOption: document.getElementById("accountEditGoogleOption"),
   accountEditNicknameInput: document.getElementById("accountEditNicknameInput"),
   accountEditEmailInput: document.getElementById("accountEditEmailInput"),
   accountEditPasswordInput: document.getElementById("accountEditPasswordInput"),
   accountEditPasswordToggleBtn: document.getElementById("accountEditPasswordToggleBtn"),
+  accountEditGoogleStatusText: document.getElementById("accountEditGoogleStatusText"),
+  accountEditGoogleActionBtn: document.getElementById("accountEditGoogleActionBtn"),
   accountEditNicknameFeedback: document.getElementById("accountEditNicknameFeedback"),
   accountEditNicknameSaveBtn: document.getElementById("accountEditNicknameSaveBtn"),
   accountEditActionButtons: Array.from(document.querySelectorAll("[data-account-edit-action]")),
@@ -1324,7 +1332,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
-  const settingsLabels = ["Review Account", "Education Code", "Review Data", "Update"];
+  const settingsLabels = ["Review Account", "Education Code", "Review Data", "アップデート"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -2612,6 +2620,7 @@ function openAccountEdit() {
     elements.accountEditPasswordInput.type = isAccountEditPasswordVisible ? "text" : "password";
   }
   syncAccountPasswordToggle(elements.accountEditPasswordToggleBtn, isAccountEditPasswordVisible, "編集用パスワード");
+  syncAccountEditProviderUi();
   setAccountEditNicknameFeedback("", "");
   syncAccountEditNicknameSaveButton();
   if (elements.accountEditDialog && typeof elements.accountEditDialog.showModal === "function") {
@@ -2631,6 +2640,57 @@ async function handleAccountEditAction(action) {
     await saveAccountEditProfile();
     return;
   }
+  if (normalizedAction === "google-link" || normalizedAction === "google-unlink") {
+    await changeAccountGoogleLinkState(normalizedAction);
+    return;
+  }
+}
+
+function syncAccountEditProviderUi() {
+  const isGoogleAccount = state.auth.isLoggedIn && state.auth.provider === "google";
+  const isReviewAccount = state.auth.isLoggedIn && state.auth.provider !== "guest";
+  if (elements.accountEditEmailOption) {
+    elements.accountEditEmailOption.hidden = isGoogleAccount;
+  }
+  if (elements.accountEditPasswordOption) {
+    elements.accountEditPasswordOption.hidden = isGoogleAccount;
+  }
+  if (elements.accountEditGoogleOption) {
+    elements.accountEditGoogleOption.hidden = !isReviewAccount;
+  }
+  if (elements.accountEditGoogleStatusText) {
+    elements.accountEditGoogleStatusText.textContent = isGoogleAccount
+      ? "Googleアカウントと連携中です。メールアドレスとパスワードはGoogle側で管理されます。"
+      : "Googleとは未連携です。連携するとGoogleでログインできるようになります。";
+  }
+  if (elements.accountEditGoogleActionBtn) {
+    elements.accountEditGoogleActionBtn.dataset.accountEditAction = isGoogleAccount ? "google-unlink" : "google-link";
+    elements.accountEditGoogleActionBtn.textContent = isGoogleAccount ? "Google連携を解除する" : "Googleと連携する";
+    elements.accountEditGoogleActionBtn.classList.toggle("danger", isGoogleAccount);
+    elements.accountEditGoogleActionBtn.classList.toggle("secondary", !isGoogleAccount);
+    elements.accountEditGoogleActionBtn.disabled = !isReviewAccount;
+  }
+}
+
+async function changeAccountGoogleLinkState(action) {
+  if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
+    setAccountEditNicknameFeedback("Review Accountでログインしてください。", "error");
+    return;
+  }
+  const shouldLinkGoogle = action === "google-link";
+  const provider = shouldLinkGoogle ? "google" : "auth0";
+  const connection = getAuthConnectionForProvider(provider);
+  if (requiresAuthConnection(provider) && !connection) {
+    setAccountEditNicknameFeedback("Google連携を利用できる設定がありません。", "error");
+    return;
+  }
+  closeAccountEditDialog();
+  await loginWithAuth0(
+    {
+      targetScreen: "settings",
+    },
+    { provider, screenHint: "" }
+  );
 }
 
 function getAccountEditNicknameValue() {
@@ -7309,6 +7369,8 @@ function getAuthNicknameText(fallbackText = "未設定") {
 function renderMypageSettings() {
   const nicknameText = getAuthNicknameText();
   const isGuestMode = state.auth.isLoggedIn && state.auth.provider === "guest";
+  const isGoogleAccount = state.auth.isLoggedIn && state.auth.provider === "google";
+  const isReviewAccount = state.auth.isLoggedIn && state.auth.provider !== "guest";
   if (elements.infoMenuUser) {
     elements.infoMenuUser.hidden = isGuestMode;
   }
@@ -7339,6 +7401,8 @@ function renderMypageSettings() {
       elements.authLoginStatusText.textContent = "未ログイン";
     } else if (state.auth.provider === "guest") {
       elements.authLoginStatusText.textContent = "Guest Mode";
+    } else if (isGoogleAccount) {
+      elements.authLoginStatusText.textContent = "Google連携中";
     } else {
       elements.authLoginStatusText.textContent = "ログイン中";
     }
@@ -7359,6 +7423,12 @@ function renderMypageSettings() {
       }
       elements.accountEditBtn.setAttribute("aria-label", "Review Accountを作成する");
       elements.accountEditBtn.title = "Review Accountを作成する";
+    } else if (isGoogleAccount) {
+      if (icon) {
+        icon.textContent = "manage_accounts";
+      }
+      elements.accountEditBtn.setAttribute("aria-label", "Google連携を管理する");
+      elements.accountEditBtn.title = "Google連携を管理する";
     } else {
       if (icon) {
         icon.textContent = "edit";
@@ -7375,10 +7445,16 @@ function renderMypageSettings() {
     elements.authNicknameRow.hidden = isGuestMode;
   }
   if (elements.authEmailRow) {
-    elements.authEmailRow.hidden = isGuestMode;
+    elements.authEmailRow.hidden = isGuestMode || isGoogleAccount;
   }
   if (elements.authPasswordRow) {
-    elements.authPasswordRow.hidden = isGuestMode;
+    elements.authPasswordRow.hidden = isGuestMode || isGoogleAccount;
+  }
+  if (elements.authGoogleRow) {
+    elements.authGoogleRow.hidden = !isReviewAccount;
+  }
+  if (elements.authGoogleStatusText) {
+    elements.authGoogleStatusText.textContent = isGoogleAccount ? "連携中" : "未連携";
   }
   if (elements.accountActionRow) {
     elements.accountActionRow.classList.toggle("is-guest-account-actions", isGuestMode);

@@ -12701,3 +12701,300 @@ body.learn-popover-open #screen-learn .learn-avater-dock {
   right: 1rem !important;
   z-index: 4;
 }
+
+/* 2026-05-16 responsive alignment pass. */
+:root {
+  --review-menu-width: 456px;
+  --review-logo-width: 375px;
+  --review-logo-height: 75px;
+  --review-nav-character-width: 172px;
+}
+
+.app-logo,
+body:has(#screen-manager.is-active) .app-logo,
+.manager-migrated-root .app-logo.manager-logo {
+  width: min(var(--review-logo-width), calc(100vw - 1.4rem)) !important;
+  height: var(--review-logo-height) !important;
+  max-width: var(--review-logo-width) !important;
+  object-fit: contain !important;
+}
+
+.manager-migrated-root .app-logo.manager-logo {
+  display: block;
+  margin-inline: auto;
+}
+
+.tab-script {
+  max-width: calc(100% - 1.6rem);
+  font-size: 2rem !important;
+}
+
+#mypageFlashcardPanel {
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  left: 50% !important;
+  width: calc(100% - 1.2rem) !important;
+  max-width: calc(100% - 1.2rem) !important;
+  transform: translateX(-50%) !important;
+  text-align: center;
+  font-size: clamp(68px, 15vw, 92px) !important;
+  white-space: nowrap;
+}
+
+.top-nav {
+  display: grid !important;
+  grid-template-columns:
+    minmax(82px, 1fr)
+    minmax(132px, var(--review-nav-character-width))
+    minmax(82px, 1fr);
+  align-items: end !important;
+  justify-items: center;
+  justify-content: center;
+  gap: clamp(0.22rem, 1.8vw, 0.54rem) !important;
+}
+
+.top-nav-item,
+.top-nav-item[data-screen="home"],
+.top-nav-item[data-screen="learn"],
+.top-nav-item[data-screen="notice"],
+.top-nav-item[data-screen="settings"],
+.top-nav-item[data-screen="manager"],
+.top-nav-item[data-screen="store"] {
+  width: min(112px, 100%) !important;
+  flex: none !important;
+  justify-self: center;
+}
+
+.top-nav-item[data-screen="home"] {
+  grid-column: 1;
+}
+
+.top-nav-item[data-screen="learn"] {
+  grid-column: 2;
+  width: 100% !important;
+}
+
+.top-nav-item[data-screen="notice"],
+.top-nav-item[data-screen="store"] {
+  grid-column: 3;
+}
+
+.top-nav-character,
+.top-nav .top-nav-character,
+body:has(#screen-notice.is-active) .top-nav-character,
+body:has(#screen-settings.is-active) .top-nav-character,
+body:has(#screen-manager.is-active) .top-nav-character,
+body:has(#screen-mypage.is-active) .top-nav-character {
+  width: var(--review-nav-character-width) !important;
+  aspect-ratio: 350 / 520 !important;
+  overflow: visible !important;
+}
+
+.avater-preview-large,
+.manager-migrated-root .manager-member-avatar,
+.flashcard-note-reader-avatar {
+  aspect-ratio: 350 / 520 !important;
+}
+
+.avater-base-image,
+.top-nav-character img,
+.manager-migrated-root .manager-member-avatar .avater-base-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center bottom !important;
+  transform: none !important;
+  transform-origin: center bottom !important;
+}
+
+.avater-layer.avater-item-custom.has-custom-image {
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.avater-layer.avater-item-custom.has-custom-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+}
+
+.text-reset-dialog,
+.legal-info-dialog,
+.education-code-dialog,
+.education-code-remove-dialog,
+.account-edit-dialog,
+.auth-login-required-dialog,
+.pwa-update-dialog,
+.manager-migrated-root .text-reset-dialog,
+.manager-migrated-root .manager-image-adjust-dialog,
+.manager-migrated-root .vector-graph-dialog {
+  width: min(var(--review-menu-width), calc(100vw - 2rem)) !important;
+  max-width: min(var(--review-menu-width), calc(100vw - 2rem)) !important;
+}
+
+.account-panel-title {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start !important;
+  justify-items: start;
+  gap: 0.58rem;
+  padding: 0.46rem 1rem !important;
+  padding-right: 1rem !important;
+  text-align: left;
+}
+
+.account-title-main {
+  justify-content: flex-start !important;
+  align-items: center;
+  justify-self: start;
+  grid-column: 2;
+  width: 100%;
+  text-align: left;
+}
+
+.account-title-main > span {
+  flex: 0 1 auto !important;
+}
+
+.account-panel-title .account-edit-button,
+.account-edit-button {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  grid-column: 3;
+  justify-self: end;
+  align-self: start;
+  margin: 0;
+}
+
+.setting-row[hidden],
+.account-edit-option[hidden],
+.education-code-chip[hidden] {
+  display: none !important;
+}
+
+.account-google-row strong,
+.account-edit-google-option p {
+  color: var(--text-main);
+}
+
+.account-google-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.42rem;
+}
+
+.account-edit-option {
+  align-items: center;
+}
+
+.account-edit-option-icon {
+  align-self: center;
+}
+
+.account-edit-password-field {
+  position: relative;
+}
+
+.account-edit-password-field input {
+  padding-right: 2.85rem;
+}
+
+.account-edit-password-field .account-password-toggle {
+  position: absolute;
+  right: 0.42rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.app-update-title {
+  display: grid !important;
+  grid-template-columns: auto auto 2rem;
+  justify-content: start;
+  align-items: center;
+  gap: 0.48rem;
+  padding-right: 1rem !important;
+}
+
+.app-update-title > span {
+  grid-column: 2;
+  white-space: nowrap;
+}
+
+.app-update-check-btn {
+  position: static !important;
+  transform: none !important;
+  grid-column: 3;
+}
+
+.app-update-version {
+  margin: 0;
+}
+
+.app-update-version strong {
+  display: inline-block;
+  color: var(--text-main);
+  font-family: var(--number-font);
+  font-size: clamp(1.72rem, 7vw, 2.45rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+@media (max-width: 760px) {
+  .app-logo,
+  body:has(#screen-manager.is-active) .app-logo,
+  .manager-migrated-root .app-logo.manager-logo {
+    width: min(var(--review-logo-width), calc(100vw - 1.4rem)) !important;
+    height: var(--review-logo-height) !important;
+  }
+
+  .top-nav {
+    grid-template-columns: minmax(70px, 1fr) minmax(116px, var(--review-nav-character-width)) minmax(70px, 1fr);
+  }
+
+  .top-nav-item,
+  .top-nav-item[data-screen="home"],
+  .top-nav-item[data-screen="learn"],
+  .top-nav-item[data-screen="notice"],
+  .top-nav-item[data-screen="settings"],
+  .top-nav-item[data-screen="manager"],
+  .top-nav-item[data-screen="store"] {
+    width: min(96px, 100%) !important;
+    min-height: 60px;
+    padding-inline: 0.36rem;
+  }
+
+  .top-nav-item[data-screen="learn"] {
+    width: 100% !important;
+  }
+
+  .top-nav-character,
+  .top-nav .top-nav-character,
+  body:has(#screen-notice.is-active) .top-nav-character,
+  body:has(#screen-settings.is-active) .top-nav-character,
+  body:has(#screen-manager.is-active) .top-nav-character,
+  body:has(#screen-mypage.is-active) .top-nav-character {
+    width: min(var(--review-nav-character-width), 44vw) !important;
+  }
+
+  #mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+    font-size: clamp(64px, 18vw, 82px) !important;
+  }
+
+  .tab-script {
+    font-size: 2rem !important;
+  }
+}

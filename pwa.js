@@ -157,7 +157,7 @@
         return true;
       }
 
-      setUpdateStatus(isManual ? "現在は最新バージョンです。" : "", "success");
+      setUpdateStatus(isManual ? "最新の状態です" : "", "success");
       return false;
     } catch (error) {
       console.warn("PWA update check failed:", error);

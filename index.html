@@ -362,15 +362,15 @@
             </button>
             </h2>
             <div class="settings-section-content settings-line-list">
-              <div class="setting-row">
+              <div class="setting-row" id="authNicknameRow">
                 <span>Nickname</span>
                 <strong id="authNicknameText">未設定</strong>
               </div>
-              <div class="setting-row">
+              <div class="setting-row" id="authEmailRow">
                 <span>メールアドレス</span>
                 <strong id="authEmailText">未設定</strong>
               </div>
-              <div class="setting-row account-password-row">
+              <div class="setting-row account-password-row" id="authPasswordRow">
                 <span>パスワード</span>
                 <strong id="authPasswordText">*****</strong>
                 <button
@@ -382,6 +382,10 @@
                 >
                   <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
                 </button>
+              </div>
+              <div class="setting-row account-google-row" id="authGoogleRow" hidden>
+                <span>Google連携</span>
+                <strong id="authGoogleStatusText">未連携</strong>
               </div>
               <div class="setting-row account-action-row">
                 <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">
@@ -440,7 +444,7 @@
           data-settings-panel="update"
         >
             <h2 class="app-update-title">
-              <span>Update</span>
+              <span>アップデート</span>
               <button
                 id="appUpdateCheckBtn"
                 class="app-update-check-btn"
@@ -453,9 +457,7 @@
               </button>
             </h2>
             <div class="settings-section-content app-update-setting-content">
-              <p class="hint-text app-update-description">
-                現在のバージョン: <strong id="appCurrentVersion">2026.05.16.1</strong>
-              </p>
+              <p class="app-update-version"><strong id="appCurrentVersion">2026.05.16.1</strong></p>
               <p id="appUpdateStatus" class="app-update-status" aria-live="polite"></p>
             </div>
           </section>
@@ -588,7 +590,7 @@
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="accountEditDialogTitle">Review Accountを編集する</h3>
         <div class="account-edit-options">
-          <article class="account-edit-option">
+          <article class="account-edit-option" id="accountEditNicknameOption">
             <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">badge</span>
             <div>
               <h4>Nickname</h4>
@@ -598,7 +600,7 @@
               </label>
             </div>
           </article>
-          <article class="account-edit-option">
+          <article class="account-edit-option" id="accountEditEmailOption">
             <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">mail</span>
             <div>
               <h4>メールアドレス</h4>
@@ -608,7 +610,7 @@
               </label>
             </div>
           </article>
-          <article class="account-edit-option">
+          <article class="account-edit-option" id="accountEditPasswordOption">
             <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">lock</span>
             <div>
               <h4>パスワード</h4>
@@ -625,6 +627,21 @@
                   <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
                 </button>
               </label>
+            </div>
+          </article>
+          <article class="account-edit-option account-edit-google-option" id="accountEditGoogleOption">
+            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">account_circle</span>
+            <div>
+              <h4>Google連携</h4>
+              <p id="accountEditGoogleStatusText">Googleとは未連携です。</p>
+              <button
+                id="accountEditGoogleActionBtn"
+                class="secondary account-google-link-btn"
+                type="button"
+                data-account-edit-action="google-link"
+              >
+                Googleと連携する
+              </button>
             </div>
           </article>
           <p id="accountEditNicknameFeedback" class="account-edit-feedback" aria-live="polite"></p>
