@@ -14784,3 +14784,97 @@ body:has(#screen-manager.is-active) #screen-manager > .page-title-row .page-scri
     min-height: 420px !important;
   }
 }
+
+/* 2026-05-16 PWA removal support and notebook legibility pass. */
+body.learn-popover-open .top-nav {
+  z-index: 4900 !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  filter: none !important;
+}
+
+body.learn-popover-open .top-nav-character,
+body.learn-popover-open .top-nav .top-nav-character,
+body.learn-popover-open .flashcard-note-reader-avatar {
+  z-index: 5000 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+body.learn-popover-open .top-nav-character img,
+body.learn-popover-open .top-nav-character .avater-base-image,
+body.learn-popover-open .top-nav-character .avater-layer,
+body.learn-popover-open .flashcard-note-reader-avatar img,
+body.learn-popover-open .flashcard-note-reader-avatar .avater-base-image,
+body.learn-popover-open .flashcard-note-reader-avatar .avater-layer {
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+.flashcard-note-paper-note-name {
+  font-size: clamp(1.05rem, 2.24vw, 1.24rem) !important;
+  letter-spacing: 0.07em;
+}
+
+.flashcard-note-paper-date {
+  font-size: clamp(0.9rem, 1.82vw, 1.04rem) !important;
+}
+
+.flashcard-note-paper-main,
+.flashcard-note-answer-area {
+  gap: 0.36rem !important;
+  padding-top: 0.44rem !important;
+}
+
+.flashcard-note-paper-title {
+  font-size: clamp(1.16rem, 2.44vw, 1.42rem) !important;
+  line-height: 1.2 !important;
+}
+
+.flashcard-note-paper-body {
+  font-size: clamp(1rem, 2.08vw, 1.16rem) !important;
+  line-height: 1.58 !important;
+}
+
+.flashcard-note-paper.is-problem .flashcard-note-paper-body {
+  font-family: "cinecaption226", "Noto Sans JP", "Noto Sans", sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em;
+}
+
+.flashcard-note-answer-choice {
+  font-size: clamp(0.94rem, 1.92vw, 1.06rem) !important;
+  line-height: 1.22 !important;
+}
+
+.flashcard-note-answer-textbox {
+  font-size: clamp(0.98rem, 2vw, 1.1rem) !important;
+  line-height: 1.5 !important;
+}
+
+.flashcard-note-answer-voice-btn {
+  font-size: clamp(0.98rem, 2vw, 1.1rem) !important;
+}
+
+.flashcard-note-answer-transcript {
+  font-size: clamp(0.88rem, 1.78vw, 1rem) !important;
+  line-height: 1.42 !important;
+}
+
+.manager-migrated-root .notebook-editor-block {
+  font-size: 1.08rem !important;
+  line-height: 1.62 !important;
+}
+
+.manager-migrated-root .notebook-editor-block[data-block-type="heading"] {
+  font-size: 1.22rem !important;
+}
+
+.manager-migrated-root .notebook-editor-block[data-block-type="question"] {
+  font-family: "cinecaption226", "Noto Sans JP", "Noto Sans", sans-serif !important;
+  font-size: 1.12rem !important;
+  font-weight: 500 !important;
+}
