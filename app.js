@@ -547,6 +547,7 @@ const elements = {
   homeCardCarousel: document.querySelector(".home-card-carousel"),
   homeCardProgress: document.getElementById("homeCardProgress"),
   homeCardProgressDots: Array.from(document.querySelectorAll("#homeCardProgress .home-card-progress-dot")),
+  homeFlashcardSlot: document.getElementById("homeFlashcardSlot"),
   mypageCardSlot: document.getElementById("mypageCardSlot"),
   dailyLoginCard: document.getElementById("dailyLoginCard"),
   dailyLoginCount: document.getElementById("dailyLoginCount"),
@@ -1224,10 +1225,10 @@ function bindHomeCardCarouselEvents() {
 }
 
 function relocateMypageCards() {
-  if (!elements.mypageCardSlot || !elements.homeCardCarousel) {
-    return;
+  if (elements.homeFlashcardSlot && elements.mypageFlashcardPanel?.parentElement !== elements.homeFlashcardSlot) {
+    elements.homeFlashcardSlot.append(elements.mypageFlashcardPanel);
   }
-  if (elements.homeCardCarousel.parentElement !== elements.mypageCardSlot) {
+  if (elements.mypageCardSlot && elements.homeCardCarousel?.parentElement !== elements.mypageCardSlot) {
     elements.mypageCardSlot.append(elements.homeCardCarousel);
   }
 }
@@ -4248,6 +4249,12 @@ function handleFlashcardNoteBinderClick(event) {
     return;
   }
 
+  const modeButton = target.closest("[data-flashcard-note-mode]");
+  if (modeButton && isInFlashcardBinderInteractionSurface(modeButton)) {
+    setFlashcardNotebookMode(modeButton.dataset.flashcardNoteMode);
+    return;
+  }
+
   const closeBinderButton = target.closest("[data-flashcard-close-binder]");
   if (closeBinderButton && isInFlashcardBinderInteractionSurface(closeBinderButton)) {
     closeFlashcardBinder();
@@ -4872,6 +4879,7 @@ function openFlashcardNotebook(note) {
     note,
     pageIndex: 0,
     leftVisible: false,
+    mode: "choice",
     pageTurnDirection: "",
     pageTurnPreview: null,
   };
@@ -4958,6 +4966,23 @@ function handleFlashcardNoteReaderAction(actionButton) {
   if (action === "answer") {
     return;
   }
+}
+
+function normalizeFlashcardNotebookMode(mode) {
+  const normalizedMode = normalizeFlashcardText(mode).toLowerCase();
+  return ["choice", "text", "voice"].includes(normalizedMode) ? normalizedMode : "choice";
+}
+
+function setFlashcardNotebookMode(mode) {
+  if (!activeFlashcardNotebookState) {
+    return;
+  }
+  const nextMode = normalizeFlashcardNotebookMode(mode);
+  if (activeFlashcardNotebookState.mode === nextMode) {
+    return;
+  }
+  activeFlashcardNotebookState.mode = nextMode;
+  renderFlashcardNotebook();
 }
 
 function turnFlashcardNotebookPage(offset) {
@@ -5065,23 +5090,22 @@ function renderFlashcardNotebook() {
   nextButton.innerHTML = '<span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_right</span>';
   nextButton.setAttribute("aria-label", "次へ");
   nextButton.disabled = activeFlashcardNotebookState.pageIndex >= maxPageIndex;
-  reader.append(prevButton, nextButton);
 
   const controls = document.createElement("div");
   controls.className = "flashcard-note-reader-controls";
   controls.setAttribute("aria-label", "Review Menu");
 
-  const choiceModeButton = createFlashcardNotebookMenuButton("checklist", "3択", "choice");
-  const textModeButton = createFlashcardNotebookMenuButton("keyboard", "入力", "text");
-  const voiceModeButton = createFlashcardNotebookMenuButton("mic", "音声", "voice");
-  const avatarPreview = createFlashcardNotebookAvatarPreview();
+  const activeMode = normalizeFlashcardNotebookMode(activeFlashcardNotebookState.mode);
+  const choiceModeButton = createFlashcardNotebookMenuButton("checklist", "3択", "choice", activeMode);
+  const textModeButton = createFlashcardNotebookMenuButton("keyboard", "入力", "text", activeMode);
+  const voiceModeButton = createFlashcardNotebookMenuButton("mic", "音声", "voice", activeMode);
   const answerButton = document.createElement("button");
   answerButton.type = "button";
   answerButton.className = "flashcard-note-reader-answer-btn";
   answerButton.dataset.flashcardNoteReaderAction = "answer";
   answerButton.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">check</span><span>答える</span>';
 
-  controls.append(choiceModeButton, textModeButton, voiceModeButton, avatarPreview, answerButton);
+  controls.append(choiceModeButton, textModeButton, voiceModeButton, prevButton, nextButton, answerButton);
   reader.append(controls);
   const readerHost = flashcardBinderStageElement?.classList.contains("is-direct-note-stage")
     ? flashcardBinderStageElement
@@ -5114,12 +5138,14 @@ function createFlashcardNotebookTurnSheet(preview, direction) {
   return turnSheet;
 }
 
-function createFlashcardNotebookMenuButton(iconName, label, mode) {
+function createFlashcardNotebookMenuButton(iconName, label, mode, activeMode = "choice") {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "flashcard-note-reader-mode-btn";
   button.dataset.flashcardNoteMode = mode;
   button.setAttribute("aria-label", `${label}ボタン`);
+  button.setAttribute("aria-pressed", String(normalizeFlashcardNotebookMode(mode) === normalizeFlashcardNotebookMode(activeMode)));
+  button.classList.toggle("is-active", normalizeFlashcardNotebookMode(mode) === normalizeFlashcardNotebookMode(activeMode));
   button.innerHTML = `<span class="material-symbols-rounded" aria-hidden="true">${iconName}</span><span class="flashcard-note-reader-mode-label">${label}</span>`;
   return button;
 }
@@ -5155,25 +5181,7 @@ function createFlashcardNotebookAvatarPreview() {
 function buildFlashcardNotebookSpreads(note) {
   const deck = resolveFlashcardDeckForNote(note);
   const noteLabel = getFlashcardNoteJapaneseLabel(note);
-  const englishLabel = getFlashcardNoteEnglishLabel(note);
-  const fallbackProblemCount = Number.parseInt(note?.dataset?.flashcardProblemCount ?? "0", 10);
-  const totalCards = deck?.totalCards ?? (Number.isFinite(fallbackProblemCount) ? fallbackProblemCount : 0);
-  const unitItems = deck?.units?.length
-    ? deck.units.map((unit, index) => `${index + 1}. ${unit.label}（${unit.cards.length}問）`)
-    : ["このノートの問題データは準備中です。"];
-
-  const spreads = [
-    {
-      left: createBlankFlashcardNotebookPage(),
-      right: {
-        kind: "toc",
-        kicker: "目次",
-        title: noteLabel,
-        subtitle: englishLabel,
-        items: unitItems,
-      },
-    },
-  ];
+  const dateText = formatFlashcardNotebookDate(new Date());
 
   const cardEntries = deck?.units?.flatMap((unit) =>
     unit.cards.map((card) => ({
@@ -5182,47 +5190,41 @@ function buildFlashcardNotebookSpreads(note) {
     }))
   ) ?? [];
 
-  cardEntries.forEach((entry, index) => {
+  if (cardEntries.length === 0) {
+    return [
+      {
+        left: createFlashcardNotebookTextPage(noteLabel, dateText, ""),
+        right: createFlashcardNotebookProblemPage({
+          noteLabel,
+          dateText,
+          body: "このノートの問題データは準備中です。",
+          answers: [],
+          choices: [],
+        }),
+      },
+    ];
+  }
+
+  return cardEntries.map((entry, index) => {
     const cardNumber = index + 1;
-    spreads.push({
-      left: entry.card.preKnowledge
-        ? {
-            kind: "knowledge",
-            kicker: "事前知識",
-            title: `事前知識 ${cardNumber}`,
-            body: entry.card.preKnowledge,
-            toggleLabel: "事前知識を見る",
-          }
-        : createBlankFlashcardNotebookPage(),
-      right: {
-        kind: "problem",
-        kicker: entry.unit.label,
+    return {
+      left: createFlashcardNotebookTextPage(
+        noteLabel,
+        dateText,
+        entry.card.preKnowledge || entry.card.hint || ""
+      ),
+      right: createFlashcardNotebookProblemPage({
+        noteLabel,
+        dateText,
         title: `問題 ${cardNumber}`,
         body: entry.card.prompt,
         imageSrc: entry.card.imageSrc,
         imageAlt: entry.card.imageAlt,
-      },
-    });
-    spreads.push({
-      left: entry.card.hint
-        ? {
-            kind: "explanation",
-            kicker: "解説",
-            title: `解説 ${cardNumber}`,
-            body: entry.card.hint,
-            toggleLabel: "解説を見る",
-          }
-        : createBlankFlashcardNotebookPage(),
-      right: {
-        kind: "answer",
-        kicker: entry.unit.label,
-        title: `答え ${cardNumber}`,
         answers: entry.card.answers,
-      },
-    });
+        choices: entry.card.choices,
+      }),
+    };
   });
-
-  return spreads;
 }
 
 function createBlankFlashcardNotebookSpread() {
@@ -5238,6 +5240,37 @@ function createBlankFlashcardNotebookPage() {
   };
 }
 
+function createFlashcardNotebookTextPage(noteLabel, dateText, body) {
+  return {
+    kind: "text",
+    noteLabel,
+    dateText,
+    body: normalizeFlashcardText(body),
+  };
+}
+
+function createFlashcardNotebookProblemPage({ noteLabel, dateText, title, body, imageSrc, imageAlt, answers, choices }) {
+  return {
+    kind: "problem",
+    noteLabel,
+    dateText,
+    title: normalizeFlashcardText(title),
+    body: normalizeFlashcardText(body),
+    imageSrc,
+    imageAlt,
+    answers: Array.isArray(answers) ? answers : [],
+    choices: Array.isArray(choices) ? choices : [],
+  };
+}
+
+function formatFlashcardNotebookDate(date) {
+  const safeDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  const year = safeDate.getFullYear();
+  const month = String(safeDate.getMonth() + 1).padStart(2, "0");
+  const day = String(safeDate.getDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
 function createFlashcardNotebookPageElement(page, side) {
   const pageElement = document.createElement("article");
   pageElement.className = `flashcard-note-paper flashcard-note-paper-${side}`;
@@ -5250,30 +5283,34 @@ function createFlashcardNotebookPageElement(page, side) {
     pageElement.classList.add(`is-${page.kind}`);
   }
 
+  const inner = document.createElement("div");
+  inner.className = "flashcard-note-paper-inner";
+  inner.append(createFlashcardNotebookPageHeader(page));
+
+  const body = document.createElement("section");
+  body.className = "flashcard-note-paper-main";
   if (page.title) {
     const title = document.createElement("h3");
     title.className = "flashcard-note-paper-title";
     title.textContent = page.title;
-    pageElement.append(title);
+    body.append(title);
   }
   if (page.subtitle) {
     const subtitle = document.createElement("p");
     subtitle.className = "flashcard-note-paper-subtitle";
     subtitle.textContent = page.subtitle;
-    pageElement.append(subtitle);
+    body.append(subtitle);
   }
-  if (page.body) {
-    const body = document.createElement("p");
-    body.className = "flashcard-note-paper-body";
-    body.textContent = page.body;
-    pageElement.append(body);
-  }
+  const bodyText = document.createElement("p");
+  bodyText.className = "flashcard-note-paper-body";
+  bodyText.textContent = page.body || "";
+  body.append(bodyText);
   if (page.imageSrc) {
     const image = document.createElement("img");
     image.className = "flashcard-note-paper-image";
     image.src = page.imageSrc;
     image.alt = page.imageAlt || "";
-    pageElement.append(image);
+    body.append(image);
   }
   if (Array.isArray(page.items) && page.items.length > 0) {
     const list = document.createElement("ol");
@@ -5283,20 +5320,80 @@ function createFlashcardNotebookPageElement(page, side) {
       listItem.textContent = item;
       list.append(listItem);
     });
-    pageElement.append(list);
+    body.append(list);
   }
-  if (Array.isArray(page.answers) && page.answers.length > 0) {
-    const list = document.createElement("ul");
-    list.className = "flashcard-note-paper-answer-list";
-    page.answers.forEach((answer) => {
-      const listItem = document.createElement("li");
-      listItem.textContent = answer;
-      list.append(listItem);
-    });
-    pageElement.append(list);
+  inner.append(body);
+
+  if (page.kind === "problem") {
+    inner.append(createFlashcardNotebookAnswerArea(page));
   }
 
+  pageElement.append(inner);
+
   return pageElement;
+}
+
+function createFlashcardNotebookPageHeader(page) {
+  const header = document.createElement("header");
+  header.className = "flashcard-note-paper-header";
+  const noteName = document.createElement("span");
+  noteName.className = "flashcard-note-paper-note-name";
+  noteName.textContent = page.noteLabel || getFlashcardNoteJapaneseLabel(activeFlashcardNotebookState?.note);
+  const date = document.createElement("time");
+  date.className = "flashcard-note-paper-date";
+  date.textContent = page.dateText || formatFlashcardNotebookDate(new Date());
+  header.append(noteName, date);
+  return header;
+}
+
+function createFlashcardNotebookAnswerArea(page) {
+  const mode = normalizeFlashcardNotebookMode(activeFlashcardNotebookState?.mode);
+  const area = document.createElement("section");
+  area.className = `flashcard-note-answer-area is-${mode}`;
+  area.setAttribute("aria-label", "答え入力");
+
+  if (mode === "text") {
+    const textarea = document.createElement("textarea");
+    textarea.className = "flashcard-note-answer-textbox";
+    textarea.rows = 5;
+    textarea.placeholder = "答えを入力";
+    area.append(textarea);
+    return area;
+  }
+
+  if (mode === "voice") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "flashcard-note-answer-voice-btn";
+    button.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">mic</span><span>入力する</span>';
+    const transcript = document.createElement("p");
+    transcript.className = "flashcard-note-answer-transcript";
+    transcript.textContent = "文字起こしがここに表示されます。";
+    area.append(button, transcript);
+    return area;
+  }
+
+  const choices = getFlashcardNotebookAnswerChoices(page);
+  const list = document.createElement("div");
+  list.className = "flashcard-note-answer-choice-list";
+  choices.forEach((choice, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "flashcard-note-answer-choice";
+    button.textContent = choice || `選択肢 ${index + 1}`;
+    list.append(button);
+  });
+  area.append(list);
+  return area;
+}
+
+function getFlashcardNotebookAnswerChoices(page) {
+  const source = Array.isArray(page.choices) && page.choices.length > 0 ? page.choices : page.answers;
+  const choices = (Array.isArray(source) ? source : []).map((choice) => normalizeFlashcardText(choice)).filter(Boolean);
+  while (choices.length < 3) {
+    choices.push(`選択肢 ${choices.length + 1}`);
+  }
+  return choices.slice(0, 3);
 }
 
 function hasFlashcardNotebookPageContent(page) {
@@ -5606,6 +5703,9 @@ function normalizeFlashcardCard(rawCard, sourceId, unitIndex, cardIndex) {
   }
 
   const answers = normalizeFlashcardAnswers(rawCard);
+  const choices = Array.isArray(rawCard.choices)
+    ? rawCard.choices.map((choice) => normalizeFlashcardText(choice)).filter(Boolean)
+    : [];
   return {
     id: `${sourceId}-u${unitIndex + 1}-c${cardIndex + 1}`,
     prompt,
@@ -5618,6 +5718,7 @@ function normalizeFlashcardCard(rawCard, sourceId, unitIndex, cardIndex) {
     ),
     hint: normalizeFlashcardText(rawCard.h ?? rawCard.hint ?? rawCard.note ?? rawCard.explanation),
     answers,
+    choices,
   };
 }
 
