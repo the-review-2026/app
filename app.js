@@ -438,6 +438,8 @@ const elements = {
   managerMenuLink: document.getElementById("managerMenuLink"),
   managerMount: document.getElementById("managerMount"),
   managerPageTitle: document.querySelector("#screen-manager > .page-title-row .page-script-title"),
+  managerReturnToReviewBtn: document.getElementById("managerReturnToReviewBtn"),
+  managerMenuButtons: Array.from(document.querySelectorAll("[data-manager-menu-target]")),
   legalInfoDialog: document.getElementById("legalInfoDialog"),
   legalTermsContent: document.getElementById("legalTermsContent"),
   legalPrivacyContent: document.getElementById("legalPrivacyContent"),
@@ -545,6 +547,7 @@ const elements = {
   homeCardCarousel: document.querySelector(".home-card-carousel"),
   homeCardProgress: document.getElementById("homeCardProgress"),
   homeCardProgressDots: Array.from(document.querySelectorAll("#homeCardProgress .home-card-progress-dot")),
+  mypageCardSlot: document.getElementById("mypageCardSlot"),
   dailyLoginCard: document.getElementById("dailyLoginCard"),
   dailyLoginCount: document.getElementById("dailyLoginCount"),
   dailyLoginScale: document.getElementById("dailyLoginScale"),
@@ -782,6 +785,7 @@ async function init() {
   bindSharedDataAndGuestDialogEvents();
   bindReviewDataCloudRefreshEvents();
   applyTheme(state.settings.theme);
+  relocateMypageCards();
   injectTabScriptLabels();
   bindBeforeUnloadPrompt();
   markDailyLogin();
@@ -1219,6 +1223,15 @@ function bindHomeCardCarouselEvents() {
   );
 }
 
+function relocateMypageCards() {
+  if (!elements.mypageCardSlot || !elements.homeCardCarousel) {
+    return;
+  }
+  if (elements.homeCardCarousel.parentElement !== elements.mypageCardSlot) {
+    elements.mypageCardSlot.append(elements.homeCardCarousel);
+  }
+}
+
 function getHomeCardSlides() {
   const slides =
     elements.homeCardSlides.length > 0
@@ -1429,6 +1442,17 @@ function bindEvents() {
         setMypagePage("top");
       }
     });
+  });
+
+  elements.managerMenuButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      void navigateManagerHostScreen(button.dataset.managerMenuTarget || "home");
+    });
+  });
+
+  elements.managerReturnToReviewBtn?.addEventListener("click", () => {
+    activateScreen("mypage");
+    setMypagePage("top");
   });
 
   if (elements.navCharacter instanceof HTMLElement) {
@@ -2265,15 +2289,43 @@ function updateAppLogoForScreen(screen) {
 
 function updateManagerHostTitle(screenName = "home") {
   if (!elements.managerPageTitle) {
+    updateManagerMenuState(screenName);
     return;
   }
   const normalizedScreen = String(screenName || "").trim();
   elements.managerPageTitle.textContent = MANAGER_HOST_SCREEN_TITLES[normalizedScreen] || MANAGER_HOST_SCREEN_TITLES.home;
+  updateManagerMenuState(normalizedScreen);
 }
 
 function getActiveManagerHostScreen() {
   const activeManagerScreen = elements.managerMount?.querySelector(".manager-migrated-root .screen.is-active");
   return activeManagerScreen?.id?.replace(/^screen-/, "") || "";
+}
+
+function updateManagerMenuState(screenName = "home") {
+  const normalizedScreen = Object.prototype.hasOwnProperty.call(MANAGER_HOST_SCREEN_TITLES, screenName)
+    ? screenName
+    : "home";
+  elements.managerMenuButtons.forEach((button) => {
+    const isActive = button.dataset.managerMenuTarget === normalizedScreen;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-current", isActive ? "page" : "false");
+  });
+}
+
+async function navigateManagerHostScreen(screenName = "home") {
+  const normalizedScreen = Object.prototype.hasOwnProperty.call(MANAGER_HOST_SCREEN_TITLES, screenName)
+    ? screenName
+    : "home";
+  await loadMigratedManager();
+  const button = elements.managerMount?.querySelector(
+    `.manager-migrated-root .manager-nav [data-screen="${cssEscape(normalizedScreen)}"]`
+  );
+  if (button instanceof HTMLElement) {
+    button.click();
+    return;
+  }
+  updateManagerHostTitle(normalizedScreen);
 }
 
 function activateScreen(screen) {
@@ -2306,7 +2358,7 @@ function activateScreen(screen) {
   if (normalizedScreen === "learn") {
     renderSelfcheckCalendar();
   }
-  if (normalizedScreen === "home") {
+  if (normalizedScreen === "home" || normalizedScreen === "mypage") {
     updateHomeCardCarouselControls();
   }
   if (normalizedScreen === "settings") {
@@ -4593,6 +4645,7 @@ function setFlashcardDirectNotebookGeometry(note) {
   const rightPageLeft = isMobileViewport
     ? Math.max(12, Math.round((viewportWidth - targetWidth) / 2))
     : Math.round(viewportWidth / 2 - targetWidth / 2);
+  const leftPageCenteredLeft = Math.max(8, Math.round((viewportWidth - targetWidth) / 2));
   const safeLeft = Math.round(rightPageLeft - targetWidth - pageGap);
   const geometryTargets = [activeFlashcardBinderElement, flashcardBinderStageElement].filter(
     (target, index, targets) => target instanceof HTMLElement && targets.indexOf(target) === index
@@ -4600,6 +4653,7 @@ function setFlashcardDirectNotebookGeometry(note) {
   geometryTargets.forEach((target) => {
     target.style.setProperty("--flashcard-direct-note-left", `${Math.round(safeLeft)}px`);
     target.style.setProperty("--flashcard-direct-note-spread-left", `${Math.round(spreadLeft)}px`);
+    target.style.setProperty("--flashcard-direct-note-left-page-left", `${Math.round(leftPageCenteredLeft)}px`);
     target.style.setProperty("--flashcard-direct-note-right-left", `${Math.round(safeLeft)}px`);
     target.style.setProperty("--flashcard-direct-note-top", `${Math.round(safeTop)}px`);
     target.style.setProperty("--flashcard-direct-note-width", `${Math.round(targetWidth)}px`);
@@ -5196,12 +5250,6 @@ function createFlashcardNotebookPageElement(page, side) {
     pageElement.classList.add(`is-${page.kind}`);
   }
 
-  if (page.kicker) {
-    const kicker = document.createElement("p");
-    kicker.className = "flashcard-note-paper-kicker";
-    kicker.textContent = page.kicker;
-    pageElement.append(kicker);
-  }
   if (page.title) {
     const title = document.createElement("h3");
     title.className = "flashcard-note-paper-title";

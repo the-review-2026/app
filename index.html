@@ -170,6 +170,9 @@
       </section>
 
       <section id="screen-mypage" class="screen">
+        <div class="page-title-row mypage-page-head">
+          <h1 class="page-script-title">My Page</h1>
+        </div>
         <section id="mypage-top" class="mypage-subpage mypage-top-page is-active" data-mypage-page="top">
           <section id="mypageFlashcardPanel" class="panel mypage-flashcard-panel">
             <h2 class="flashcard-panel-head flashcard-script-title">Let's Review!</h2>
@@ -308,6 +311,7 @@
               </div>
             </div>
           </section>
+          <div id="mypageCardSlot" class="mypage-card-slot" aria-label="マイページカード"></div>
           <div class="home-menu-actions mypage-menu-actions learn-menu-actions" aria-label="マイページメニュー">
             <button class="secondary learn-menu-action home-menu-action mypage-menu-action" type="button" data-learn-action="settings">
               <span class="material-symbols-rounded" aria-hidden="true">settings</span>
@@ -321,14 +325,6 @@
             >
               <span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>
               <span>The Review Manager（制作チーム用管理プログラム）</span>
-            </button>
-            <button class="secondary learn-menu-action home-menu-action mypage-menu-action" type="button" data-learn-action="legal">
-              <span class="material-symbols-rounded" aria-hidden="true">policy</span>
-              <span>利用規約・プライバシーポリシー</span>
-            </button>
-            <button class="secondary learn-menu-action home-menu-action mypage-menu-action" type="button" data-learn-action="licenses">
-              <span class="material-symbols-rounded" aria-hidden="true">license</span>
-              <span>ライセンス・謝辞</span>
             </button>
           </div>
         </section>
@@ -571,6 +567,28 @@
             <p class="hint-text">制作チーム用管理プログラムを読み込んでいます。</p>
           </div>
         </section>
+        <button id="managerReturnToReviewBtn" class="manager-return-button" type="button">
+          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+          <span>The Reviewに戻る</span>
+        </button>
+        <nav class="manager-bottom-menu" aria-label="Manager Menu">
+          <button class="manager-bottom-menu-item is-active" type="button" data-manager-menu-target="home">
+            <span class="material-symbols-rounded" aria-hidden="true">home</span>
+            <span>トップ</span>
+          </button>
+          <button class="manager-bottom-menu-item" type="button" data-manager-menu-target="members">
+            <span class="material-symbols-rounded" aria-hidden="true">group</span>
+            <span>ユーザー</span>
+          </button>
+          <button class="manager-bottom-menu-item" type="button" data-manager-menu-target="problem">
+            <span class="material-symbols-rounded" aria-hidden="true">edit_note</span>
+            <span>問題</span>
+          </button>
+          <button class="manager-bottom-menu-item" type="button" data-manager-menu-target="store">
+            <span class="material-symbols-rounded" aria-hidden="true">storefront</span>
+            <span>ストア</span>
+          </button>
+        </nav>
       </section>
     </main>
 
