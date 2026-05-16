@@ -50,6 +50,10 @@ export default {
       return listManagerQuestionSubmissions(request, env);
     }
 
+    if (pathname === "/manager/question-submissions/bulk" && request.method === "POST") {
+      return createManagerQuestionSubmissionsBulk(request, env);
+    }
+
     if (pathname === "/manager/question-submissions" && request.method === "POST") {
       return createManagerQuestionSubmission(request, env);
     }
@@ -553,6 +557,81 @@ async function createManagerQuestionSubmission(request, env) {
   return json({
     ...submission,
     submission,
+  });
+}
+
+async function createManagerQuestionSubmissionsBulk(request, env) {
+  const access = await requireManagerPermission(request, env, ["createQuestions", "submitQuestions", "checkQuestions", "publishQuestions"]);
+  if (!access.ok) {
+    return json(access.body, access.status);
+  }
+
+  const body = await readJsonBody(request);
+  if (!body.ok || !body.value || typeof body.value !== "object" || Array.isArray(body.value)) {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const submissions = Array.isArray(body.value.submissions)
+    ? body.value.submissions
+    : Array.isArray(body.value.items)
+      ? body.value.items
+      : [];
+  if (submissions.length === 0) {
+    return json({ error: "submissions must contain at least one item" }, 400);
+  }
+  if (submissions.length > 200) {
+    return json({ error: "submissions can contain up to 200 items" }, 400);
+  }
+
+  const now = toJstIsoString();
+  const canApprove = Boolean(access.permissions.checkQuestions || access.permissions.publishQuestions || access.member?.role === "owner");
+  const rows = [];
+  for (const item of submissions) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return json({ error: "Each submission must be an object" }, 400);
+    }
+    const normalized = normalizeQuestionSubmissionPayload(item, {
+      fallbackStatus: canApprove ? "approved" : "pending",
+    });
+    if (!normalized.ok) {
+      return json({ error: normalized.error }, 400);
+    }
+    const status = normalized.value.status === "approved" && !canApprove ? "pending" : normalized.value.status;
+    rows.push({
+      ...(normalized.value.id ? { id: normalized.value.id } : {}),
+      ...normalized.value.columns,
+      status,
+      payload: {
+        ...normalized.value.payload,
+        status,
+      },
+      submitted_by: access.user.id,
+      submitted_at: normalized.value.submittedAt || now,
+      approved_by: status === "approved" ? access.user.id : null,
+      approved_at: status === "approved" ? now : null,
+      updated_at: now,
+    });
+  }
+
+  const response = await supabaseRequest(access.supabase, "/question_submissions?on_conflict=id", {
+    method: "POST",
+    headers: {
+      Prefer: `${canApprove ? "resolution=merge-duplicates" : "resolution=ignore-duplicates"},return=representation`,
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to create question submissions");
+    return json(error.body, error.status);
+  }
+
+  const responseRows = await response.json().catch(() => []);
+  const submissionsResult = Array.isArray(responseRows)
+    ? responseRows.map(serializeQuestionSubmissionRow).filter(Boolean)
+    : [];
+  return json({
+    submissions: submissionsResult,
+    count: submissionsResult.length,
   });
 }
 
@@ -1657,6 +1736,14 @@ function isBootstrapManagerOwner(claims, env) {
 
 function normalizeQuestionSubmissionPayload(body, options = {}) {
   const allowPartial = Boolean(options.allowPartial);
+  const hasExternalId =
+    Object.prototype.hasOwnProperty.call(body || {}, "id") ||
+    Object.prototype.hasOwnProperty.call(body || {}, "submissionId") ||
+    Object.prototype.hasOwnProperty.call(body || {}, "submission_id");
+  const id = normalizeSupabaseUuid(body?.id ?? body?.submissionId ?? body?.submission_id);
+  if (!allowPartial && hasExternalId && !id) {
+    return { ok: false, error: "id must be a valid uuid" };
+  }
   const status = normalizeQuestionSubmissionStatus(body?.status, options.fallbackStatus || (allowPartial ? "" : "pending"));
   const contentText = normalizeSupabaseText(body?.contentText ?? body?.content_text);
   const contentHtml = normalizeSupabaseText(body?.contentHtml ?? body?.content_html);
@@ -1668,6 +1755,17 @@ function normalizeQuestionSubmissionPayload(body, options = {}) {
   const notebookBlocks = Array.isArray(body?.notebookBlocks ?? body?.notebook_blocks)
     ? body.notebookBlocks ?? body.notebook_blocks
     : [];
+  const choices = normalizeSupabaseTextArray(
+    body?.choices ?? body?.threeOption ?? body?.three_option ?? body?.["three-option"]
+  );
+  const answers = normalizeSupabaseTextArray(
+    body?.answers ??
+      body?.correctAnswers ??
+      body?.correct_answers ??
+      body?.correctAnswer ??
+      body?.correct_answer ??
+      body?.answer
+  );
   const payload = {
     binder: normalizeSupabaseText(body?.binder),
     note: normalizeSupabaseText(body?.note),
@@ -1685,6 +1783,17 @@ function normalizeQuestionSubmissionPayload(body, options = {}) {
     submittedAt: normalizeIsoTimestamp(body?.submittedAt ?? body?.submitted_at) || "",
     sourceApp: normalizeSupabaseText(body?.sourceApp ?? body?.source_app),
     author: normalizeJsonObject(body?.author),
+    answerType: normalizeSupabaseText(body?.answerType ?? body?.answer_type),
+    answers,
+    choices,
+    explanation: normalizeSupabaseText(body?.explanation),
+    deckId: normalizeSupabaseText(body?.deckId ?? body?.deck_id),
+    subjectId: normalizeSupabaseText(body?.subjectId ?? body?.subject_id),
+    subjectLabel: normalizeSupabaseText(body?.subjectLabel ?? body?.subject_label),
+    subjectName: normalizeSupabaseText(body?.subjectName ?? body?.subject_name),
+    seriesId: normalizeSupabaseText(body?.seriesId ?? body?.series_id),
+    seriesLabel: normalizeSupabaseText(body?.seriesLabel ?? body?.series_label),
+    sourceCsvId: normalizeSupabaseText(body?.sourceCsvId ?? body?.source_csv_id),
     status,
   };
   const payloadPatch = {};
@@ -1709,6 +1818,17 @@ function normalizeQuestionSubmissionPayload(body, options = {}) {
   setPayloadPatch("submittedAt", payload.submittedAt, "submittedAt", "submitted_at");
   setPayloadPatch("sourceApp", payload.sourceApp, "sourceApp", "source_app");
   setPayloadPatch("author", payload.author, "author");
+  setPayloadPatch("answerType", payload.answerType, "answerType", "answer_type");
+  setPayloadPatch("answers", payload.answers, "answers", "correctAnswers", "correct_answers", "correctAnswer", "correct_answer", "answer");
+  setPayloadPatch("choices", payload.choices, "choices", "threeOption", "three_option", "three-option");
+  setPayloadPatch("explanation", payload.explanation, "explanation");
+  setPayloadPatch("deckId", payload.deckId, "deckId", "deck_id");
+  setPayloadPatch("subjectId", payload.subjectId, "subjectId", "subject_id");
+  setPayloadPatch("subjectLabel", payload.subjectLabel, "subjectLabel", "subject_label");
+  setPayloadPatch("subjectName", payload.subjectName, "subjectName", "subject_name");
+  setPayloadPatch("seriesId", payload.seriesId, "seriesId", "series_id");
+  setPayloadPatch("seriesLabel", payload.seriesLabel, "seriesLabel", "series_label");
+  setPayloadPatch("sourceCsvId", payload.sourceCsvId, "sourceCsvId", "source_csv_id");
   if (!allowPartial || Object.prototype.hasOwnProperty.call(body, "status")) {
     payloadPatch.status = status;
   }
@@ -1747,6 +1867,7 @@ function normalizeQuestionSubmissionPayload(body, options = {}) {
   return {
     ok: true,
     value: {
+      id,
       status,
       columns,
       payload: allowPartial ? payloadPatch : payload,
@@ -1805,14 +1926,28 @@ function serializeQuestionForApp(row) {
   if (!submission) {
     return null;
   }
+  const payload = normalizeJsonObject(submission.payload);
   const questionText = submission.contentText || stripHtmlText(submission.contentHtml);
-  const subjectLabel = submission.note || submission.binder || "The Review";
+  const subjectLabel = payload.subjectLabel || submission.note || submission.binder || "The Review";
+  const deckId = payload.deckId || payload.subjectId || subjectLabel;
   const unitLabel = [submission.textNumber, submission.textName].filter(Boolean).join(" ") || submission.chapter || "The Review Manager";
+  const choices = normalizeSupabaseTextArray(payload.choices);
+  const answers = normalizeSupabaseTextArray(
+    payload.answers ?? payload.correctAnswers ?? payload.correctAnswer ?? payload.answer
+  );
+  const explanation =
+    payload.explanation || [submission.questionNumber, submission.questionName].filter(Boolean).join(" ") || "";
+  const answerType = payload.answerType || (choices.length > 0 ? "choice" : "text");
   return {
     id: submission.id,
     subject: subjectLabel,
     subjectLabel,
-    deckId: subjectLabel,
+    subjectName: payload.subjectName || subjectLabel,
+    subjectId: payload.subjectId || deckId,
+    deckId,
+    deckLabel: subjectLabel,
+    seriesId: payload.seriesId || "",
+    seriesLabel: payload.seriesLabel || "",
     binder: submission.binder,
     note: submission.note,
     unit: unitLabel,
@@ -1821,10 +1956,12 @@ function serializeQuestionForApp(row) {
     question: questionText,
     contentText: questionText,
     contentHtml: submission.contentHtml,
-    answerType: "text",
-    correctAnswer: "",
-    choices: [],
-    explanation: [submission.questionNumber, submission.questionName].filter(Boolean).join(" ") || "",
+    answerType,
+    correctAnswer: answers[0] || "",
+    answers,
+    choices,
+    explanation,
+    h: explanation,
     status: submission.status,
   };
 }
@@ -1869,6 +2006,25 @@ function getDisplayNameFromClaims(claims) {
 
 function normalizeSupabaseText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeSupabaseTextArray(value) {
+  const source = Array.isArray(value) ? value : value == null ? [] : [value];
+  return Array.from(
+    new Set(
+      source
+        .flatMap((item) => (Array.isArray(item) ? item : [item]))
+        .map((item) => (typeof item === "number" && Number.isFinite(item) ? String(item) : normalizeSupabaseText(item)))
+        .filter(Boolean)
+    )
+  );
+}
+
+function normalizeSupabaseUuid(value) {
+  const text = normalizeSupabaseText(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text)
+    ? text.toLowerCase()
+    : "";
 }
 
 function parseSupabaseTimestamp(value) {

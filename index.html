@@ -1210,6 +1210,42 @@
         color: #1d1d1d;
       }
 
+      .manager-migrated-root .problem-import-fieldset {
+        background: #ffffff;
+      }
+
+      .manager-migrated-root .problem-import-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 0.56rem;
+        align-items: end;
+      }
+
+      .manager-migrated-root .problem-import-actions button {
+        min-height: 2.52rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.32rem;
+        white-space: nowrap;
+      }
+
+      .manager-migrated-root .problem-import-summary {
+        margin: 0;
+        color: #1d1d1d;
+        font-size: 0.84rem;
+        font-weight: 700;
+      }
+
+      .manager-migrated-root .problem-import-list {
+        max-height: 16rem;
+        overflow: auto;
+      }
+
+      .manager-migrated-root .problem-import-list .status-chip {
+        white-space: nowrap;
+      }
+
       .manager-migrated-root .problem-field-row {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2699,6 +2735,10 @@
           grid-template-columns: 1fr;
         }
 
+        .manager-migrated-root .problem-import-actions {
+          grid-template-columns: 1fr;
+        }
+
         .manager-migrated-root .text-block-card,
         .manager-migrated-root .manager-store-item {
           grid-template-columns: 1fr;
@@ -3058,6 +3098,27 @@
                       </label>
                       <select id="noteSelect" name="note" required></select>
                     </div>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset problem-import-fieldset">
+                    <legend>CSVから不足問題を追加</legend>
+                    <p class="hint-text">数学ＣなどのCSVを読み込み、Supabaseにまだない問題だけをまとめて追加できます。</p>
+                    <div class="problem-import-actions">
+                      <label class="field-block" for="problemCsvInput">
+                        <span class="field-label-row">問題CSV</span>
+                        <input id="problemCsvInput" type="file" accept=".csv,text/csv" />
+                      </label>
+                      <button id="problemCsvLoadBtn" class="secondary white-button" type="button">
+                        <span class="material-symbols-rounded" aria-hidden="true">upload_file</span>
+                        <span>読み込む</span>
+                      </button>
+                      <button id="problemCsvSubmitMissingBtn" class="primary" type="button" disabled>
+                        <span class="material-symbols-rounded" aria-hidden="true">playlist_add_check</span>
+                        <span>不足分を追加</span>
+                      </button>
+                    </div>
+                    <p id="problemCsvImportSummary" class="problem-import-summary" aria-live="polite">CSVを選択してください。</p>
+                    <ul id="problemCsvImportList" class="manager-question-list problem-import-list" aria-label="CSV読み込み結果"></ul>
                   </fieldset>
 
                   <fieldset class="problem-fieldset problem-notebook-fieldset">
@@ -3494,6 +3555,7 @@
           textBlocks: [],
           draggingTextBlockId: "",
           notebookBlocks: [],
+          csvImportDrafts: [],
           activeNotebookBlockId: "",
           notebookDragState: null,
           notebookLongPressTimerId: null,
@@ -3550,6 +3612,11 @@
           textBlockAddButtons: Array.from(document.querySelectorAll("[data-add-text-block]")),
           questionNumberInput: document.getElementById("questionNumberInput"),
           questionNameInput: document.getElementById("questionNameInput"),
+          problemCsvInput: document.getElementById("problemCsvInput"),
+          problemCsvLoadBtn: document.getElementById("problemCsvLoadBtn"),
+          problemCsvSubmitMissingBtn: document.getElementById("problemCsvSubmitMissingBtn"),
+          problemCsvImportSummary: document.getElementById("problemCsvImportSummary"),
+          problemCsvImportList: document.getElementById("problemCsvImportList"),
           problemImageInput: document.getElementById("problemImageInput"),
           selectProblemImageBtn: document.getElementById("selectProblemImageBtn"),
           viewProblemImageBtn: document.getElementById("viewProblemImageBtn"),
@@ -5232,6 +5299,16 @@
             input?.addEventListener("input", updateProblemPreview);
           });
 
+          elements.problemCsvLoadBtn?.addEventListener("click", () => {
+            void loadProblemCsvImport();
+          });
+          elements.problemCsvInput?.addEventListener("change", () => {
+            void loadProblemCsvImport();
+          });
+          elements.problemCsvSubmitMissingBtn?.addEventListener("click", () => {
+            void submitMissingProblemCsvDrafts();
+          });
+
           elements.textBlockAddButtons.forEach((button) => {
             button.addEventListener("click", () => {
               addTextBlock(button.dataset.addTextBlock || "body");
@@ -6111,6 +6188,409 @@
           return imageLabels.join(" ");
         }
 
+        async function loadProblemCsvImport() {
+          const file = elements.problemCsvInput?.files?.[0] || null;
+          state.csvImportDrafts = [];
+          if (!file) {
+            renderProblemCsvImport("CSVを選択してください。");
+            return;
+          }
+
+          try {
+            const text = await file.text();
+            const rows = parseCsvRows(text);
+            if (rows.length < 2) {
+              renderProblemCsvImport("CSVに読み込める問題がありません。");
+              return;
+            }
+            const headers = rows[0].map((header) => normalizeCsvHeader(header));
+            state.csvImportDrafts = rows
+              .slice(1)
+              .map((row, index) => createProblemDraftFromCsvRecord(createCsvRecord(headers, row), index))
+              .filter(Boolean);
+            renderProblemCsvImport();
+          } catch {
+            state.csvImportDrafts = [];
+            renderProblemCsvImport("CSVを読み込めませんでした。ファイル形式を確認してください。");
+          }
+        }
+
+        function parseCsvRows(text) {
+          const rows = [];
+          let row = [];
+          let cell = "";
+          let quoted = false;
+          const source = String(text || "").replace(/^\uFEFF/, "");
+          for (let index = 0; index < source.length; index += 1) {
+            const char = source[index];
+            const next = source[index + 1];
+            if (quoted) {
+              if (char === '"' && next === '"') {
+                cell += '"';
+                index += 1;
+              } else if (char === '"') {
+                quoted = false;
+              } else {
+                cell += char;
+              }
+              continue;
+            }
+            if (char === '"') {
+              quoted = true;
+              continue;
+            }
+            if (char === ",") {
+              row.push(cell);
+              cell = "";
+              continue;
+            }
+            if (char === "\n") {
+              row.push(cell);
+              if (row.some((value) => String(value || "").trim())) {
+                rows.push(row);
+              }
+              row = [];
+              cell = "";
+              continue;
+            }
+            if (char !== "\r") {
+              cell += char;
+            }
+          }
+          row.push(cell);
+          if (row.some((value) => String(value || "").trim())) {
+            rows.push(row);
+          }
+          return rows;
+        }
+
+        function normalizeCsvHeader(header) {
+          return String(header || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+        }
+
+        function createCsvRecord(headers, row) {
+          return headers.reduce((record, header, index) => {
+            if (header) {
+              record[header] = String(row[index] || "").trim();
+            }
+            return record;
+          }, {});
+        }
+
+        function getCsvField(record, ...keys) {
+          for (const key of keys) {
+            const normalizedKey = normalizeCsvHeader(key);
+            if (Object.prototype.hasOwnProperty.call(record, normalizedKey) && record[normalizedKey]) {
+              return record[normalizedKey];
+            }
+          }
+          return "";
+        }
+
+        function createProblemDraftFromCsvRecord(record, index) {
+          const sourceCsvId = getCsvField(record, "id");
+          const rawNote = getCsvField(record, "note");
+          const noteMeta = resolveCsvNoteMeta(rawNote);
+          const chapter = getCsvField(record, "chapter");
+          const questionNumber = getCsvField(record, "question-number", "question_number");
+          const questionName = getCsvField(record, "question-name", "question_name") || `Q${questionNumber || index + 1}`;
+          const questionText = getCsvField(record, "question-text", "question_text", "content-text", "content_text");
+          const answer = getCsvField(record, "answer", "correct-answer", "correct_answer");
+          const choices = splitCsvChoices(getCsvField(record, "three-option", "three_option", "choices"));
+          const explanation = getCsvField(record, "explanation");
+          if (!questionText) {
+            return null;
+          }
+          const textNumber = chapter || "CSV";
+          const textName = chapter ? `Chapter ${chapter}` : "CSV Import";
+          const safeId = sourceCsvId || `csv_${Date.now()}_${index}`;
+          const submittedAt = toJstIsoString();
+          return normalizeProblemDraft({
+            id: `csv_${safeId}`,
+            remoteId: null,
+            submissionId: isUuidText(sourceCsvId) ? sourceCsvId : "",
+            sourceCsvId,
+            transport: "csv",
+            binder: noteMeta.binder,
+            note: noteMeta.note,
+            chapter,
+            section: "",
+            textNumber,
+            textName,
+            textBlocks: explanation ? [{ id: `csv_text_${index}`, type: "body", text: explanation }] : [],
+            questionNumber,
+            questionName,
+            image: null,
+            notebookBlocks: createCsvNotebookBlocks({
+              id: safeId,
+              index,
+              questionName,
+              questionText,
+              choices,
+              explanation,
+            }),
+            contentHtml: textToEditorHtml(questionText),
+            contentText: questionText,
+            answers: answer ? [answer] : [],
+            choices,
+            explanation,
+            answerType: choices.length > 0 ? "choice" : "text",
+            deckId: noteMeta.deckId,
+            subjectId: noteMeta.deckId,
+            subjectLabel: noteMeta.note,
+            subjectName: noteMeta.subjectName,
+            seriesId: noteMeta.seriesId,
+            seriesLabel: noteMeta.binder,
+            submittedAt,
+            status: "approved",
+          });
+        }
+
+        function resolveCsvNoteMeta(rawNote) {
+          const normalized = String(rawNote || "").trim().toLowerCase().replace(/[＿_\s]+/g, "-");
+          if (normalized === "mathematics-c" || normalized === "mathematicsc" || normalized === "数学c" || normalized === "数学ｃ") {
+            return {
+              binder: "Refine 2nd Edition",
+              note: "数学Ｃ",
+              deckId: "refine-math-c",
+              subjectName: "Mathematics C",
+              seriesId: "review-2nd-edition",
+            };
+          }
+          return {
+            binder: syncBinderFromSelectedNote() || "Refine 2nd Edition",
+            note: elements.noteSelect?.value || "数学Ｃ",
+            deckId: "",
+            subjectName: rawNote || "",
+            seriesId: "",
+          };
+        }
+
+        function splitCsvChoices(value) {
+          return String(value || "")
+            .split(/\s+\/\s+(?=[A-Za-zＡ-Ｚａ-ｚ]:|[A-Za-zＡ-Ｚａ-ｚ]：)/)
+            .map((choice) => choice.trim())
+            .filter(Boolean);
+        }
+
+        function createCsvNotebookBlocks({ id, index, questionName, questionText, choices, explanation }) {
+          const base = String(id || index).replace(/[^a-z0-9-]/gi, "_");
+          const questionChoiceText = choices.length > 0 ? choices.join("\n") : "";
+          return [
+            {
+              id: `csv_${base}_question_title`,
+              type: "heading",
+              page: "question",
+              x: 24,
+              y: 24,
+              w: 360,
+              h: 36,
+              text: questionName,
+            },
+            {
+              id: `csv_${base}_question_body`,
+              type: "question",
+              page: "question",
+              x: 24,
+              y: 72,
+              w: 392,
+              h: 96,
+              text: questionText,
+            },
+            ...(questionChoiceText
+              ? [
+                  {
+                    id: `csv_${base}_question_choices`,
+                    type: "text",
+                    page: "question",
+                    x: 24,
+                    y: 184,
+                    w: 392,
+                    h: 92,
+                    text: questionChoiceText,
+                  },
+                ]
+              : []),
+            ...(explanation
+              ? [
+                  {
+                    id: `csv_${base}_text_explanation`,
+                    type: "text",
+                    page: "text",
+                    x: 24,
+                    y: 72,
+                    w: 392,
+                    h: 180,
+                    text: explanation,
+                  },
+                ]
+              : []),
+          ];
+        }
+
+        function renderProblemCsvImport(message = "") {
+          const total = state.csvImportDrafts.length;
+          const missingDrafts = getMissingProblemCsvDrafts();
+          const missingIds = new Set(missingDrafts.map((draft) => draft.id));
+          if (elements.problemCsvImportSummary) {
+            elements.problemCsvImportSummary.textContent =
+              message || (total ? `CSV ${total}件を読み込みました。追加対象は${missingDrafts.length}件です。` : "CSVを選択してください。");
+          }
+          if (elements.problemCsvSubmitMissingBtn) {
+            elements.problemCsvSubmitMissingBtn.disabled = missingDrafts.length === 0;
+          }
+          if (!elements.problemCsvImportList) {
+            return;
+          }
+          if (!total) {
+            elements.problemCsvImportList.innerHTML = "";
+            return;
+          }
+          elements.problemCsvImportList.innerHTML = state.csvImportDrafts
+            .slice(0, 60)
+            .map((draft) => {
+              const isMissing = missingIds.has(draft.id);
+              const title = getDraftDisplayTitle(draft);
+              const meta = [draft.sourceCsvId, truncateText(draft.contentText || "", 48)].filter(Boolean).join(" / ");
+              return `
+                <li class="manager-question-item">
+                  <div class="manager-question-main">
+                    <p class="manager-question-title">${escapeHtml(title)}</p>
+                    <p class="manager-question-meta">${escapeHtml(meta)}</p>
+                  </div>
+                  <span class="status-chip ${isMissing ? "pending" : "approved"}">${isMissing ? "追加対象" : "登録済み"}</span>
+                </li>
+              `;
+            })
+            .join("");
+        }
+
+        function getMissingProblemCsvDrafts() {
+          if (!state.csvImportDrafts.length) {
+            return [];
+          }
+          const existingKeys = new Set();
+          state.drafts.forEach((draft) => {
+            getProblemDraftIdentityKeys(draft).forEach((key) => existingKeys.add(key));
+          });
+          return state.csvImportDrafts.filter((draft) => {
+            const keys = getProblemDraftIdentityKeys(draft);
+            return !keys.some((key) => existingKeys.has(key));
+          });
+        }
+
+        function getProblemDraftIdentityKeys(draft) {
+          const keys = [];
+          const remoteId = String(draft?.remoteId || "").trim();
+          const submissionId = String(draft?.submissionId || "").trim();
+          const sourceCsvId = String(draft?.sourceCsvId || "").trim();
+          if (remoteId) keys.push(`id:${remoteId.toLowerCase()}`);
+          if (submissionId) keys.push(`id:${submissionId.toLowerCase()}`);
+          if (sourceCsvId) keys.push(`csv:${sourceCsvId.toLowerCase()}`);
+          if (isUuidText(sourceCsvId)) keys.push(`id:${sourceCsvId.toLowerCase()}`);
+          const questionKey = [draft?.note, draft?.chapter, draft?.questionNumber, draft?.questionName]
+            .map(normalizeProblemIdentityText)
+            .join("|");
+          if (questionKey.replace(/\|/g, "")) {
+            keys.push(`question:${questionKey}`);
+          }
+          const contentKey = [draft?.note, draft?.contentText].map(normalizeProblemIdentityText).join("|");
+          if (contentKey.replace(/\|/g, "")) {
+            keys.push(`content:${contentKey}`);
+          }
+          return Array.from(new Set(keys));
+        }
+
+        function normalizeProblemIdentityText(value) {
+          return String(value || "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, "");
+        }
+
+        async function submitMissingProblemCsvDrafts() {
+          const drafts = getMissingProblemCsvDrafts();
+          if (!drafts.length) {
+            renderProblemCsvImport("追加対象の問題はありません。");
+            return;
+          }
+          const token = await getAuth0AccessToken().catch(() => null);
+          if (!token) {
+            showManagerLoginRequiredDialog();
+            renderProblemCsvImport("ログイン状態を確認できませんでした。もう一度ログインしてください。");
+            return;
+          }
+          if (elements.problemCsvSubmitMissingBtn) {
+            elements.problemCsvSubmitMissingBtn.disabled = true;
+          }
+          setTextContent(elements.problemCsvImportSummary, `${drafts.length}件をSupabaseへ追加しています...`);
+          const result = await submitBulkQuestionSubmissionsToApi(drafts, token);
+          if (!result) {
+            renderProblemCsvImport("Supabaseへ追加できませんでした。通信状態と権限を確認してください。");
+            return;
+          }
+          const remoteDrafts = (result.submissions || []).map(normalizeQuestionSubmissionDraft).filter(Boolean);
+          mergeProblemDrafts(remoteDrafts.length ? remoteDrafts : drafts.map((draft) => ({ ...draft, transport: "api" })));
+          saveJson(MANAGER_DRAFT_KEY, state.drafts);
+          renderQuestionList();
+          renderProblemCsvImport(`${result.count || drafts.length}件をSupabaseへ追加しました。`);
+        }
+
+        async function submitBulkQuestionSubmissionsToApi(drafts, token) {
+          try {
+            const response = await fetch(`${resolveApiBase()}/manager/question-submissions/bulk`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify({
+                submissions: drafts.map((draft) => createQuestionSubmissionApiPayload(draft, "approved")),
+              }),
+            });
+            if (response.status === 401 || response.status === 403) {
+              showManagerLoginRequiredDialog();
+              return null;
+            }
+            if (!response.ok) {
+              return null;
+            }
+            return await response.json().catch(() => null);
+          } catch {
+            return null;
+          }
+        }
+
+        function mergeProblemDrafts(nextDrafts) {
+          const indexByRemoteId = new Map(
+            state.drafts
+              .map((draft, index) => [String(draft.remoteId || draft.submissionId || draft.sourceCsvId || ""), index])
+              .filter(([key]) => key)
+          );
+          nextDrafts.forEach((draft) => {
+            const key = String(draft.remoteId || draft.submissionId || draft.sourceCsvId || "");
+            const index = key ? indexByRemoteId.get(key) : -1;
+            if (Number.isInteger(index) && index >= 0) {
+              state.drafts[index] = { ...state.drafts[index], ...draft, id: state.drafts[index].id };
+            } else {
+              state.drafts.unshift(draft);
+            }
+          });
+        }
+
+        function showManagerLoginRequiredDialog() {
+          if (typeof window.showAuthLoginRequiredDialog === "function") {
+            window.showAuthLoginRequiredDialog({
+              targetScreen: "manager",
+              onboardingStep: "nickname",
+            });
+            return;
+          }
+          window.alert("ログインが必要です。もう一度ログインしてから続行してください。");
+        }
+
+        function isUuidText(value) {
+          return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+        }
+
         function setPreviewText(element, value, fallback) {
           if (!element) {
             return;
@@ -6485,10 +6965,9 @@
           return tokens ? tokens.length : 0;
         }
 
-        async function submitToManagerApi(draft) {
-          const token = await getAuth0AccessToken();
-          const endpoint = `${resolveApiBase()}/manager/question-submissions`;
-          const payload = {
+        function createQuestionSubmissionApiPayload(draft, status = "pending") {
+          return {
+            ...(isUuidText(draft.submissionId || draft.sourceCsvId) ? { id: draft.submissionId || draft.sourceCsvId } : {}),
             binder: draft.binder,
             note: draft.note,
             chapter: draft.chapter,
@@ -6503,14 +6982,31 @@
             contentHtml: draft.contentHtml,
             contentText: draft.contentText,
             submittedAt: draft.submittedAt,
-            status: "pending",
-            sourceApp: "The Review Manager",
+            status,
+            answerType: draft.answerType || (Array.isArray(draft.choices) && draft.choices.length ? "choice" : "text"),
+            answers: Array.isArray(draft.answers) ? draft.answers : [],
+            choices: Array.isArray(draft.choices) ? draft.choices : [],
+            explanation: draft.explanation || "",
+            deckId: draft.deckId || "",
+            subjectId: draft.subjectId || draft.deckId || "",
+            subjectLabel: draft.subjectLabel || draft.note || "",
+            subjectName: draft.subjectName || "",
+            seriesId: draft.seriesId || "",
+            seriesLabel: draft.seriesLabel || draft.binder || "",
+            sourceCsvId: draft.sourceCsvId || "",
+            sourceApp: draft.sourceCsvId ? "The Review Manager CSV Import" : "The Review Manager",
             author: {
               displayName: state.auth.nickname || state.auth.displayName,
               email: state.auth.email,
               provider: state.auth.provider,
             },
           };
+        }
+
+        async function submitToManagerApi(draft) {
+          const token = await getAuth0AccessToken();
+          const endpoint = `${resolveApiBase()}/manager/question-submissions`;
+          const payload = createQuestionSubmissionApiPayload(draft, "pending");
 
           const headers = {
             "Content-Type": "application/json",
@@ -6559,21 +7055,7 @@
           }
 
           const payload = {
-            binder: draft.binder,
-            note: draft.note,
-            chapter: draft.chapter,
-            section: draft.section,
-            textNumber: draft.textNumber,
-            textName: draft.textName,
-            textBlocks: draft.textBlocks || [],
-            questionNumber: draft.questionNumber,
-            questionName: draft.questionName,
-            image: draft.image,
-            notebookBlocks: draft.notebookBlocks || [],
-            contentHtml: draft.contentHtml,
-            contentText: draft.contentText,
-            submittedAt: draft.submittedAt,
-            sourceApp: "The Review Manager",
+            ...createQuestionSubmissionApiPayload(draft, patch.status || draft.status || "pending"),
             ...patch,
           };
 
@@ -7051,6 +7533,7 @@
             });
             saveJson(MANAGER_DRAFT_KEY, state.drafts);
             renderQuestionList();
+            renderProblemCsvImport();
           } catch {
             return;
           }
@@ -7089,6 +7572,18 @@
             submittedAt: submission.submittedAt ?? submission.submitted_at ?? payload.submittedAt ?? "",
             approvedAt: submission.approvedAt ?? submission.approved_at ?? payload.approvedAt ?? "",
             updatedAt: submission.updatedAt ?? submission.updated_at ?? "",
+            answerType: payload.answerType ?? "",
+            answers: Array.isArray(payload.answers) ? payload.answers : [],
+            choices: Array.isArray(payload.choices) ? payload.choices : [],
+            explanation: payload.explanation ?? "",
+            deckId: payload.deckId ?? "",
+            subjectId: payload.subjectId ?? "",
+            subjectLabel: payload.subjectLabel ?? "",
+            subjectName: payload.subjectName ?? "",
+            seriesId: payload.seriesId ?? "",
+            seriesLabel: payload.seriesLabel ?? "",
+            sourceCsvId: payload.sourceCsvId ?? "",
+            submissionId: id,
             status: submission.status ?? payload.status ?? "pending",
           });
         }
@@ -7296,6 +7791,11 @@
             status,
             transport: draft.transport || (draft.remoteId ? "api" : "local"),
             remoteId: draft.remoteId ?? null,
+            answers: Array.isArray(draft.answers) ? draft.answers : [],
+            choices: Array.isArray(draft.choices) ? draft.choices : [],
+            explanation: typeof draft.explanation === "string" ? draft.explanation : "",
+            sourceCsvId: typeof draft.sourceCsvId === "string" ? draft.sourceCsvId : "",
+            submissionId: typeof draft.submissionId === "string" ? draft.submissionId : "",
           };
         }
 
@@ -7373,7 +7873,7 @@
       })();
     </script>
     <script src="./auth0-config.js?v=20260426-1"></script>
-    <script src="./app.js?v=20260516-3" charset="UTF-8"></script>
+    <script src="./app.js?v=20260516-4" charset="UTF-8"></script>
     <script src="./pwa.js?v=20260516-2" charset="UTF-8"></script>
     <script>
   function isElementActuallyVisible(element) {

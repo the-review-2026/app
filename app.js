@@ -226,6 +226,10 @@ const FLASHCARD_REMOTE_SUBJECT_ALIASES = {
   mathematics: "math1",
   "mathematics-i": "math1",
   "mathematics i": "math1",
+  "mathematics-c": "refine-math-c",
+  "mathematics c": "refine-math-c",
+  "math-c": "refine-math-c",
+  "math c": "refine-math-c",
   physics: "physics-basic",
   "basic-physics": "physics-basic",
   biology: "bio-basic",
@@ -3509,6 +3513,8 @@ function ensureAuthLoginRequiredDialog() {
   document.body.append(dialog);
   return dialog;
 }
+
+window.showAuthLoginRequiredDialog = showAuthLoginRequiredDialog;
 
 function clearAuth0CallbackParamsFromUrl() {
   const cleanUrl = `${window.location.pathname}${window.location.hash}`;
