@@ -630,6 +630,9 @@ let pendingGuestModeAppState = null;
 let pendingAuthLoginRequiredAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
+let isReviewCoinMenuOpen = false;
+let reviewCoinMenuMode = "theme";
+let reviewCoinMenuSelection = { type: "theme", id: state.settings.theme };
 let managerMigrationPromise = null;
 let accountActionCountdownTimerId = 0;
 let accountActionCountdownRemainingSeconds = 0;
@@ -1445,13 +1448,13 @@ function bindEvents() {
   }
 
   if (elements.reviewCoinBoard) {
-    elements.reviewCoinBoard.addEventListener("click", openStoreFromCoinBoard);
+    elements.reviewCoinBoard.addEventListener("click", toggleReviewCoinMenu);
     elements.reviewCoinBoard.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") {
         return;
       }
       event.preventDefault();
-      openStoreFromCoinBoard();
+      toggleReviewCoinMenu();
     });
   }
 
@@ -1915,6 +1918,13 @@ function bindEvents() {
       closeInfoMenu();
     }
 
+    const reviewCoinMenu = document.getElementById("reviewCoinMenu");
+    const clickedInsideReviewCoinMenu = reviewCoinMenu?.contains(event.target);
+    const clickedReviewCoinBoard = elements.reviewCoinBoard?.contains(event.target);
+    if (isReviewCoinMenuOpen && !clickedInsideReviewCoinMenu && !clickedReviewCoinBoard) {
+      closeReviewCoinMenu();
+    }
+
     const clickedInsideLearn = elements.learnScreen?.contains(event.target);
     const clickedLearnButton = event.target instanceof Element && Boolean(event.target.closest('[data-screen="learn"]'));
     const clickedLearnCharacter =
@@ -1940,6 +1950,7 @@ function bindEvents() {
       closeInfoMenu();
       closeMypageSubmenu();
       closeLearnPopover();
+      closeReviewCoinMenu();
       if (isFlashcardFocusMode || isSelfcheckTimerFocusMode) {
         setFlashcardFocusMode(false);
         setSelfcheckTimerFocusMode(false);
@@ -1950,6 +1961,9 @@ function bindEvents() {
   window.addEventListener("resize", () => {
     renderDailyLogin();
     updateHomeCardCarouselControls();
+    if (isReviewCoinMenuOpen) {
+      syncReviewCoinMenuGeometry();
+    }
     if (activeFlashcardNotebookState?.note && isFlashcardDirectNoteMode()) {
       setFlashcardDirectNotebookGeometry(activeFlashcardNotebookState.note);
     }
@@ -1974,6 +1988,7 @@ function openLearnPopover() {
   if (!elements.learnScreen) {
     return;
   }
+  closeReviewCoinMenu();
   isLearnPopoverOpen = true;
   document.body.classList.remove("learn-timer-page-open");
   document.body.classList.add("learn-popover-open");
@@ -2415,6 +2430,7 @@ async function navigateManagerHostScreen(screenName = "home") {
 
 function activateScreen(screen) {
   const normalizedScreen = normalizeScreen(screen);
+  closeReviewCoinMenu();
   if (normalizedScreen !== "learn") {
     closeLearnPopover();
     document.body.classList.remove("learn-timer-page-open");
@@ -2694,20 +2710,20 @@ function performConfirmedAccountAction(action) {
 async function loginWithAuth0(appState, options = {}) {
   if (normalizeAuthLoginProvider(options.provider) === "guest") {
     loginAsGuest(appState);
-    return;
+    return true;
   }
   const loginClient =
     auth0Client || (await withTimeout(ensureAuth0Client(), AUTH_INIT_TIMEOUT_MS, null, "Auth0 login client"));
   if (!loginClient) {
     renderAuthPanel();
-    return;
+    return false;
   }
   const provider = normalizeAuthLoginProvider(options.provider);
   const providerLabel = provider ? formatAuthProviderLabel(provider) : "Auth0";
   const connection = provider ? getAuthConnectionForProvider(provider) : "";
   if (provider && requiresAuthConnection(provider) && !connection) {
     renderAuthPanel();
-    return;
+    return false;
   }
   try {
     const loginOptions = {
@@ -2726,8 +2742,10 @@ async function loginWithAuth0(appState, options = {}) {
       loginOptions.authorizationParams.connection = connection;
     }
     await loginClient.loginWithRedirect(loginOptions);
+    return true;
   } catch (error) {
     console.error("Auth0 login failed:", error);
+    return false;
   }
 }
 
@@ -3538,21 +3556,7 @@ function ensureAuthLoginRequiredDialog() {
       return;
     }
     if (button.dataset.authLoginRequiredAction === "login") {
-      const appState = pendingAuthLoginRequiredAppState
-        ? {
-            ...pendingAuthLoginRequiredAppState,
-          }
-        : {
-            targetScreen: "mypage",
-            targetMypagePage: "top",
-            onboardingStep: "nickname",
-          };
-      pendingAuthLoginRequiredAppState = null;
-      dialog.close();
-      void loginWithAuth0(
-        appState,
-        { provider: "auth0", screenHint: "" }
-      );
+      void retryAuthLoginFromRequiredDialog(dialog, button);
       return;
     }
     pendingAuthLoginRequiredAppState = null;
@@ -3563,6 +3567,36 @@ function ensureAuthLoginRequiredDialog() {
 }
 
 window.showAuthLoginRequiredDialog = showAuthLoginRequiredDialog;
+
+async function retryAuthLoginFromRequiredDialog(dialog, button) {
+  const appState = pendingAuthLoginRequiredAppState
+    ? {
+        ...pendingAuthLoginRequiredAppState,
+      }
+    : {
+        targetScreen: "mypage",
+        targetMypagePage: "top",
+        onboardingStep: "nickname",
+      };
+  pendingAuthLoginRequiredAppState = null;
+  if (button instanceof HTMLButtonElement) {
+    button.disabled = true;
+    button.textContent = "ログインへ移動中...";
+  }
+  if (dialog?.open) {
+    dialog.close();
+  }
+  const didStartLogin = await loginWithAuth0(appState, { provider: "auth0", screenHint: "" });
+  if (!didStartLogin && !IS_LOGIN_PAGE) {
+    const onboardingStep = normalizeLoginOnboardingStep(appState.onboardingStep) || "nickname";
+    requestLoginOnboardingStep(onboardingStep);
+    redirectToLoginPage({ onboardingStep });
+  }
+  if (button instanceof HTMLButtonElement && !isNavigationRedirectPending) {
+    button.disabled = false;
+    button.textContent = "もう一度ログインする";
+  }
+}
 
 function clearAuth0CallbackParamsFromUrl() {
   const cleanUrl = `${window.location.pathname}${window.location.hash}`;
@@ -3677,6 +3711,7 @@ function renderAll() {
   renderMypageCoin();
   renderStoreConfig();
   renderAvater();
+  renderReviewCoinMenu();
   renderMypageSettings();
   renderAuthPanel();
   renderFlashcardPanel();
@@ -7166,11 +7201,13 @@ function renderCoinBoard(options = {}) {
       reviewCoinAnimationFrameId = null;
     }
     elements.reviewCoinValue.textContent = "∞";
+    renderReviewCoinMenu();
     return;
   }
   const targetValue = normalizeCoinAmount(state.reviewCoin);
   const fromValue = options.fromZero ? 0 : readCoinAmountFromElement(elements.reviewCoinValue);
   animateReviewCoinValue(fromValue, targetValue);
+  renderReviewCoinMenu();
 }
 
 function renderMypageCoin() {
@@ -7178,6 +7215,7 @@ function renderMypageCoin() {
     return;
   }
   elements.mypageCoinValueNumber.textContent = hasUnlimitedReviewCoins() ? "∞" : formatCoinAmount(state.reviewCoin);
+  renderReviewCoinMenu();
 }
 
 function hasUnlimitedReviewCoins() {
@@ -7336,6 +7374,7 @@ function renderAvater() {
   renderAvaterItemList(elements.loginAvaterItemList, { storeMode: false });
   renderAvaterItemList(elements.storeAvatarHint, { storeMode: true });
   updateAvaterControlState();
+  renderReviewCoinMenu();
 }
 
 function renderAvaterPreview(preview) {
@@ -7757,9 +7796,22 @@ function markReviewCoinSpendAnimation() {
   }, 700);
 }
 
+function toggleReviewCoinMenu() {
+  if (isReviewCoinMenuOpen) {
+    closeReviewCoinMenu();
+    return;
+  }
+  openReviewCoinMenu();
+}
+
 function openStoreFromCoinBoard() {
+  openReviewCoinMenu();
+}
+
+function openReviewCoinMenu() {
   closeInfoMenu();
   closeMypageSubmenu();
+  closeLearnPopover();
   if (!state.auth.isLoggedIn) {
     promptLoginForMypage();
     return;
@@ -7772,7 +7824,420 @@ function openStoreFromCoinBoard() {
     });
     return;
   }
-  activateScreen("notice");
+  isReviewCoinMenuOpen = true;
+  document.documentElement.classList.add("review-coin-menu-scroll-locked");
+  document.body.classList.add("review-coin-menu-open", "review-coin-menu-scroll-locked");
+  renderReviewCoinMenu();
+  const menu = ensureReviewCoinMenu();
+  if (menu) {
+    menu.hidden = false;
+    menu.setAttribute("aria-hidden", "false");
+  }
+  elements.reviewCoinBoard?.setAttribute("aria-expanded", "true");
+  syncReviewCoinMenuGeometry();
+  window.requestAnimationFrame(syncReviewCoinMenuGeometry);
+}
+
+function closeReviewCoinMenu() {
+  if (!isReviewCoinMenuOpen) {
+    return;
+  }
+  isReviewCoinMenuOpen = false;
+  document.documentElement.classList.remove("review-coin-menu-scroll-locked");
+  document.body.classList.remove("review-coin-menu-open", "review-coin-menu-scroll-locked");
+  elements.reviewCoinBoard?.setAttribute("aria-expanded", "false");
+  const menu = document.getElementById("reviewCoinMenu");
+  if (menu) {
+    menu.hidden = true;
+    menu.setAttribute("aria-hidden", "true");
+  }
+}
+
+function ensureReviewCoinMenu() {
+  let menu = document.getElementById("reviewCoinMenu");
+  if (menu) {
+    return menu;
+  }
+  if (!document.body) {
+    return null;
+  }
+  menu = document.createElement("section");
+  menu.id = "reviewCoinMenu";
+  menu.className = "review-coin-menu";
+  menu.hidden = true;
+  menu.setAttribute("role", "dialog");
+  menu.setAttribute("aria-modal", "false");
+  menu.setAttribute("aria-hidden", "true");
+  menu.setAttribute("aria-label", "Review Coin Menu");
+  menu.innerHTML = `
+    <div class="review-coin-menu-shell">
+      <header class="review-coin-menu-head">
+        <div>
+          <p class="review-coin-menu-kicker">Review Coin</p>
+          <h2>Review Coin Menu</h2>
+        </div>
+        <button class="review-coin-menu-close" type="button" data-review-coin-menu-close aria-label="閉じる">
+          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+        </button>
+      </header>
+      <div class="review-coin-menu-balance" aria-label="Review Coin枚数">
+        <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+        <span>Review Coin枚数</span>
+        <strong data-review-coin-menu-balance>0</strong>
+      </div>
+      <div class="review-coin-menu-tabs" role="tablist" aria-label="Review Coin Menu">
+        <button type="button" data-review-coin-menu-mode="theme" role="tab">カラーテーマ</button>
+        <button type="button" data-review-coin-menu-mode="avater" role="tab">Avater</button>
+      </div>
+      <div class="review-coin-menu-layout">
+        <div class="review-coin-menu-list" data-review-coin-menu-list></div>
+        <div class="review-coin-menu-ran avater-preview avater-preview-large" data-avater-preview data-review-coin-menu-preview>
+          <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
+        </div>
+        <aside class="review-coin-menu-detail">
+          <div class="review-coin-menu-selected" data-review-coin-menu-selected></div>
+          <button class="primary review-coin-menu-action" type="button" data-review-coin-menu-primary>着用する</button>
+        </aside>
+      </div>
+    </div>
+  `;
+  menu.addEventListener("click", handleReviewCoinMenuClick);
+  document.body.append(menu);
+  elements.avaterPreviews.push(menu.querySelector("[data-review-coin-menu-preview]"));
+  return menu;
+}
+
+function handleReviewCoinMenuClick(event) {
+  const source = event.target instanceof Element ? event.target : null;
+  if (!source) {
+    return;
+  }
+  if (source.closest("[data-review-coin-menu-close]")) {
+    closeReviewCoinMenu();
+    return;
+  }
+  const modeButton = source.closest("[data-review-coin-menu-mode]");
+  if (modeButton) {
+    const mode = modeButton.dataset.reviewCoinMenuMode === "avater" ? "avater" : "theme";
+    reviewCoinMenuMode = mode;
+    reviewCoinMenuSelection = getDefaultReviewCoinMenuSelection(mode);
+    renderReviewCoinMenu();
+    return;
+  }
+  const themeButton = source.closest("[data-review-coin-menu-theme]");
+  if (themeButton) {
+    const theme = normalizeTheme(themeButton.dataset.reviewCoinMenuTheme);
+    reviewCoinMenuSelection = { type: "theme", id: theme };
+    renderReviewCoinMenu();
+    return;
+  }
+  const avaterCategoryButton = source.closest("[data-review-coin-menu-avater-category]");
+  if (avaterCategoryButton) {
+    activeAvaterCategory = normalizeAvaterCategory(avaterCategoryButton.dataset.reviewCoinMenuAvaterCategory) || activeAvaterCategory;
+    reviewCoinMenuSelection = { type: "avater-none", id: activeAvaterCategory };
+    renderReviewCoinMenu();
+    return;
+  }
+  const avaterNoneButton = source.closest("[data-review-coin-menu-avater-none]");
+  if (avaterNoneButton) {
+    const category = normalizeAvaterCategory(avaterNoneButton.dataset.reviewCoinMenuAvaterNone) || activeAvaterCategory;
+    reviewCoinMenuSelection = { type: "avater-none", id: category };
+    renderReviewCoinMenu();
+    return;
+  }
+  const avaterButton = source.closest("[data-review-coin-menu-avater]");
+  if (avaterButton) {
+    reviewCoinMenuSelection = { type: "avater", id: avaterButton.dataset.reviewCoinMenuAvater || "" };
+    renderReviewCoinMenu();
+    return;
+  }
+  if (source.closest("[data-review-coin-menu-primary]")) {
+    handleReviewCoinMenuPrimaryAction();
+  }
+}
+
+function renderReviewCoinMenu() {
+  const menu = document.getElementById("reviewCoinMenu");
+  if (!menu && !isReviewCoinMenuOpen) {
+    return;
+  }
+  const root = ensureReviewCoinMenu();
+  if (!root) {
+    return;
+  }
+  reviewCoinMenuSelection = normalizeReviewCoinMenuSelection(reviewCoinMenuSelection);
+  const balance = root.querySelector("[data-review-coin-menu-balance]");
+  if (balance) {
+    balance.textContent = hasUnlimitedReviewCoins() ? "∞" : formatCoinAmount(state.reviewCoin);
+  }
+  root.querySelectorAll("[data-review-coin-menu-mode]").forEach((button) => {
+    const isActive = button.dataset.reviewCoinMenuMode === reviewCoinMenuMode;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+  const list = root.querySelector("[data-review-coin-menu-list]");
+  if (list) {
+    list.innerHTML = reviewCoinMenuMode === "avater" ? renderReviewCoinMenuAvaterList() : renderReviewCoinMenuThemeList();
+  }
+  const selected = root.querySelector("[data-review-coin-menu-selected]");
+  if (selected) {
+    selected.innerHTML =
+      reviewCoinMenuMode === "avater" ? renderReviewCoinMenuAvaterDetail() : renderReviewCoinMenuThemeDetail();
+  }
+  updateReviewCoinMenuPrimaryButton(root);
+  renderAvaterPreview(root.querySelector("[data-review-coin-menu-preview]"));
+  if (isReviewCoinMenuOpen) {
+    window.requestAnimationFrame(syncReviewCoinMenuGeometry);
+  }
+}
+
+function getDefaultReviewCoinMenuSelection(mode = reviewCoinMenuMode) {
+  if (mode === "avater") {
+    const equippedItemId = state.avater?.equipped?.[activeAvaterCategory] || "";
+    return equippedItemId ? { type: "avater", id: equippedItemId } : { type: "avater-none", id: activeAvaterCategory };
+  }
+  return { type: "theme", id: state.settings.theme };
+}
+
+function normalizeReviewCoinMenuSelection(selection) {
+  if (reviewCoinMenuMode === "avater") {
+    if (selection?.type === "avater" && getAvaterItem(selection.id)) {
+      return { type: "avater", id: selection.id };
+    }
+    const category = normalizeAvaterCategory(selection?.id) || activeAvaterCategory;
+    return { type: "avater-none", id: category };
+  }
+  return { type: "theme", id: normalizeTheme(selection?.id || state.settings.theme) };
+}
+
+function renderReviewCoinMenuThemeList() {
+  return AVAILABLE_THEMES.map((themeKey) => {
+    const isSelected = reviewCoinMenuSelection.type === "theme" && reviewCoinMenuSelection.id === themeKey;
+    const isUnlocked = isThemeUnlocked(themeKey);
+    const isCurrent = state.settings.theme === themeKey;
+    const cost = getThemeUnlockCost(themeKey);
+    return `
+      <button class="review-coin-menu-item theme-menu-item ${isSelected ? "is-selected" : ""}" type="button" data-review-coin-menu-theme="${escapeHtml(themeKey)}">
+        <span class="theme-swatch theme-swatch-${escapeHtml(themeKey)}" aria-hidden="true"></span>
+        <span class="review-coin-menu-item-text">
+          <strong>${escapeHtml(getThemeDisplayName(themeKey))}</strong>
+          <small>${isCurrent ? "着用中" : isUnlocked ? "購入済み" : `${cost} Coin`}</small>
+        </span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderReviewCoinMenuAvaterList() {
+  const categoryTabs = AVATER_CATEGORY_ORDER.map((category) => {
+    const isActive = category === activeAvaterCategory;
+    return `
+      <button class="review-coin-menu-category ${isActive ? "is-active" : ""}" type="button" data-review-coin-menu-avater-category="${escapeHtml(category)}">
+        ${escapeHtml(AVATER_CATEGORY_LABELS[category] || category)}
+      </button>
+    `;
+  }).join("");
+  const items = getAvailableAvaterItems().filter((item) => item.category === activeAvaterCategory);
+  const isNoneSelected = reviewCoinMenuSelection.type === "avater-none" && reviewCoinMenuSelection.id === activeAvaterCategory;
+  const noneCard = `
+    <button class="review-coin-menu-item avater-menu-item ${isNoneSelected ? "is-selected" : ""}" type="button" data-review-coin-menu-avater-none="${escapeHtml(activeAvaterCategory)}">
+      <span class="avater-item-sample avater-item-sample-none" aria-hidden="true"></span>
+      <span class="review-coin-menu-item-text">
+        <strong>なし</strong>
+        <small>${state.avater.equipped?.[activeAvaterCategory] ? "はずす" : "選択中"}</small>
+      </span>
+    </button>
+  `;
+  const itemCards = items.map((item) => {
+    const isSelected = reviewCoinMenuSelection.type === "avater" && reviewCoinMenuSelection.id === item.id;
+    const isUnlocked = isAvaterItemUnlocked(item.id);
+    const isEquipped = state.avater.equipped?.[item.category] === item.id;
+    const sampleImage = item.image?.dataUrl
+      ? `<img class="avater-item-sample-image" src="${escapeHtml(item.image.dataUrl)}" alt="" />`
+      : "";
+    return `
+      <button class="review-coin-menu-item avater-menu-item ${isSelected ? "is-selected" : ""}" type="button" data-review-coin-menu-avater="${escapeHtml(item.id)}">
+        <span class="avater-item-sample ${escapeHtml(item.className)} avater-category-${escapeHtml(item.category)}${sampleImage ? " has-custom-image" : ""}" aria-hidden="true">${sampleImage}</span>
+        <span class="review-coin-menu-item-text">
+          <strong>${escapeHtml(item.name)}</strong>
+          <small>${isEquipped ? "着用中" : isUnlocked ? "購入済み" : `${item.cost} Coin`}</small>
+        </span>
+      </button>
+    `;
+  }).join("");
+  const emptyMessage = items.length
+    ? ""
+    : `<p class="review-coin-menu-empty">このカテゴリーのアイテムはまだありません。</p>`;
+  return `
+    <div class="review-coin-menu-categories">${categoryTabs}</div>
+    ${noneCard}
+    ${itemCards}
+    ${emptyMessage}
+  `;
+}
+
+function renderReviewCoinMenuThemeDetail() {
+  const themeKey = normalizeTheme(reviewCoinMenuSelection.id);
+  const isUnlocked = isThemeUnlocked(themeKey);
+  const isCurrent = state.settings.theme === themeKey;
+  const cost = getThemeUnlockCost(themeKey);
+  const balanceText = hasUnlimitedReviewCoins() ? "∞" : formatCoinAmount(state.reviewCoin);
+  return `
+    <div class="review-coin-menu-selected-preview">
+      <span class="theme-swatch theme-swatch-${escapeHtml(themeKey)}" aria-hidden="true"></span>
+    </div>
+    <p class="review-coin-menu-selected-kind">カラーテーマ</p>
+    <h3>${escapeHtml(getThemeDisplayName(themeKey))}</h3>
+    <p class="review-coin-menu-selected-status">
+      ${isCurrent ? "現在のテーマです。" : isUnlocked ? "購入済みです。着用できます。" : `${cost} Coinで購入できます。`}
+    </p>
+    <p class="review-coin-menu-selected-balance">所持: ${escapeHtml(balanceText)} Coin</p>
+  `;
+}
+
+function renderReviewCoinMenuAvaterDetail() {
+  if (reviewCoinMenuSelection.type === "avater-none") {
+    const category = normalizeAvaterCategory(reviewCoinMenuSelection.id) || activeAvaterCategory;
+    const isEquipped = !state.avater.equipped?.[category];
+    return `
+      <div class="review-coin-menu-selected-preview">
+        <span class="avater-item-sample avater-item-sample-none" aria-hidden="true"></span>
+      </div>
+      <p class="review-coin-menu-selected-kind">Avater</p>
+      <h3>${escapeHtml(AVATER_CATEGORY_LABELS[category] || category)}を外す</h3>
+      <p class="review-coin-menu-selected-status">${isEquipped ? "このカテゴリーは何も着用していません。" : "このカテゴリーのアイテムを外します。"}</p>
+    `;
+  }
+  const item = getAvaterItem(reviewCoinMenuSelection.id);
+  if (!item) {
+    return `<p class="review-coin-menu-empty">アイテムを選択してください。</p>`;
+  }
+  const isUnlocked = isAvaterItemUnlocked(item.id);
+  const isEquipped = state.avater.equipped?.[item.category] === item.id;
+  const sampleImage = item.image?.dataUrl
+    ? `<img class="avater-item-sample-image" src="${escapeHtml(item.image.dataUrl)}" alt="" />`
+    : "";
+  return `
+    <div class="review-coin-menu-selected-preview">
+      <span class="avater-item-sample ${escapeHtml(item.className)} avater-category-${escapeHtml(item.category)}${sampleImage ? " has-custom-image" : ""}" aria-hidden="true">${sampleImage}</span>
+    </div>
+    <p class="review-coin-menu-selected-kind">Avater</p>
+    <h3>${escapeHtml(item.name)}</h3>
+    <p class="review-coin-menu-selected-status">
+      ${isEquipped ? "現在着用中です。" : isUnlocked ? "購入済みです。着用できます。" : `${item.cost} Coinで購入できます。`}
+    </p>
+  `;
+}
+
+function updateReviewCoinMenuPrimaryButton(root = document.getElementById("reviewCoinMenu")) {
+  const button = root?.querySelector("[data-review-coin-menu-primary]");
+  if (!button) {
+    return;
+  }
+  const action = getReviewCoinMenuPrimaryAction();
+  button.textContent = action.label;
+  button.disabled = action.disabled;
+  button.classList.toggle("secondary", action.kind === "secondary");
+  button.classList.toggle("primary", action.kind !== "secondary");
+}
+
+function getReviewCoinMenuPrimaryAction() {
+  if (reviewCoinMenuMode === "theme") {
+    const themeKey = normalizeTheme(reviewCoinMenuSelection.id);
+    const isUnlocked = isThemeUnlocked(themeKey);
+    const isCurrent = state.settings.theme === themeKey;
+    const cost = getThemeUnlockCost(themeKey);
+    if (isCurrent) {
+      return { label: "着用中", disabled: true, kind: "secondary" };
+    }
+    if (isUnlocked) {
+      return { label: "着用する", disabled: false, kind: "primary" };
+    }
+    if (!hasUnlimitedReviewCoins() && state.reviewCoin < cost) {
+      return { label: "コイン不足", disabled: true, kind: "secondary" };
+    }
+    return { label: "購入して着用する", disabled: false, kind: "primary" };
+  }
+  if (reviewCoinMenuSelection.type === "avater-none") {
+    const category = normalizeAvaterCategory(reviewCoinMenuSelection.id) || activeAvaterCategory;
+    const isEquipped = !state.avater.equipped?.[category];
+    return { label: isEquipped ? "選択中" : "はずす", disabled: isEquipped, kind: isEquipped ? "secondary" : "primary" };
+  }
+  const item = getAvaterItem(reviewCoinMenuSelection.id);
+  if (!item) {
+    return { label: "選択してください", disabled: true, kind: "secondary" };
+  }
+  const isUnlocked = isAvaterItemUnlocked(item.id);
+  const isEquipped = state.avater.equipped?.[item.category] === item.id;
+  if (isEquipped) {
+    return { label: "着用中", disabled: true, kind: "secondary" };
+  }
+  if (isUnlocked) {
+    return { label: "着用する", disabled: false, kind: "primary" };
+  }
+  if (!hasUnlimitedReviewCoins() && state.reviewCoin < item.cost) {
+    return { label: "コイン不足", disabled: true, kind: "secondary" };
+  }
+  return { label: "購入して着用する", disabled: false, kind: "primary" };
+}
+
+function handleReviewCoinMenuPrimaryAction() {
+  if (reviewCoinMenuMode === "theme") {
+    const themeKey = normalizeTheme(reviewCoinMenuSelection.id);
+    if (isThemeUnlocked(themeKey)) {
+      updateThemeSetting(themeKey);
+    } else {
+      proceedThemeUnlock(themeKey);
+    }
+    reviewCoinMenuSelection = { type: "theme", id: themeKey };
+    renderReviewCoinMenu();
+    return;
+  }
+  if (reviewCoinMenuSelection.type === "avater-none") {
+    handleAvaterNoneAction(reviewCoinMenuSelection.id);
+    renderReviewCoinMenu();
+    return;
+  }
+  const item = getAvaterItem(reviewCoinMenuSelection.id);
+  if (!item) {
+    return;
+  }
+  handleAvaterItemAction(item.id, { forceEquip: true });
+  reviewCoinMenuSelection = { type: "avater", id: item.id };
+  renderReviewCoinMenu();
+}
+
+function syncReviewCoinMenuGeometry() {
+  const menu = document.getElementById("reviewCoinMenu");
+  const board = elements.reviewCoinBoard;
+  if (!menu || menu.hidden || !board) {
+    return;
+  }
+  const viewportWidth = Math.max(0, window.innerWidth || document.documentElement.clientWidth || 0);
+  const boardRect = board.getBoundingClientRect();
+  const sideInset = viewportWidth <= 760 ? 32 : 16;
+  const width = Math.min(580, Math.max(280, viewportWidth - sideInset * 2));
+  const preferredLeft = boardRect.right - width;
+  const left = Math.max(sideInset, Math.min(preferredLeft, viewportWidth - width - sideInset));
+  const top = Math.max(12, boardRect.bottom + 12);
+  const arrowX = Math.max(28, Math.min(boardRect.left + boardRect.width / 2 - left, width - 28));
+  document.documentElement.style.setProperty("--review-coin-menu-left", `${left}px`);
+  document.documentElement.style.setProperty("--review-coin-menu-top", `${top}px`);
+  document.documentElement.style.setProperty("--review-coin-menu-width", `${width}px`);
+  document.documentElement.style.setProperty("--review-coin-menu-arrow-x", `${arrowX}px`);
+
+  const character = elements.navCharacter;
+  if (!character) {
+    return;
+  }
+  const menuRect = menu.getBoundingClientRect();
+  const characterRect = character.getBoundingClientRect();
+  const characterCenterX = characterRect.left + characterRect.width / 2;
+  const characterCenterY = characterRect.top + characterRect.height / 2;
+  const targetCenterX = menuRect.left + menuRect.width / 2;
+  const targetCenterY = Math.min(window.innerHeight - 72, menuRect.bottom + characterRect.height * 0.32);
+  document.documentElement.style.setProperty("--review-coin-menu-avatar-shift-x", `${targetCenterX - characterCenterX}px`);
+  document.documentElement.style.setProperty("--review-coin-menu-avatar-shift-y", `${targetCenterY - characterCenterY}px`);
 }
 
 function getAuthNicknameText(fallbackText = "未設定") {
@@ -8999,6 +9464,9 @@ function normalizeMypagePage(page) {
 }
 
 function normalizeScreen(screen) {
+  if (screen === "notice") {
+    return "home";
+  }
   return SCREEN_IDS.includes(screen) ? screen : "home";
 }
 

@@ -15227,6 +15227,479 @@ body:has(#screen-manager.is-active) #screen-manager > .page-title-row .page-scri
   width: clamp(180px, 58vw, 264px) !important;
 }
 
+/* 2026-05-17 Review Coin Menu, login retry, and unified mobile tab sizing. */
+:root {
+  --review-sheet-width: min(456px, calc(var(--review-viewport-width, 100vw) - 64px));
+  --review-flashcard-tab-width: var(--review-sheet-width);
+  --review-coin-menu-left: 16px;
+  --review-coin-menu-top: 96px;
+  --review-coin-menu-width: min(580px, calc(100vw - 32px));
+  --review-coin-menu-arrow-x: calc(100% - 52px);
+  --review-coin-menu-avatar-shift-x: 0px;
+  --review-coin-menu-avatar-shift-y: -5.5rem;
+}
+
+html.review-coin-menu-scroll-locked,
+body.review-coin-menu-scroll-locked {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+#screen-notice {
+  display: none !important;
+}
+
+.auth-login-required-dialog [data-auth-login-required-action="login"] {
+  border: 0 !important;
+  background:
+    var(--band-tab-grain),
+    linear-gradient(90deg, #4bc8e1 0%, #35bfd8 46%, #1d1d1d 100%) !important;
+  background-blend-mode: soft-light, normal !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 20px rgba(50, 183, 211, 0.24) !important;
+}
+
+.auth-login-required-dialog [data-auth-login-required-action="login"]:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.review-coin-menu {
+  position: fixed;
+  left: var(--review-coin-menu-left);
+  top: var(--review-coin-menu-top);
+  z-index: 26;
+  width: var(--review-coin-menu-width);
+  max-height: min(72dvh, 620px);
+  color: #1d1d1d;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.24));
+}
+
+.review-coin-menu[hidden] {
+  display: none !important;
+}
+
+.review-coin-menu::before {
+  content: "";
+  position: absolute;
+  left: var(--review-coin-menu-arrow-x);
+  top: -0.62rem;
+  width: 1rem;
+  height: 1rem;
+  background: rgba(255, 255, 255, 0.97);
+  border-left: 1px solid rgba(29, 29, 29, 0.1);
+  border-top: 1px solid rgba(29, 29, 29, 0.1);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.review-coin-menu-shell {
+  position: relative;
+  display: grid;
+  gap: 0.72rem;
+  max-height: min(72dvh, 620px);
+  padding: 0.82rem;
+  border: 1px solid rgba(29, 29, 29, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(14px) saturate(1.08);
+  overflow: hidden;
+}
+
+.review-coin-menu-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.review-coin-menu-kicker,
+.review-coin-menu-head h2,
+.review-coin-menu-selected-kind,
+.review-coin-menu-selected h3,
+.review-coin-menu-selected-status,
+.review-coin-menu-selected-balance,
+.review-coin-menu-empty {
+  margin: 0;
+}
+
+.review-coin-menu-kicker {
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.review-coin-menu-head h2 {
+  color: #1d1d1d;
+  font-size: 1.08rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.review-coin-menu-close {
+  appearance: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(29, 29, 29, 0.1);
+  border-radius: 8px;
+  background: rgba(29, 29, 29, 0.04);
+  color: #1d1d1d;
+  cursor: pointer;
+}
+
+.review-coin-menu-balance {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.54rem 0.66rem;
+  border-radius: 12px;
+  background:
+    var(--band-tab-grain),
+    linear-gradient(90deg, color-mix(in srgb, var(--band-tab-base, var(--primary)) 76%, #ffffff), #1d1d1d);
+  background-blend-mode: soft-light, normal;
+  color: #ffffff;
+}
+
+.review-coin-menu-balance img {
+  width: 1.42rem;
+  height: auto;
+}
+
+.review-coin-menu-balance span {
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.review-coin-menu-balance strong {
+  font-family: var(--number-font);
+  font-size: 1.22rem;
+  line-height: 1;
+}
+
+.review-coin-menu-tabs,
+.review-coin-menu-categories {
+  display: flex;
+  gap: 0.38rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.review-coin-menu-tabs::-webkit-scrollbar,
+.review-coin-menu-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.review-coin-menu-tabs button,
+.review-coin-menu-category {
+  appearance: none;
+  flex: 0 0 auto;
+  min-height: 2.2rem;
+  padding: 0.4rem 0.66rem;
+  border: 1px solid rgba(29, 29, 29, 0.1);
+  border-radius: 999px;
+  background: rgba(29, 29, 29, 0.04);
+  color: #1d1d1d;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.review-coin-menu-tabs button.is-active,
+.review-coin-menu-category.is-active {
+  border-color: transparent;
+  background:
+    var(--band-tab-grain),
+    linear-gradient(135deg, var(--band-tab-base, var(--primary)), #1d1d1d);
+  background-blend-mode: soft-light, normal;
+  color: #ffffff;
+}
+
+.review-coin-menu-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(120px, 0.68fr) minmax(0, 0.92fr);
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.review-coin-menu-list {
+  min-height: 0;
+  max-height: min(42dvh, 360px);
+  display: grid;
+  align-content: start;
+  gap: 0.46rem;
+  overflow: auto;
+  padding-right: 0.08rem;
+}
+
+.review-coin-menu-item {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(29, 29, 29, 0.1);
+  border-radius: 10px;
+  background: rgba(29, 29, 29, 0.035);
+  color: #1d1d1d;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.review-coin-menu-item.is-selected {
+  border-color: color-mix(in srgb, var(--band-tab-base, var(--primary)) 62%, #ffffff);
+  background: color-mix(in srgb, var(--band-tab-base, var(--primary)) 12%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--band-tab-base, var(--primary)) 22%, transparent);
+}
+
+.review-coin-menu-item .theme-swatch,
+.review-coin-menu-selected-preview .theme-swatch {
+  flex: 0 0 auto;
+  width: 2.42rem;
+  height: 2.42rem;
+  border-radius: 9px;
+}
+
+.review-coin-menu-item .avater-item-sample,
+.review-coin-menu-selected-preview .avater-item-sample {
+  width: 2.42rem;
+  height: 2.42rem;
+}
+
+.review-coin-menu-item-text {
+  min-width: 0;
+  display: grid;
+  gap: 0.08rem;
+}
+
+.review-coin-menu-item-text strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #1d1d1d;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-coin-menu-item-text small {
+  color: rgba(29, 29, 29, 0.66);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.review-coin-menu-ran {
+  align-self: center;
+  justify-self: center;
+  width: min(138px, 100%);
+  height: auto;
+  aspect-ratio: 1 / 1.1;
+  overflow: visible;
+}
+
+.review-coin-menu-detail {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.56rem;
+}
+
+.review-coin-menu-selected {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  padding: 0.62rem;
+  border: 1px solid rgba(29, 29, 29, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.68);
+  overflow: auto;
+}
+
+.review-coin-menu-selected-preview {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(29, 29, 29, 0.04);
+}
+
+.review-coin-menu-selected-kind {
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.review-coin-menu-selected h3 {
+  color: #1d1d1d;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.review-coin-menu-selected-status,
+.review-coin-menu-selected-balance,
+.review-coin-menu-empty {
+  color: rgba(29, 29, 29, 0.68);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.review-coin-menu-action {
+  width: 100%;
+  min-height: 2.65rem;
+}
+
+body.review-coin-menu-open::after {
+  z-index: 22;
+  opacity: 1;
+  background: rgba(5, 10, 18, 0.32);
+}
+
+body.review-coin-menu-open .top-nav-character,
+body.review-coin-menu-open .top-nav .top-nav-character {
+  z-index: 27;
+  clip-path: inset(0 0 0 0);
+  transform:
+    translateX(calc(-50% + var(--review-coin-menu-avatar-shift-x)))
+    translateY(var(--review-coin-menu-avatar-shift-y))
+    scale(1.03) !important;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#screen-home .home-greeting-hero,
+#screen-settings > .page-title-row,
+#screen-manager > .page-title-row,
+#screen-mypage > .mypage-page-head,
+body:not(.learn-popover-open) #screen-learn > .page-title-row {
+  min-height: clamp(4rem, 13.5vw, 5rem) !important;
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 0.74rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#screen-home .home-greeting-hero .page-script-title,
+#screen-settings > .page-title-row .page-script-title,
+#screen-manager > .page-title-row .page-script-title,
+#screen-mypage > .mypage-page-head .page-script-title,
+body:not(.learn-popover-open) #screen-learn > .page-title-row .page-script-title {
+  font-size: clamp(2.72rem, 8.8vw, 4.05rem) !important;
+  line-height: 1 !important;
+  transform: translateY(0.04em) !important;
+}
+
+#mypageFlashcardPanel .flashcard-header-guard {
+  display: none !important;
+}
+
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel {
+  background: var(--panel) !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel {
+  padding-top: clamp(4.8rem, 15vw, 6.1rem) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library,
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list,
+#mypageFlashcardPanel .flashcard-series-index,
+#mypageFlashcardPanel .flashcard-note {
+  width: var(--review-flashcard-tab-width) !important;
+  max-width: var(--review-flashcard-tab-width) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library,
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --review-sheet-width: calc(var(--review-viewport-width, 100vw) - 64px);
+    --review-flashcard-tab-width: var(--review-sheet-width);
+    --review-menu-fixed-width: calc(100vw - 64px);
+  }
+
+  body {
+    --page-pad-x: 32px;
+  }
+
+  .home-card-carousel {
+    padding-inline: 0 !important;
+  }
+
+  #screen-home .home-flashcard-slot,
+  #screen-home #mypageFlashcardPanel,
+  #mypageFlashcardPanel {
+    width: var(--review-sheet-width) !important;
+    max-width: var(--review-sheet-width) !important;
+  }
+
+  .review-coin-menu {
+    max-height: calc(100dvh - var(--review-coin-menu-top) - 1rem);
+  }
+
+  .review-coin-menu-shell {
+    max-height: calc(100dvh - var(--review-coin-menu-top) - 1rem);
+    padding: 0.72rem;
+    border-radius: 16px;
+  }
+
+  .review-coin-menu-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(82px, 0.42fr) minmax(0, 0.86fr);
+    gap: 0.48rem;
+  }
+
+  .review-coin-menu-list {
+    max-height: min(48dvh, 360px);
+  }
+
+  .review-coin-menu-ran {
+    width: min(92px, 100%);
+  }
+
+  .review-coin-menu-item {
+    padding: 0.42rem;
+  }
+
+  .review-coin-menu-item .theme-swatch,
+  .review-coin-menu-selected-preview .theme-swatch,
+  .review-coin-menu-item .avater-item-sample,
+  .review-coin-menu-selected-preview .avater-item-sample {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .review-coin-menu-selected {
+    padding: 0.5rem;
+  }
+
+  .review-coin-menu-selected h3 {
+    font-size: 0.9rem;
+  }
+}
+
 /* 2026-05-17 account and Manager follow-up polish. */
 #settingsPanelAccount .account-status-badge {
   font-size: 14px !important;
@@ -15859,4 +16332,85 @@ body:has(#screen-manager.is-active) #screen-manager > .page-title-row .page-scri
 
 .flashcard-note-empty-state img {
   width: clamp(180px, 58vw, 264px) !important;
+}
+
+/* 2026-05-17 final cascade for the requested Review layout widths. */
+:root {
+  --review-sheet-width: min(456px, calc(var(--review-viewport-width, 100vw) - 64px));
+  --review-flashcard-tab-width: var(--review-sheet-width);
+}
+
+#mypageFlashcardPanel .flashcard-header-guard {
+  display: none !important;
+}
+
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel {
+  background: var(--panel) !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel {
+  padding-top: clamp(4.8rem, 15vw, 6.1rem) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library,
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list,
+#mypageFlashcardPanel .flashcard-series-index,
+#mypageFlashcardPanel .flashcard-note {
+  width: var(--review-flashcard-tab-width) !important;
+  max-width: var(--review-flashcard-tab-width) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library,
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --review-sheet-width: calc(var(--review-viewport-width, 100vw) - 64px);
+    --review-flashcard-tab-width: var(--review-sheet-width);
+    --review-menu-fixed-width: calc(100vw - 64px);
+  }
+
+  body {
+    --page-pad-x: 32px;
+  }
+
+  .home-card-carousel {
+    padding-inline: 0 !important;
+  }
+
+  #screen-home .home-flashcard-slot,
+  #screen-home #mypageFlashcardPanel,
+  #mypageFlashcardPanel {
+    width: var(--review-sheet-width) !important;
+    max-width: var(--review-sheet-width) !important;
+  }
+}
+
+#screen-home .home-greeting-hero,
+#screen-settings > .page-title-row,
+#screen-manager > .page-title-row,
+#screen-mypage > .mypage-page-head,
+body:not(.learn-popover-open) #screen-learn > .page-title-row {
+  min-height: clamp(4rem, 13.5vw, 5rem) !important;
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 0.74rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#screen-home .home-greeting-hero .page-script-title,
+#screen-settings > .page-title-row .page-script-title,
+#screen-manager > .page-title-row .page-script-title,
+#screen-mypage > .mypage-page-head .page-script-title,
+body:not(.learn-popover-open) #screen-learn > .page-title-row .page-script-title {
+  font-size: clamp(2.72rem, 8.8vw, 4.05rem) !important;
+  line-height: 1 !important;
+  transform: translateY(0.04em) !important;
 }
