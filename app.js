@@ -214,6 +214,7 @@ const REVIEW_API_AUDIENCE = "https://api.the-review.net";
 const FLASHCARD_QUESTIONS_API_URL = "https://api.the-review.net/questions";
 const FLASHCARD_REMOTE_DEFAULT_DECK_ID = "ec1";
 const FLASHCARD_REMOTE_DEFAULT_UNIT = "Questions";
+const FLASHCARD_MANAGER_DRAFT_STORAGE_KEY = "the-review-manager-drafts-v1";
 const EDUCATION_CODE_MAX_LENGTH = 32;
 const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
 const EDUCATION_CODE_DUPLICATE_MESSAGE = "このEducation Codeはすでに追加されています。";
@@ -5478,6 +5479,9 @@ function getFlashcardNoteEnglishLabel(note) {
 }
 
 async function loadRemoteFlashcardDecks() {
+  const managerDraftQuestions = loadApprovedManagerDraftFlashcardQuestions();
+  const managerDraftDecks = normalizeRemoteFlashcardQuestionArray(managerDraftQuestions);
+  let remoteDecks = [];
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => {
     controller.abort();
@@ -5492,13 +5496,99 @@ async function loadRemoteFlashcardDecks() {
       throw new Error(`Questions API returned ${response.status}`);
     }
     const payload = await response.json();
-    return normalizeRemoteFlashcardDecks(payload);
+    remoteDecks = isFlashcardQuestionsApiFallbackPayload(payload) ? [] : normalizeRemoteFlashcardDecks(payload);
   } catch (error) {
     console.warn("Failed to load remote questions:", error);
-    return [];
   } finally {
     window.clearTimeout(timeoutId);
   }
+  return mergeFlashcardDeckCollections(remoteDecks, managerDraftDecks);
+}
+
+function loadApprovedManagerDraftFlashcardQuestions() {
+  let drafts = [];
+  try {
+    const rawDrafts = window.localStorage?.getItem(FLASHCARD_MANAGER_DRAFT_STORAGE_KEY);
+    drafts = rawDrafts ? JSON.parse(rawDrafts) : [];
+  } catch {
+    drafts = [];
+  }
+  if (!Array.isArray(drafts)) {
+    return [];
+  }
+  return drafts.map(normalizeManagerDraftFlashcardQuestion).filter(Boolean);
+}
+
+function normalizeManagerDraftFlashcardQuestion(draft) {
+  if (!draft || typeof draft !== "object" || Array.isArray(draft)) {
+    return null;
+  }
+  const payload = draft.payload && typeof draft.payload === "object" && !Array.isArray(draft.payload) ? draft.payload : {};
+  const status = normalizeFlashcardText(draft.status ?? payload.status).toLowerCase();
+  if (status !== "approved") {
+    return null;
+  }
+  const contentHtml = normalizeFlashcardText(draft.contentHtml ?? draft.content_html ?? payload.contentHtml ?? payload.content_html);
+  const questionText =
+    normalizeFlashcardText(draft.contentText ?? draft.content_text ?? payload.contentText ?? payload.content_text) ||
+    stripFlashcardHtml(contentHtml);
+  if (!questionText) {
+    return null;
+  }
+  const choices = normalizeManagerDraftFlashcardTextArray(draft.choices ?? payload.choices);
+  const answers = normalizeManagerDraftFlashcardTextArray(
+    draft.answers ?? payload.answers ?? payload.correctAnswers ?? payload.correctAnswer ?? payload.answer
+  );
+  const note = normalizeFlashcardText(draft.note ?? payload.note);
+  const deckId = normalizeFlashcardText(draft.deckId ?? payload.deckId ?? draft.subjectId ?? payload.subjectId);
+  return {
+    id: normalizeFlashcardText(draft.remoteId ?? draft.submissionId ?? draft.sourceCsvId ?? draft.id),
+    deckId,
+    subjectId: normalizeFlashcardText(draft.subjectId ?? payload.subjectId) || deckId,
+    subjectLabel: normalizeFlashcardText(draft.subjectLabel ?? payload.subjectLabel) || note,
+    subjectName: normalizeFlashcardText(draft.subjectName ?? payload.subjectName),
+    seriesId: normalizeFlashcardText(draft.seriesId ?? payload.seriesId),
+    seriesLabel: normalizeFlashcardText(draft.seriesLabel ?? payload.seriesLabel ?? draft.binder ?? payload.binder),
+    binder: normalizeFlashcardText(draft.binder ?? payload.binder),
+    note,
+    unit:
+      [draft.textNumber ?? payload.textNumber, draft.textName ?? payload.textName].map(normalizeFlashcardText).filter(Boolean).join(" ") ||
+      normalizeFlashcardText(draft.chapter ?? payload.chapter) ||
+      FLASHCARD_REMOTE_DEFAULT_UNIT,
+    unitName:
+      [draft.textNumber ?? payload.textNumber, draft.textName ?? payload.textName].map(normalizeFlashcardText).filter(Boolean).join(" ") ||
+      normalizeFlashcardText(draft.chapter ?? payload.chapter) ||
+      FLASHCARD_REMOTE_DEFAULT_UNIT,
+    chapter: normalizeFlashcardText(draft.chapter ?? payload.chapter),
+    question: questionText,
+    prompt: questionText,
+    choices,
+    answers,
+    correctAnswers: answers,
+    explanation: normalizeFlashcardText(draft.explanation ?? payload.explanation),
+    answerType: normalizeFlashcardText(draft.answerType ?? payload.answerType),
+  };
+}
+
+function normalizeManagerDraftFlashcardTextArray(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeFlashcardText(item)).filter(Boolean);
+  }
+  const text = normalizeFlashcardText(value);
+  return text ? [text] : [];
+}
+
+function isFlashcardQuestionsApiFallbackPayload(payload) {
+  const questions = getRemoteFlashcardQuestionArray(payload);
+  if (!questions || questions.length !== 1) {
+    return false;
+  }
+  const [question] = questions;
+  return (
+    normalizeFlashcardText(question?.id) === "q_001" &&
+    normalizeFlashcardText(question?.subject).toLowerCase() === "english" &&
+    normalizeFlashcardText(question?.question) === "次の英文を和訳しなさい。"
+  );
 }
 
 function normalizeRemoteFlashcardDecks(payload) {
@@ -5715,6 +5805,42 @@ function isFlashcardDatasetObject(value) {
       !Array.isArray(value) &&
       Object.values(value).some((cards) => Array.isArray(cards))
   );
+}
+
+function mergeFlashcardDeckCollections(...deckCollections) {
+  const deckById = new Map();
+  deckCollections.flat().forEach((deck) => {
+    const deckId = normalizeFlashcardText(deck?.id);
+    if (!deckId) {
+      return;
+    }
+    const units = Array.isArray(deck.units) ? deck.units.filter(Boolean) : [];
+    const existing = deckById.get(deckId);
+    if (!existing) {
+      deckById.set(deckId, {
+        ...deck,
+        id: deckId,
+        units: units.map((unit) => ({
+          ...unit,
+          cards: Array.isArray(unit.cards) ? unit.cards.filter(Boolean) : [],
+        })),
+      });
+      return;
+    }
+    existing.units.push(
+      ...units.map((unit) => ({
+        ...unit,
+        cards: Array.isArray(unit.cards) ? unit.cards.filter(Boolean) : [],
+      }))
+    );
+    existing.label = existing.label || deck.label;
+    existing.seriesId = existing.seriesId || deck.seriesId;
+    existing.seriesLabel = existing.seriesLabel || deck.seriesLabel;
+  });
+  return Array.from(deckById.values()).map((deck) => ({
+    ...deck,
+    totalCards: deck.units.reduce((sum, unit) => sum + (Array.isArray(unit.cards) ? unit.cards.length : 0), 0),
+  }));
 }
 
 function collectFlashcardDecks(remoteDecks = []) {
