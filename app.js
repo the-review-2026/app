@@ -935,6 +935,7 @@ function setFlashcardNoteLibraryLoadingState(isLoading) {
     return;
   }
   binderList.classList.toggle("is-loading-data", Boolean(isLoading));
+  syncFlashcardNoteLibraryEmptyState(binderList, false);
   if (!isLoading) {
     return;
   }
@@ -942,6 +943,31 @@ function setFlashcardNoteLibraryLoadingState(isLoading) {
     item.hidden = true;
     item.setAttribute("aria-hidden", "true");
   });
+}
+
+function syncFlashcardNoteLibraryEmptyState(binderList, shouldShow) {
+  if (!binderList) {
+    return;
+  }
+  let emptyState = binderList.querySelector(".flashcard-note-empty-state");
+  if (shouldShow && !emptyState) {
+    emptyState = document.createElement("div");
+    emptyState.className = "flashcard-note-empty-state";
+    emptyState.setAttribute("role", "status");
+    emptyState.innerHTML = `
+      <img src="./assets/icons/404.png" alt="" aria-hidden="true" />
+      <p>
+        <strong>問題データを読みこめませんでした</strong>
+        <span>アプリを再読みこみしてください</span>
+      </p>
+    `;
+    binderList.append(emptyState);
+  }
+  binderList.classList.toggle("is-empty-state", Boolean(shouldShow));
+  if (emptyState) {
+    emptyState.hidden = !shouldShow;
+    emptyState.setAttribute("aria-hidden", String(!shouldShow));
+  }
 }
 
 function finishFlashcardInitialization(options = {}) {
@@ -1362,7 +1388,7 @@ function injectTabScriptLabels() {
   });
 
   const settingsSections = Array.from(document.querySelectorAll("#screen-settings .settings-section"));
-  const settingsLabels = ["Review Account", "Education Code", "Review Data", "Update"];
+  const settingsLabels = ["Review Account", "Education Code", "Review Data", "App Version"];
   settingsLabels.forEach((label, index) => {
     appendTabScriptLabel(settingsSections[index] ?? null, label);
   });
@@ -2776,12 +2802,12 @@ function syncAccountEditProviderUi() {
   }
   if (elements.accountEditGoogleStatusText) {
     elements.accountEditGoogleStatusText.textContent = isGoogleAccount
-      ? "Googleアカウントと連携中です。メールアドレスとパスワードはGoogle側で管理されます。"
-      : "Googleとは未連携です。連携するとGoogleでログインできるようになります。";
+      ? "IdP: Google。メールアドレスとパスワードはGoogle側で管理されます。"
+      : "IdP: Auth0。Googleに切り替えるとGoogleでログインできるようになります。";
   }
   if (elements.accountEditGoogleActionBtn) {
     elements.accountEditGoogleActionBtn.dataset.accountEditAction = isGoogleAccount ? "google-unlink" : "google-link";
-    elements.accountEditGoogleActionBtn.textContent = isGoogleAccount ? "Google連携を解除する" : "Googleと連携する";
+    elements.accountEditGoogleActionBtn.textContent = isGoogleAccount ? "Auth0に切り替える" : "Googleに切り替える";
     elements.accountEditGoogleActionBtn.classList.toggle("danger", isGoogleAccount);
     elements.accountEditGoogleActionBtn.classList.toggle("secondary", !isGoogleAccount);
     elements.accountEditGoogleActionBtn.disabled = !isReviewAccount;
@@ -2797,7 +2823,7 @@ async function changeAccountGoogleLinkState(action) {
   const provider = shouldLinkGoogle ? "google" : "auth0";
   const connection = getAuthConnectionForProvider(provider);
   if (requiresAuthConnection(provider) && !connection) {
-    setAccountEditNicknameFeedback("Google連携を利用できる設定がありません。", "error");
+    setAccountEditNicknameFeedback("Googleログインを利用できる設定がありません。", "error");
     return;
   }
   closeAccountEditDialog();
@@ -4020,6 +4046,7 @@ function syncFlashcardNoteLibraryVisibility() {
       index.setAttribute("aria-hidden", "true");
     });
     syncFlashcardVisibleStackClasses(binderList);
+    syncFlashcardNoteLibraryEmptyState(binderList, true);
     return;
   }
 
@@ -4039,6 +4066,10 @@ function syncFlashcardNoteLibraryVisibility() {
 
   syncFlashcardSeriesIndexVisibility(binderList);
   syncFlashcardVisibleStackClasses(binderList);
+  syncFlashcardNoteLibraryEmptyState(
+    binderList,
+    !notes.some((note) => !note.hidden)
+  );
 }
 
 function syncFlashcardSeriesIndexVisibility(binderList) {
@@ -7774,9 +7805,9 @@ function renderMypageSettings() {
     } else if (state.auth.provider === "guest") {
       elements.authLoginStatusText.textContent = "Guest Mode";
     } else if (isGoogleAccount) {
-      elements.authLoginStatusText.textContent = "Google連携中";
+      elements.authLoginStatusText.textContent = "Google";
     } else {
-      elements.authLoginStatusText.textContent = "ログイン中";
+      elements.authLoginStatusText.textContent = "Auth0";
     }
   }
 
@@ -7799,8 +7830,8 @@ function renderMypageSettings() {
       if (icon) {
         icon.textContent = "manage_accounts";
       }
-      elements.accountEditBtn.setAttribute("aria-label", "Google連携を管理する");
-      elements.accountEditBtn.title = "Google連携を管理する";
+      elements.accountEditBtn.setAttribute("aria-label", "IdPを管理する");
+      elements.accountEditBtn.title = "IdPを管理する";
     } else {
       if (icon) {
         icon.textContent = "edit";
@@ -7826,7 +7857,7 @@ function renderMypageSettings() {
     elements.authGoogleRow.hidden = !isReviewAccount;
   }
   if (elements.authGoogleStatusText) {
-    elements.authGoogleStatusText.textContent = isGoogleAccount ? "連携中" : "未連携";
+    elements.authGoogleStatusText.textContent = isGoogleAccount ? "Google" : "Auth0";
   }
   if (elements.accountActionRow) {
     elements.accountActionRow.classList.toggle("is-guest-account-actions", isGuestMode);
@@ -7861,11 +7892,10 @@ function renderSettingsEducationCode() {
               const displayName = getEducationCodeDisplayName(code);
               return `
               <article class="education-code-chip" data-education-code-chip="${escapeHtml(code)}">
-                <strong>${escapeHtml(displayName)}</strong>
                 <span class="education-code-set-badge">
                   <span class="material-symbols-rounded" aria-hidden="true">check</span>
-                  <span>設定済み</span>
                 </span>
+                <strong>${escapeHtml(displayName)}</strong>
                 <span class="education-code-menu-wrap">
                   <button class="secondary education-code-menu-btn" type="button" data-education-code-menu="${escapeHtml(code)}" aria-label="${escapeHtml(displayName)}のメニュー" aria-expanded="false">
                     <span class="material-symbols-rounded" aria-hidden="true">more_horiz</span>

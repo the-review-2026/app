@@ -15080,6 +15080,257 @@ body.learn-popover-open .flashcard-note-reader-avatar .avater-layer {
   }
 }
 
+/* 2026-05-17 Settings/Review polish final pass. */
+.page-script-title,
+.tab-script,
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  font-weight: 400 !important;
+}
+
+#screen-notice > .page-title-row,
+#screen-settings > .page-title-row,
+#screen-manager > .page-title-row,
+body.manager-page .screen > .page-title-row,
+#screen-mypage > .mypage-page-head {
+  min-height: clamp(4rem, 13.5vw, 5rem) !important;
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#screen-notice > .page-title-row .page-script-title,
+#screen-settings > .page-title-row .page-script-title,
+#screen-manager > .page-title-row .page-script-title,
+body.manager-page .screen > .page-title-row .page-script-title,
+#screen-mypage > .mypage-page-head .page-script-title {
+  font-size: clamp(2.72rem, 8.8vw, 4.05rem) !important;
+  line-height: 1 !important;
+  transform: translateY(0.04em) !important;
+}
+
+#mypageFlashcardPanel > .tab-script {
+  display: none !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel {
+  padding-top: var(--review-flashcard-header-space) !important;
+}
+
+#mypageFlashcardPanel .flashcard-header-guard {
+  top: 0.62rem !important;
+  left: 0.72rem !important;
+  right: 0.72rem !important;
+  height: calc(var(--review-flashcard-header-space) - 1.05rem) !important;
+  border-radius: 18px !important;
+  border-bottom-left-radius: 18px !important;
+  border-bottom-right-radius: 18px !important;
+  box-shadow:
+    0 8px 18px rgba(78, 116, 145, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.52) !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  font-size: clamp(58px, 12.8vw, 88px) !important;
+  line-height: 0.94 !important;
+  transform: translate(-50%, -39%) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library.is-empty-state {
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  padding-left: 1.1rem !important;
+  padding-right: 1.1rem !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library.is-empty-state .flashcard-note-surface {
+  display: none !important;
+}
+
+.flashcard-note-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 0.72rem;
+  width: min(100%, 16rem);
+  margin: 0 auto;
+  color: var(--text-main);
+  font-family: "Noto Sans JP", "Noto Sans", sans-serif;
+  text-align: center;
+}
+
+.flashcard-note-empty-state[hidden] {
+  display: none !important;
+}
+
+.flashcard-note-empty-state img {
+  display: block;
+  width: clamp(90px, 29vw, 132px);
+  height: auto;
+  object-fit: contain;
+}
+
+.flashcard-note-empty-state p {
+  margin: 0;
+  display: grid;
+  gap: 0.22rem;
+  line-height: 1.55;
+}
+
+.flashcard-note-empty-state strong,
+.flashcard-note-empty-state span {
+  display: block;
+}
+
+.flashcard-note-empty-state strong {
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+
+.flashcard-note-empty-state span {
+  font-weight: 500;
+  font-size: 0.86rem;
+}
+
+#settingsPanelAccount .account-panel-title {
+  display: grid !important;
+  grid-template-columns: var(--band-tab-dot-size, 0.72rem) minmax(0, 1fr) 2.1rem !important;
+  align-items: center !important;
+  min-height: 2.7rem !important;
+  padding: 0.48rem 0.9rem !important;
+  gap: 0.52rem !important;
+}
+
+#settingsPanelAccount .account-panel-title::before {
+  align-self: center !important;
+  margin: 0 !important;
+}
+
+#settingsPanelAccount .account-title-main {
+  grid-column: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 0 !important;
+  gap: 0.38rem !important;
+}
+
+#settingsPanelAccount .account-title-main > span:first-child {
+  font-size: 1.02rem !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+}
+
+#settingsPanelAccount .account-status-badge {
+  margin-left: 0 !important;
+  padding: 0.13rem 0.42rem !important;
+  font-size: 0.64rem !important;
+  line-height: 1.1 !important;
+}
+
+#settingsPanelAccount .account-edit-button {
+  grid-column: 3 !important;
+  align-self: center !important;
+  justify-self: end !important;
+  width: 2rem !important;
+  min-width: 2rem !important;
+  height: 2rem !important;
+  min-height: 2rem !important;
+  margin: 0 !important;
+}
+
+#settingsPanelAccount .settings-section-content {
+  margin-top: 0.38rem !important;
+}
+
+#settingsPanelAccount .settings-line-list .setting-row {
+  min-height: 3.08rem !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center !important;
+  padding: 0.62rem 0 !important;
+  gap: 0.72rem !important;
+}
+
+#settingsPanelAccount .settings-line-list .setting-row > span {
+  min-width: 0;
+}
+
+#settingsPanelAccount .settings-line-list .setting-row > strong {
+  justify-self: end;
+  text-align: right;
+}
+
+#settingsPanelAccount .account-password-row {
+  grid-template-columns: minmax(0, 1fr) auto 2rem !important;
+}
+
+#settingsPanelAccount .account-action-row {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.52rem !important;
+  padding-top: 0.72rem !important;
+}
+
+#settingsPanelAccount .account-action-row button {
+  width: 100% !important;
+  justify-content: center !important;
+  min-height: 2.86rem !important;
+}
+
+#screen-settings .education-code-chip {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  min-height: 3rem !important;
+  padding: 0.56rem 0.62rem !important;
+}
+
+#screen-settings .education-code-set-badge {
+  width: 1.9rem !important;
+  height: 1.9rem !important;
+  padding: 0 !important;
+  justify-content: center !important;
+  gap: 0 !important;
+}
+
+#screen-settings .education-code-set-badge .material-symbols-rounded {
+  font-size: 1.08rem !important;
+}
+
+#settingsPanelUpdate {
+  padding-bottom: 1rem !important;
+}
+
+#settingsPanelUpdate .app-update-title {
+  min-height: 2.2rem !important;
+  padding-right: 0 !important;
+}
+
+#settingsPanelUpdate .app-update-status,
+#settingsPanelUpdate .app-update-check-btn {
+  display: none !important;
+}
+
+#settingsPanelUpdate .app-update-setting-content {
+  margin-top: 0.1rem !important;
+}
+
+.login-usage-notes {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.login-usage-notes p {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  font-weight: 400 !important;
+}
+
 /* 2026-05-17 Home flashcard spacing and sheet-width final pass. */
 :root {
   --review-sheet-width: min(456px, calc(var(--review-viewport-width, 100vw) - 96px));

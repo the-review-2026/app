@@ -381,8 +381,8 @@
                 </button>
               </div>
               <div class="setting-row account-google-row" id="authGoogleRow" hidden>
-                <span>Google連携</span>
-                <strong id="authGoogleStatusText">未連携</strong>
+                <span>IdP</span>
+                <strong id="authGoogleStatusText">Auth0</strong>
               </div>
               <div class="setting-row account-action-row">
                 <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">
@@ -441,18 +441,7 @@
           data-settings-panel="update"
         >
             <h2 class="app-update-title">
-              <span>アップデート</span>
-              <span id="appUpdateStatus" class="app-update-status" aria-live="polite"></span>
-              <button
-                id="appUpdateCheckBtn"
-                class="app-update-check-btn"
-                type="button"
-                aria-label="アップデートを確認する"
-                title="アップデートを確認する"
-              >
-                <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
-                <span class="sr-only">アップデートを確認する</span>
-              </button>
+              <span>アプリのバージョン</span>
             </h2>
             <div class="settings-section-content app-update-setting-content">
               <p class="app-update-version"><strong id="appCurrentVersion">2026.05.16.1</strong></p>
@@ -651,15 +640,15 @@
           <article class="account-edit-option account-edit-google-option" id="accountEditGoogleOption">
             <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">account_circle</span>
             <div>
-              <h4>Google連携</h4>
-              <p id="accountEditGoogleStatusText">Googleとは未連携です。</p>
+              <h4>IdP</h4>
+              <p id="accountEditGoogleStatusText">IdP: Auth0</p>
               <button
                 id="accountEditGoogleActionBtn"
                 class="secondary account-google-link-btn"
                 type="button"
                 data-account-edit-action="google-link"
               >
-                Googleと連携する
+                Googleに切り替える
               </button>
             </div>
           </article>
