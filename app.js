@@ -8263,15 +8263,6 @@ function ensureReviewCoinMenu() {
   menu.setAttribute("aria-label", "Review Coin Menu");
   menu.innerHTML = `
     <div class="review-coin-menu-shell">
-      <header class="review-coin-menu-head">
-        <div>
-          <p class="review-coin-menu-kicker">Review Coin</p>
-          <h2>Review Coin Menu</h2>
-        </div>
-        <button class="review-coin-menu-close" type="button" data-review-coin-menu-close aria-label="閉じる">
-          <span class="material-symbols-rounded" aria-hidden="true">close</span>
-        </button>
-      </header>
       <div class="review-coin-menu-balance" aria-label="Review Coin枚数">
         <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
         <span>Review Coin枚数</span>
@@ -8447,7 +8438,7 @@ function renderReviewCoinMenuThemeList() {
         <span class="theme-swatch theme-swatch-${escapeHtml(themeKey)}" aria-hidden="true"></span>
         <span class="review-coin-menu-item-text">
           <strong>${escapeHtml(getThemeDisplayName(themeKey))}</strong>
-          <small>${isCurrent ? "着用中" : isUnlocked ? "購入済み" : `${cost} Coin`}</small>
+          <small>${isCurrent ? "着色中" : isUnlocked ? "購入済み" : `${cost} Coin`}</small>
         </span>
       </button>
     `;
@@ -8491,9 +8482,7 @@ function renderReviewCoinMenuAvaterList() {
       </button>
     `;
   }).join("");
-  const emptyMessage = items.length
-    ? ""
-    : `<p class="review-coin-menu-empty">このカテゴリーのアイテムはまだありません。</p>`;
+  const emptyMessage = "";
   return `
     <div class="review-coin-menu-categories">${categoryTabs}</div>
     <div class="review-coin-menu-avater-row">
@@ -8582,7 +8571,7 @@ function getReviewCoinMenuPrimaryAction() {
     const isCurrent = state.settings.theme === themeKey;
     const cost = getThemeUnlockCost(themeKey);
     if (isCurrent) {
-      return { label: "着用中", disabled: true, kind: "secondary" };
+      return { label: "着色中", disabled: true, kind: "secondary" };
     }
     if (isUnlocked) {
       return { label: "着用する", disabled: false, kind: "primary" };
@@ -8643,10 +8632,20 @@ function syncReviewCoinMenuGeometry() {
   }
   const viewportWidth = Math.max(0, window.innerWidth || document.documentElement.clientWidth || 0);
   const boardRect = board.getBoundingClientRect();
-  const sideInset = viewportWidth <= 760 ? 32 : 16;
-  const width = Math.min(580, Math.max(280, viewportWidth - sideInset * 2));
-  const preferredLeft = boardRect.right - width;
-  const left = Math.max(sideInset, Math.min(preferredLeft, viewportWidth - width - sideInset));
+  const menuNavRect = document.querySelector(".top-nav")?.getBoundingClientRect();
+  const hasMenuNavRect = Boolean(
+    menuNavRect &&
+      Number.isFinite(menuNavRect.left) &&
+      Number.isFinite(menuNavRect.width) &&
+      menuNavRect.width > 0
+  );
+  const sideInset = hasMenuNavRect ? 0 : viewportWidth <= 760 ? 32 : 16;
+  const navWidth = hasMenuNavRect ? menuNavRect.width : 0;
+  const width = Math.min(Math.max(280, navWidth || 560), Math.max(280, viewportWidth - sideInset * 2));
+  const preferredLeft = hasMenuNavRect ? menuNavRect.left : boardRect.right - width;
+  const left = hasMenuNavRect
+    ? Math.max(0, Math.min(preferredLeft, viewportWidth - width))
+    : Math.max(sideInset, Math.min(preferredLeft, viewportWidth - width - sideInset));
   const top = Math.max(12, boardRect.bottom + 12);
   const arrowX = Math.max(28, Math.min(boardRect.left + boardRect.width / 2 - left, width - 28));
   document.documentElement.style.setProperty("--review-coin-menu-left", `${left}px`);
@@ -8658,14 +8657,8 @@ function syncReviewCoinMenuGeometry() {
   if (!character) {
     return;
   }
-  const menuRect = menu.getBoundingClientRect();
-  const characterRect = character.getBoundingClientRect();
-  const characterCenterX = characterRect.left + characterRect.width / 2;
-  const characterCenterY = characterRect.top + characterRect.height / 2;
-  const targetCenterX = menuRect.left + menuRect.width / 2;
-  const targetCenterY = Math.min(window.innerHeight - 72, menuRect.bottom + characterRect.height * 0.32);
-  document.documentElement.style.setProperty("--review-coin-menu-avatar-shift-x", `${targetCenterX - characterCenterX}px`);
-  document.documentElement.style.setProperty("--review-coin-menu-avatar-shift-y", `${targetCenterY - characterCenterY}px`);
+  document.documentElement.style.setProperty("--review-coin-menu-avatar-shift-x", "0px");
+  document.documentElement.style.setProperty("--review-coin-menu-avatar-shift-y", "0px");
 }
 
 function getAuthNicknameText(fallbackText = "未設定") {
@@ -8800,9 +8793,6 @@ function renderSettingsEducationCode() {
               const displayName = getEducationCodeDisplayName(code);
               return `
               <article class="education-code-chip" data-education-code-chip="${escapeHtml(code)}">
-                <span class="education-code-set-badge">
-                  <span class="material-symbols-rounded" aria-hidden="true">check</span>
-                </span>
                 <strong>${escapeHtml(displayName)}</strong>
                 <span class="education-code-menu-wrap">
                   <button class="secondary education-code-menu-btn" type="button" data-education-code-menu="${escapeHtml(code)}" aria-label="${escapeHtml(displayName)}のメニュー" aria-expanded="false">
