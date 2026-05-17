@@ -8618,7 +8618,7 @@ function exportReviewData() {
   link.click();
   link.remove();
   URL.revokeObjectURL(downloadUrl);
-  window.alert("リビューデータをエクスポートしました。");
+  window.alert("Review Dataをエクスポートしました。");
 }
 
 function formatExportTimestamp(date) {
@@ -8664,7 +8664,7 @@ async function importReviewDataFromFile(file) {
 
   const importData = extractReviewDataPayload(parsed);
   if (!importData) {
-    window.alert("リビューデータを読み取れませんでした。エクスポートしたJSONファイルを確認してください。");
+    window.alert("Review Dataを読み取れませんでした。エクスポートしたJSONファイルを確認してください。");
     return;
   }
 
@@ -8678,17 +8678,17 @@ async function importReviewDataFromFile(file) {
 
   if (IS_LOGIN_PAGE) {
     if (state.auth.isLoggedIn) {
-      window.alert("リビューデータをインポートしました。");
+      window.alert("Review Dataをインポートしました。");
       redirectToIndexPage();
       return;
     }
-    window.alert("リビューデータをインポートしました。");
+    window.alert("Review Dataをインポートしました。");
     renderAuthPanel();
     return;
   }
 
   if (!state.auth.isLoggedIn) {
-    window.alert("リビューデータをインポートしました。");
+    window.alert("Review Dataをインポートしました。");
     redirectToLoginPage();
     return;
   }
@@ -8701,7 +8701,7 @@ async function importReviewDataFromFile(file) {
   markDailyLogin();
   renderAll();
   activateScreen(activeScreen);
-  window.alert("リビューデータをインポートしました。");
+  window.alert("Review Dataをインポートしました。");
 }
 
 function extractReviewDataPayload(value) {
@@ -9457,9 +9457,9 @@ function generateEmbeddedRanLine(context) {
   }
 
   if (context.streak >= 7) {
-    lines.push(`リビュー${context.streak}日目です。ちゃんと積み上がってるね！`);
+    lines.push(`リビュー日数、${context.streak}日目です！ちゃんと積み上がってるね！`);
   } else if (context.streak >= 2) {
-    lines.push(`リビュー${context.streak}日目です。この調子で、昨日の自分からアップデートしよ！`);
+    lines.push(`リビュー日数、${context.streak}日目です。この調子で、昨日の自分からアップデートしよう！`);
   }
 
   if (!context.hasDailyTry) {
