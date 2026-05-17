@@ -6616,6 +6616,11 @@ button {
 }
 
 /* Index onboarding styles */
+body:not(.login-page) #loginShell,
+body:not(.login-page) #onboardingFixedProgress {
+  display: none !important;
+}
+
 body.login-page {
   --onboarding-fixed-stack-width: 560px;
   --onboarding-fixed-progress-bottom: max(0.6rem, calc(env(safe-area-inset-bottom) + 0.35rem));
@@ -15621,6 +15626,136 @@ body:not(.learn-popover-open) #screen-learn > .page-title-row .page-script-title
   transform: translateY(0.04em) !important;
 }
 
+/* 2026-05-17 follow-up: index login, Let's Review, notebook slide, and Review Coin Menu layering. */
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel,
+#mypageFlashcardPanel .flashcard-panel {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel {
+  padding-top: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  font-weight: 700 !important;
+}
+
+@media (max-width: 760px) {
+  #mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+    font-size: clamp(66px, 18vw, 94px) !important;
+  }
+}
+
+#mypageFlashcardPanel .flashcard-note-library {
+  padding-top: clamp(4.8rem, 15vw, 6.1rem) !important;
+  scroll-padding-top: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library.is-empty-state {
+  padding-top: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  place-items: center !important;
+}
+
+.flashcard-note-empty-state {
+  place-self: center !important;
+  transform: translate(-0.25rem, -0.7rem) !important;
+}
+
+#screen-home .home-flashcard-slot,
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel,
+#mypageFlashcardPanel .flashcard-note-library,
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list,
+#mypageFlashcardPanel .flashcard-series-index,
+#mypageFlashcardPanel .flashcard-note {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.flashcard-binder-stage.is-direct-note-stage .flashcard-note-reader {
+  transition: left 340ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+  animation: none !important;
+}
+
+.flashcard-note-reader.is-show-left {
+  animation: review-note-reader-slide-from-right 340ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+
+.flashcard-note-reader.is-hide-left {
+  animation: review-note-reader-slide-from-left 320ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+
+.flashcard-note-reader.is-show-left .flashcard-note-paper-left,
+.flashcard-note-reader.is-hide-left .flashcard-note-paper-left {
+  animation: none !important;
+}
+
+.flashcard-note-reader.is-show-left .flashcard-note-page-turn-sheet,
+.flashcard-note-reader.is-hide-left .flashcard-note-page-turn-sheet {
+  display: none !important;
+  animation: none !important;
+}
+
+@keyframes review-note-reader-slide-from-right {
+  from {
+    transform: translate3d(28px, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes review-note-reader-slide-from-left {
+  from {
+    transform: translate3d(-28px, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+body.review-coin-menu-open::after {
+  z-index: 20 !important;
+}
+
+body.review-coin-menu-open .top-nav,
+body.review-coin-menu-open .top-nav-character,
+body.review-coin-menu-open .top-nav .top-nav-character {
+  overflow: visible !important;
+}
+
+body.review-coin-menu-open .top-nav-character,
+body.review-coin-menu-open .top-nav .top-nav-character {
+  z-index: 80 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  clip-path: none !important;
+}
+
+.review-coin-menu {
+  z-index: 60 !important;
+}
+
+.review-coin-menu.is-theme-selected .review-coin-menu-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.review-coin-menu.is-theme-selected .review-coin-menu-detail {
+  display: none !important;
+}
+
+.review-coin-menu.is-avater-selected .review-coin-menu-detail {
+  display: grid !important;
+}
+
 #mypageFlashcardPanel .flashcard-header-guard {
   display: none !important;
 }
@@ -16425,4 +16560,109 @@ body:not(.learn-popover-open) #screen-learn > .page-title-row .page-script-title
   font-size: clamp(2.72rem, 8.8vw, 4.05rem) !important;
   line-height: 1 !important;
   transform: translateY(0.04em) !important;
+}
+
+/* 2026-05-17 Review layout override after the final cascade above. */
+:root {
+  --review-sheet-width: min(456px, calc(var(--review-viewport-width, 100vw) - 64px));
+  --review-flashcard-tab-width: var(--review-sheet-width);
+}
+
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel,
+#mypageFlashcardPanel .flashcard-panel {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel {
+  padding-top: 0 !important;
+}
+
+#mypageFlashcardPanel .flashcard-header-guard {
+  display: none !important;
+}
+
+#mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+  font-weight: 700 !important;
+  font-size: clamp(58px, 12.8vw, 88px) !important;
+  line-height: 0.94 !important;
+  transform: translate(-50%, -39%) !important;
+}
+
+#screen-home .home-flashcard-slot,
+#screen-home #mypageFlashcardPanel,
+#mypageFlashcardPanel {
+  width: var(--review-sheet-width) !important;
+  max-width: var(--review-sheet-width) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library:not(.is-empty-state) {
+  padding-top: clamp(4.8rem, 15vw, 6.1rem) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library,
+#mypageFlashcardPanel .flashcard-note-surface,
+#mypageFlashcardPanel .flashcard-note-list,
+#mypageFlashcardPanel .flashcard-series-index,
+#mypageFlashcardPanel .flashcard-note {
+  width: var(--review-flashcard-tab-width) !important;
+  max-width: var(--review-flashcard-tab-width) !important;
+  box-sizing: border-box !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-list {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library.is-empty-state {
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+}
+
+#mypageFlashcardPanel .flashcard-note-library.is-empty-state .flashcard-note-surface {
+  display: none !important;
+}
+
+.flashcard-note-empty-state {
+  place-self: center !important;
+  margin: 0 auto !important;
+  transform: translate(-0.25rem, -0.7rem) !important;
+}
+
+.flashcard-note-empty-state img {
+  width: clamp(180px, 58vw, 264px) !important;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --review-sheet-width: min(456px, calc(var(--review-viewport-width, 100vw) - 64px));
+    --review-flashcard-tab-width: var(--review-sheet-width);
+    --review-menu-fixed-width: calc(100vw - 64px);
+  }
+
+  body {
+    --page-pad-x: 32px;
+  }
+
+  #mypageFlashcardPanel .flashcard-panel-head.flashcard-script-title {
+    font-size: clamp(66px, 18vw, 94px) !important;
+  }
+}
+
+@media (max-width: 552px) {
+  :root {
+    --review-sheet-width: calc(var(--review-viewport-width, 100vw) - 64px);
+    --review-flashcard-tab-width: var(--review-sheet-width);
+  }
 }

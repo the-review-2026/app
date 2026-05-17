@@ -711,6 +711,7 @@ const ACCOUNT_ACTION_DIALOG_COPY = {
 const IS_LOGIN_PAGE = isCurrentLoginPage();
 let isNavigationRedirectPending = false;
 
+setIndexLoginPageMode(IS_LOGIN_PAGE);
 if (IS_LOGIN_PAGE) {
   initLoginPage()
     .catch((error) => {
@@ -730,7 +731,28 @@ if (IS_LOGIN_PAGE) {
 }
 
 function isCurrentLoginPage() {
-  return false;
+  return Boolean(document.getElementById("loginShell")) && !state.auth.isLoggedIn && !hasAuth0CallbackParams();
+}
+
+function setIndexLoginPageMode(isActive) {
+  const active = Boolean(isActive);
+  document.body?.classList.toggle("login-page", active);
+  const loginShell = document.getElementById("loginShell");
+  if (loginShell) {
+    loginShell.hidden = !active;
+  }
+  const appHeader = document.querySelector(".app-header");
+  if (appHeader) {
+    appHeader.hidden = active;
+  }
+  const appScreens = document.getElementById("appScreens");
+  if (appScreens) {
+    appScreens.hidden = active;
+  }
+  const homeGreeting = document.getElementById("homeGreeting");
+  if (homeGreeting) {
+    homeGreeting.hidden = active;
+  }
 }
 
 async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation") {
@@ -753,6 +775,7 @@ async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation
 }
 
 async function init() {
+  setIndexLoginPageMode(false);
   syncViewportWidthForLayout();
   const isAuthCallback = hasAuth0CallbackParams();
   const shouldWaitForAuth = isAuthCallback || !state.auth.isLoggedIn;
@@ -781,6 +804,13 @@ async function init() {
   const onboardingStep = normalizeLoginOnboardingStep(authRedirectAppState?.onboardingStep);
   if (onboardingStep) {
     requestLoginOnboardingStep(onboardingStep);
+    setIndexLoginPageMode(true);
+    bindSharedDataAndGuestDialogEvents();
+    bindReviewDataCloudRefreshEvents();
+    bindLoginPageAuthEvents();
+    renderAuthPanel();
+    renderAvater();
+    return;
   }
   if (redirectToIndexPageIfNeeded()) {
     return;
@@ -806,6 +836,7 @@ function syncViewportWidthForLayout() {
 }
 
 async function initLoginPage() {
+  setIndexLoginPageMode(true);
   syncViewportWidthForLayout();
   const isAuthCallback = hasAuth0CallbackParams();
   const requestedOnboardingStep = getRequestedLoginOnboardingStep();
@@ -4732,7 +4763,7 @@ function getFlashcardBinderTargetNoteWidth() {
 
 function getResponsiveReviewSheetWidth(viewportWidth = window.innerWidth) {
   const safeViewportWidth = Math.max(0, Number(viewportWidth) || 0);
-  return Math.max(0, Math.min(456, safeViewportWidth - 96));
+  return Math.max(0, Math.min(456, safeViewportWidth - 64));
 }
 
 function updateFlashcardBinderTargetWidth(binder = activeFlashcardBinderElement) {
@@ -7813,6 +7844,7 @@ function ensureReviewCoinMenu() {
 }
 
 function handleReviewCoinMenuClick(event) {
+  event.stopPropagation();
   const source = event.target instanceof Element ? event.target : null;
   if (!source) {
     return;
@@ -7825,6 +7857,7 @@ function handleReviewCoinMenuClick(event) {
   if (themeButton) {
     const theme = normalizeTheme(themeButton.dataset.reviewCoinMenuTheme);
     reviewCoinMenuSelection = { type: "theme", id: theme };
+    handleReviewCoinMenuThemeAction(theme);
     renderReviewCoinMenu({ keepScroll: true });
     return;
   }
@@ -7877,14 +7910,31 @@ function renderReviewCoinMenu(options = {}) {
   }
   const selected = root.querySelector("[data-review-coin-menu-selected]");
   if (selected) {
-    selected.innerHTML = reviewCoinMenuSelection.type === "theme" ? renderReviewCoinMenuThemeDetail() : renderReviewCoinMenuAvaterDetail();
+    selected.innerHTML = reviewCoinMenuSelection.type === "theme" ? "" : renderReviewCoinMenuAvaterDetail();
   }
+  root.classList.toggle("is-theme-selected", reviewCoinMenuSelection.type === "theme");
+  root.classList.toggle("is-avater-selected", reviewCoinMenuSelection.type !== "theme");
   updateReviewCoinMenuPrimaryButton(root);
   if (isReviewCoinMenuOpen) {
     renderAvaterPreview(elements.navCharacter, getReviewCoinMenuPreviewEquipped());
   }
   if (isReviewCoinMenuOpen) {
     window.requestAnimationFrame(syncReviewCoinMenuGeometry);
+  }
+}
+
+function handleReviewCoinMenuThemeAction(themeKey) {
+  const normalizedTheme = normalizeTheme(themeKey);
+  if (state.settings.theme === normalizedTheme) {
+    return;
+  }
+  if (isThemeUnlocked(normalizedTheme)) {
+    updateThemeSetting(normalizedTheme);
+    return;
+  }
+  const cost = getThemeUnlockCost(normalizedTheme);
+  if (hasUnlimitedReviewCoins() || state.reviewCoin >= cost) {
+    proceedThemeUnlock(normalizedTheme);
   }
 }
 
@@ -8064,6 +8114,12 @@ function updateReviewCoinMenuPrimaryButton(root = document.getElementById("revie
   if (!button) {
     return;
   }
+  if (reviewCoinMenuSelection.type === "theme") {
+    button.hidden = true;
+    button.disabled = true;
+    return;
+  }
+  button.hidden = false;
   const action = getReviewCoinMenuPrimaryAction();
   button.textContent = action.label;
   button.disabled = action.disabled;
@@ -8113,13 +8169,7 @@ function getReviewCoinMenuPrimaryAction() {
 
 function handleReviewCoinMenuPrimaryAction() {
   if (reviewCoinMenuSelection.type === "theme") {
-    const themeKey = normalizeTheme(reviewCoinMenuSelection.id);
-    if (isThemeUnlocked(themeKey)) {
-      updateThemeSetting(themeKey);
-    } else {
-      proceedThemeUnlock(themeKey);
-    }
-    reviewCoinMenuSelection = { type: "theme", id: themeKey };
+    handleReviewCoinMenuThemeAction(reviewCoinMenuSelection.id);
     renderReviewCoinMenu();
     return;
   }
