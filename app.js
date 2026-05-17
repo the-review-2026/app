@@ -122,7 +122,7 @@ const LEARN_AVATER_CATEGORY_ICONS = {
 const MANAGER_HOST_SCREEN_TITLES = {
   home: { en: "Top", ja: "トップ" },
   members: { en: "Users", ja: "ユーザー" },
-  problem: { en: "Problems", ja: "問題" },
+  problem: { en: "Questions", ja: "問題" },
   store: { en: "Store", ja: "ストア" },
 };
 const MANAGER_MIGRATED_DATA = Object.freeze({
@@ -2897,6 +2897,10 @@ async function saveAccountEditProfile() {
   }
 
   const previousAuth = { ...state.auth };
+  const currentEmail = normalizeAccountEmailText(state.auth.email);
+  const currentPassword = normalizeAccountPasswordText(state.auth.password);
+  const shouldSyncProfile = nickname !== normalizeNicknameText(state.auth.nickname) || email !== currentEmail;
+  const passwordChanged = password !== currentPassword;
   isSavingAccountEditNickname = true;
   state.auth = normalizeAuthState({
     ...state.auth,
@@ -2909,14 +2913,27 @@ async function saveAccountEditProfile() {
   syncAccountEditNicknameSaveButton();
   setAccountEditNicknameFeedback("保存しています。", "");
 
+  if (!shouldSyncProfile) {
+    isSavingAccountEditNickname = false;
+    setAccountEditNicknameFeedback(passwordChanged ? "パスワードを保存しました。" : "Review Accountを保存しました。", "success");
+    syncAccountEditNicknameSaveButton();
+    return;
+  }
+
   const payload = await syncReviewAccountProfileToApi({ nickname, email });
   isSavingAccountEditNickname = false;
   if (!payload) {
-    state.auth = normalizeAuthState(previousAuth);
+    state.auth = normalizeAuthState({
+      ...previousAuth,
+      password,
+    });
     saveState();
     renderMypageSettings();
     syncAccountEditNicknameSaveButton();
-    setAccountEditNicknameFeedback("保存できませんでした。通信状態を確認してください。", "error");
+    setAccountEditNicknameFeedback(
+      passwordChanged ? "パスワードは保存しました。Nicknameとメールアドレスは保存できませんでした。" : "保存できませんでした。通信状態を確認してください。",
+      passwordChanged ? "success" : "error"
+    );
     return;
   }
 
@@ -7804,10 +7821,8 @@ function renderMypageSettings() {
       elements.authLoginStatusText.textContent = "未ログイン";
     } else if (state.auth.provider === "guest") {
       elements.authLoginStatusText.textContent = "Guest Mode";
-    } else if (isGoogleAccount) {
-      elements.authLoginStatusText.textContent = "Google";
     } else {
-      elements.authLoginStatusText.textContent = "Auth0";
+      elements.authLoginStatusText.textContent = "ログイン中";
     }
   }
 

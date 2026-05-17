@@ -360,28 +360,40 @@
             </h2>
             <div class="settings-section-content settings-line-list">
               <div class="setting-row" id="authNicknameRow">
-                <span>Nickname</span>
+                <span class="setting-row-label">
+                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">badge</span>
+                  <span>Nickname</span>
+                </span>
                 <strong id="authNicknameText">未設定</strong>
               </div>
               <div class="setting-row" id="authEmailRow">
-                <span>メールアドレス</span>
+                <span class="setting-row-label">
+                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">mail</span>
+                  <span>メールアドレス</span>
+                </span>
                 <strong id="authEmailText">未設定</strong>
               </div>
               <div class="setting-row account-password-row" id="authPasswordRow">
-                <span>パスワード</span>
+                <span class="setting-row-label">
+                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">lock</span>
+                  <span>パスワード</span>
+                  <button
+                    id="authPasswordToggleBtn"
+                    class="account-password-toggle"
+                    type="button"
+                    aria-label="パスワードを表示する"
+                    title="パスワードを表示する"
+                  >
+                    <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
+                  </button>
+                </span>
                 <strong id="authPasswordText">*****</strong>
-                <button
-                  id="authPasswordToggleBtn"
-                  class="account-password-toggle"
-                  type="button"
-                  aria-label="パスワードを表示する"
-                  title="パスワードを表示する"
-                >
-                  <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
-                </button>
               </div>
               <div class="setting-row account-google-row" id="authGoogleRow" hidden>
-                <span>IdP</span>
+                <span class="setting-row-label">
+                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">account_circle</span>
+                  <span>IdP</span>
+                </span>
                 <strong id="authGoogleStatusText">Auth0</strong>
               </div>
               <div class="setting-row account-action-row">
@@ -422,7 +434,7 @@
         >
             <h2>Review Data</h2>
             <div class="settings-section-content">
-              <div class="review-data-actions" aria-label="Review Data操作">
+              <div class="review-data-actions" aria-label="リビューデータ操作">
                 <button id="reviewDataExportBtn" class="secondary review-data-action" type="button">
                   <span class="material-symbols-rounded review-data-action-icon" aria-hidden="true">upload</span>
                   <span>エクスポート</span>
@@ -656,7 +668,10 @@
         </div>
         <div class="guest-mode-actions account-edit-actions">
           <button class="secondary" type="button" data-account-edit-action="close">閉じる</button>
-          <button id="accountEditNicknameSaveBtn" class="primary" type="button" data-account-edit-action="profile-save">保存する</button>
+          <button id="accountEditNicknameSaveBtn" class="primary" type="button" data-account-edit-action="profile-save">
+            <span class="material-symbols-rounded" aria-hidden="true">save</span>
+            <span>保存する</span>
+          </button>
         </div>
       </form>
     </dialog>
@@ -3466,6 +3481,17 @@
       </form>
     </dialog>
 
+    <dialog id="managerMemberActionDialog" class="text-reset-dialog manager-member-action-dialog" aria-labelledby="managerMemberActionDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="managerMemberActionDialogTitle">確認</h3>
+        <p id="managerMemberActionDialogMessage">操作を続行しますか？</p>
+        <div class="manager-dialog-actions manager-member-action-dialog-actions">
+          <button class="secondary white-button" type="button" data-manager-member-dialog-action="cancel">キャンセル</button>
+          <button id="managerMemberActionConfirmBtn" class="primary" type="button" data-manager-member-dialog-action="confirm">実行する</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="problemConfirmDialog" class="text-reset-dialog" aria-labelledby="problemConfirmDialogTitle">
       <form method="dialog" class="text-reset-dialog-body">
         <h3 id="problemConfirmDialogTitle">問題の確認</h3>
@@ -3554,6 +3580,7 @@
           avaterItemImageData: null,
           activeStoreItemId: "",
           reviewDataSnapshot: null,
+          pendingManagerMemberAction: null,
         };
 
         const elements = {
@@ -3668,6 +3695,11 @@
           imageDialogButtons: Array.from(document.querySelectorAll("[data-image-dialog-action]")),
           problemResetDialog: document.getElementById("problemResetDialog"),
           resetDialogButtons: Array.from(document.querySelectorAll("[data-reset-dialog-action]")),
+          managerMemberActionDialog: document.getElementById("managerMemberActionDialog"),
+          managerMemberActionDialogTitle: document.getElementById("managerMemberActionDialogTitle"),
+          managerMemberActionDialogMessage: document.getElementById("managerMemberActionDialogMessage"),
+          managerMemberActionConfirmBtn: document.getElementById("managerMemberActionConfirmBtn"),
+          managerMemberDialogButtons: Array.from(document.querySelectorAll("[data-manager-member-dialog-action]")),
           problemConfirmDialog: document.getElementById("problemConfirmDialog"),
           confirmProblemNote: document.getElementById("confirmProblemNote"),
           confirmProblemChapter: document.getElementById("confirmProblemChapter"),
@@ -3837,11 +3869,11 @@
               return;
             }
             if (target.matches("[data-manager-member-logout]")) {
-              void logoutManagerMember(card.dataset.managerMemberId || "");
+              requestManagerMemberAction("logout", card.dataset.managerMemberId || "");
               return;
             }
             if (target.matches("[data-manager-member-delete]")) {
-              void deleteManagerMember(card.dataset.managerMemberId || "");
+              requestManagerMemberAction("delete", card.dataset.managerMemberId || "");
               return;
             }
             void saveManagerMemberAccess(card.dataset.managerMemberId || "");
@@ -3852,6 +3884,14 @@
               return;
             }
             syncManagerMemberReviewCoinField(target.closest("[data-manager-member-id]"));
+          });
+          elements.managerMemberDialogButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              handleManagerMemberActionDialog(button.dataset.managerMemberDialogAction);
+            });
+          });
+          elements.managerMemberActionDialog?.addEventListener("cancel", () => {
+            state.pendingManagerMemberAction = null;
           });
         }
 
@@ -5037,6 +5077,84 @@
           }
         }
 
+        function requestManagerMemberAction(action, memberId) {
+          const normalizedAction = action === "delete" ? "delete" : action === "logout" ? "logout" : "";
+          if (!normalizedAction || !memberId || !canManageManagerMembers()) {
+            return;
+          }
+          const member = state.managerMembers.find((item) => item?.id === memberId);
+          const name = getManagerMemberNickname(member);
+          const copy =
+            normalizedAction === "delete"
+              ? {
+                  title: "ユーザーを削除する",
+                  message: `${name}をSupabaseから削除します。よろしいですか？`,
+                  confirmText: "削除する",
+                  confirmClass: "danger",
+                }
+              : {
+                  title: "ログアウト",
+                  message: `${name}をログアウト状態にします。よろしいですか？`,
+                  confirmText: "ログアウト",
+                  confirmClass: "primary",
+                };
+          state.pendingManagerMemberAction = { action: normalizedAction, memberId };
+          if (!elements.managerMemberActionDialog || typeof elements.managerMemberActionDialog.showModal !== "function") {
+            if (window.confirm(copy.message)) {
+              void performManagerMemberAction(normalizedAction, memberId);
+            } else {
+              state.pendingManagerMemberAction = null;
+            }
+            return;
+          }
+          if (elements.managerMemberActionDialogTitle) {
+            elements.managerMemberActionDialogTitle.textContent = copy.title;
+          }
+          if (elements.managerMemberActionDialogMessage) {
+            elements.managerMemberActionDialogMessage.textContent = copy.message;
+          }
+          if (elements.managerMemberActionConfirmBtn) {
+            elements.managerMemberActionConfirmBtn.classList.remove("primary", "danger");
+            elements.managerMemberActionConfirmBtn.classList.add(copy.confirmClass);
+            elements.managerMemberActionConfirmBtn.textContent = copy.confirmText;
+          }
+          if (!elements.managerMemberActionDialog.open) {
+            elements.managerMemberActionDialog.showModal();
+          }
+        }
+
+        function handleManagerMemberActionDialog(action) {
+          const normalizedAction = typeof action === "string" ? action.trim().toLowerCase() : "";
+          if (normalizedAction === "cancel") {
+            state.pendingManagerMemberAction = null;
+            closeManagerMemberActionDialog();
+            return;
+          }
+          if (normalizedAction !== "confirm") {
+            return;
+          }
+          const pendingAction = state.pendingManagerMemberAction;
+          state.pendingManagerMemberAction = null;
+          closeManagerMemberActionDialog();
+          void performManagerMemberAction(pendingAction?.action, pendingAction?.memberId);
+        }
+
+        function closeManagerMemberActionDialog() {
+          if (elements.managerMemberActionDialog?.open) {
+            elements.managerMemberActionDialog.close();
+          }
+        }
+
+        async function performManagerMemberAction(action, memberId) {
+          if (action === "logout") {
+            await logoutManagerMember(memberId);
+            return;
+          }
+          if (action === "delete") {
+            await deleteManagerMember(memberId);
+          }
+        }
+
         async function logoutManagerMember(memberId) {
           if (!memberId || !canManageManagerMembers()) {
             return;
@@ -5077,11 +5195,6 @@
 
         async function deleteManagerMember(memberId) {
           if (!memberId || !canManageManagerMembers()) {
-            return;
-          }
-          const member = state.managerMembers.find((item) => item?.id === memberId);
-          const name = getManagerMemberNickname(member);
-          if (!window.confirm(`${name}をSupabaseから削除します。よろしいですか？`)) {
             return;
           }
           const card = Array.from(elements.managerMembersList?.querySelectorAll("[data-manager-member-id]") || []).find(
