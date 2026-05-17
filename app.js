@@ -730,11 +730,7 @@ if (IS_LOGIN_PAGE) {
 }
 
 function isCurrentLoginPage() {
-  const pathname = String(window.location.pathname || "").toLowerCase();
-  if (/(^|[\\/])login\.html$/.test(pathname)) {
-    return true;
-  }
-  return Boolean(document.body?.classList.contains("login-page"));
+  return false;
 }
 
 async function withTimeout(promise, timeoutMs, fallbackValue, label = "Operation") {
@@ -786,7 +782,7 @@ async function init() {
   if (onboardingStep) {
     requestLoginOnboardingStep(onboardingStep);
   }
-  if (redirectToLoginPageIfNeeded()) {
+  if (redirectToIndexPageIfNeeded()) {
     return;
   }
   bindSharedDataAndGuestDialogEvents();
@@ -976,27 +972,18 @@ function finishFlashcardInitialization(options = {}) {
   renderFlashcardPanel();
 }
 
-function redirectToLoginPageIfNeeded() {
+function redirectToIndexPageIfNeeded() {
   return false;
 }
 
-function redirectToIndexPage() {
+function redirectToIndexPage(options = {}) {
   isNavigationRedirectPending = true;
-  window.location.replace("./index.html");
-}
-
-function getLoginPageUrl(options = {}) {
   const url = new URL("./index.html", window.location.href);
   const onboardingStep = normalizeLoginOnboardingStep(options.onboardingStep);
   if (onboardingStep) {
     url.searchParams.set("onboarding", onboardingStep);
   }
-  return url.toString();
-}
-
-function redirectToLoginPage(options = {}) {
-  isNavigationRedirectPending = true;
-  window.location.replace(getLoginPageUrl(options));
+  window.location.replace(url.toString());
 }
 
 function normalizeLoginOnboardingStep(value) {
@@ -2966,7 +2953,7 @@ function performLogoutAccount() {
   applyLoggedOutState({ render: false });
   clearRequestedLoginOnboardingStep();
   clearManagerAccessCache();
-  redirectToLoginPage();
+  redirectToIndexPage();
 }
 
 function getAuth0SdkScriptElement() {
@@ -3579,7 +3566,7 @@ async function retryAuthLoginFromRequiredDialog(dialog, button) {
   if (!didStartLogin && !IS_LOGIN_PAGE) {
     const onboardingStep = normalizeLoginOnboardingStep(appState.onboardingStep) || "nickname";
     requestLoginOnboardingStep(onboardingStep);
-    redirectToLoginPage({ onboardingStep });
+    redirectToIndexPage({ onboardingStep });
   }
   if (button instanceof HTMLButtonElement && !isNavigationRedirectPending) {
     button.disabled = false;
@@ -3690,7 +3677,7 @@ async function performDeleteAccountAndResetProgress() {
   clearRequestedLoginOnboardingStep();
   clearManagerAccessCache();
   closeMypageSubmenu();
-  redirectToLoginPage();
+  redirectToIndexPage();
 }
 
 function renderAll() {
@@ -9112,7 +9099,7 @@ async function importReviewDataFromFile(file) {
 
   if (!state.auth.isLoggedIn) {
     window.alert("Review Dataをインポートしました。");
-    redirectToLoginPage();
+    redirectToIndexPage();
     return;
   }
 

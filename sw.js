@@ -1,4 +1,4 @@
-const APP_SHELL_VERSION = "2026.05.17.1";
+const APP_SHELL_VERSION = "2026.05.17.2";
 const APP_SHELL_CACHE = `the-review-shell-${APP_SHELL_VERSION}`;
 
 // Only cache the app shell. Problem data and store items are intentionally fetched live
@@ -6,11 +6,11 @@ const APP_SHELL_CACHE = `the-review-shell-${APP_SHELL_VERSION}`;
 const APP_SHELL_URLS = [
   "./",
   "./index.html",
-  "./app.css?v=20260517-1",
-  "./app.js?v=20260517-1",
+  "./app.css?v=20260517-2",
+  "./app.js?v=20260517-2",
   "./pwa.js?v=20260516-2",
   "./Loaders.css?v=20260326-1",
-  "./auth0-config.js?v=20260426-1",
+  "./auth0-config.js?v=20260517-2",
   "./manifest.webmanifest?v=20260430-3",
   "./assets/favicon/favicon.png?v=20260326-1",
   "./assets/logos/original.png?v=20260326-1",
@@ -18,6 +18,10 @@ const APP_SHELL_URLS = [
   "./assets/icons/coin.png?v=20260326-1",
   "./assets/avater/らーん1-1.png",
 ];
+
+function isLegacyLoginNavigation(url) {
+  return /(^|\/)login\.html$/i.test(url.pathname);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -62,7 +66,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("./index.html")));
+    if (isLegacyLoginNavigation(url)) {
+      event.respondWith(caches.match("./index.html").then((cached) => cached || fetch("./index.html")));
+      return;
+    }
+    event.respondWith(
+      fetch(request)
+        .then((response) => (response.ok ? response : caches.match("./index.html").then((cached) => cached || response)))
+        .catch(() => caches.match("./index.html"))
+    );
     return;
   }
 
