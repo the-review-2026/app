@@ -213,6 +213,58 @@ const REVIEW_API_AUDIENCE = "https://api.the-review.net";
 const FLASHCARD_REMOTE_DEFAULT_DECK_ID = "ec1";
 const FLASHCARD_REMOTE_DEFAULT_UNIT = "Questions";
 const FLASHCARD_MANAGER_DRAFT_STORAGE_KEY = "the-review-manager-drafts-v1";
+const RAN_HOME_GREETING_TEMPLATES = Object.freeze([
+  "{nickname}遅い時間までお疲れさま！睡眠も大事だから、無理のない範囲でね。",
+  "{nickname}今日もリビューしに来てくれてえらいね。小さく進めば十分だよ。",
+  "{nickname}まずは1問だけでも大丈夫。始めた時点でもう前進だよ。",
+  "{nickname}焦らなくていいよ。できるところから一緒に整えていこうね。",
+  "{nickname}集中できる時は短く深く、疲れている時は軽めでいこうね。",
+  "{nickname}今日の積み重ねは、ちゃんと明日の自分を助けてくれるよ。",
+  "{nickname}分からないところを見つけられたなら、それも大事な成果だよ。",
+  "{nickname}一気に完璧じゃなくていいよ。少しずつ覚え直していこうね。",
+  "{nickname}今の気分に合わせて、無理なくリビューしていこうね。",
+  "{nickname}手をつけられたことがまずすごいよ。この調子でいこうね。",
+  "{nickname}迷ったら、前に間違えたところから見るのがおすすめだよ。",
+  "{nickname}今日は軽く確認するだけでも十分。続ける力を大事にしようね。",
+  "{nickname}眠気が強い時は深追いしないでね。休むのも作戦だよ。",
+  "{nickname}できた問題も、もう一度見ると記憶がしっかりしてくるよ。",
+  "{nickname}つまずいた問題は、伸びしろが見えている証拠だよ。",
+  "{nickname}リビュー日数、{streak}日目だよ。ちゃんと続いていてすてきだね。",
+  "{nickname}今日もここまで来られたね。えらい、えらい。",
+  "{nickname}難しい問題ほど、ゆっくり分けて考えれば大丈夫だよ。",
+  "{nickname}今はできなくても、次に見た時に少し近づければいいよ。",
+  "{nickname}Review Coinは{coin}枚だよ。がんばりが形になってるね。",
+  "{nickname}朝のリビューは頭の準備運動にぴったりだよ。",
+  "{nickname}お昼の少しの時間でも、記憶はちゃんと育つよ。",
+  "{nickname}夕方のリビューは、今日の学びをしまう時間にしようね。",
+  "{nickname}夜はがんばりすぎ注意だよ。できる分だけで大丈夫。",
+  "{nickname}1ページずつ見れば大丈夫。ノートは急がなくても逃げないよ。",
+  "{nickname}答えを見る前に少し考えたなら、それだけで力になってるよ。",
+  "{nickname}今日は正解数より、思い出そうとした回数を大事にしようね。",
+  "{nickname}忘れていたところは、また覚えればいいだけだよ。",
+  "{nickname}昨日より少し分かったなら、それはちゃんと成長だよ。",
+  "{nickname}深呼吸してから始めようね。落ち着くと見えるものが増えるよ。",
+  "{nickname}今日はどのノートからいく？気になるところを選んでみようね。",
+  "{nickname}短いリビューでも、続けば大きな力になるよ。",
+  "{nickname}間違いは悪者じゃないよ。次に正解するための地図だよ。",
+  "{nickname}解けたら喜ぼうね。小さな達成感も大事だよ。",
+  "{nickname}集中が切れたら一度休もうね。戻ってこられたらそれで十分。",
+  "{nickname}今日の自分に合うペースでいこうね。無理はしなくていいよ。",
+  "{nickname}ノートを開いたら、まず問題名だけ眺めるのもありだよ。",
+  "{nickname}覚えにくいところは、声に出すと少し残りやすいよ。",
+  "{nickname}選択肢を比べる時は、違いを言葉にしてみるといいよ。",
+  "{nickname}答え合わせまでできたら、今日はかなりいい流れだよ。",
+  "{nickname}分かったつもりのところほど、軽く確認しておこうね。",
+  "{nickname}今日はここまででも大丈夫。続けるための余力も残そうね。",
+  "{nickname}リビューする姿勢がもう立派だよ。ゆっくり進もうね。",
+  "{nickname}悩んだ問題は印象に残りやすいよ。今が覚えるチャンスだね。",
+  "{nickname}目標は大きくても、今日の一歩は小さくて大丈夫だよ。",
+  "{nickname}ノートを開く前より、少しでも思い出せたら勝ちだよ。",
+  "{nickname}疲れている日は、得意な問題でリズムを作るのもいいよ。",
+  "{nickname}今日のリビューが未来の安心につながっていくよ。",
+  "{nickname}焦らず、でも止まらず。らーんもそばで見ているよ。",
+  "{nickname}最後に1問だけ見て終わるのも、きれいな締め方だよ。"
+]);
 const EDUCATION_CODE_MAX_LENGTH = 32;
 const EDUCATION_CODE_INVALID_MESSAGE = "正しくないEducation Codeが入力されています。";
 const EDUCATION_CODE_DUPLICATE_MESSAGE = "このEducation Codeはすでに追加されています。";
@@ -4198,19 +4250,60 @@ function resetFlashcardBinderScroll() {
   });
 }
 
+function getFlashcardLookupKeysForValues(values) {
+  const keys = [];
+  (Array.isArray(values) ? values : [values]).forEach((value) => {
+    const normalizedValue = normalizeFlashcardText(value);
+    if (!normalizedValue) {
+      return;
+    }
+    keys.push(normalizedValue);
+    const lookupKey = toFlashcardLabelLookupKey(normalizedValue);
+    if (lookupKey) {
+      keys.push(lookupKey);
+    }
+  });
+  return Array.from(new Set(keys));
+}
+
+function getFlashcardDeckLookupKeys(deck) {
+  if (!deck || typeof deck !== "object") {
+    return [];
+  }
+  const catalogEntry = getFlashcardSubjectCatalogEntry(deck.id);
+  return getFlashcardLookupKeysForValues([
+    deck.id,
+    deck.label,
+    catalogEntry?.label,
+    getFlashcardBookEnglishTitle(deck.id),
+  ]);
+}
+
+function getFlashcardNoteLookupKeys(note) {
+  if (!(note instanceof Element)) {
+    return [];
+  }
+  const aliasDeckId = resolveFlashcardDeckAliasIdForNote(note);
+  const aliasCatalogEntry = getFlashcardSubjectCatalogEntry(aliasDeckId);
+  return getFlashcardLookupKeysForValues([
+    note.dataset.flashcardDeckId,
+    note.querySelector(".flashcard-note-jp")?.textContent,
+    note.querySelector(".flashcard-note-en")?.textContent,
+    note.getAttribute("aria-label"),
+    aliasDeckId,
+    aliasCatalogEntry?.label,
+    getFlashcardBookEnglishTitle(aliasDeckId),
+  ]);
+}
+
 function createFlashcardDeckProblemCountByLabelMap() {
   const map = new Map();
   if (!flashcardState || !Array.isArray(flashcardState.decks)) {
     return map;
   }
   flashcardState.decks.forEach((deck) => {
-    const normalizedLabel = normalizeFlashcardText(deck?.label);
-    if (!normalizedLabel) {
-      return;
-    }
     const totalCards = Number.isFinite(deck?.totalCards) ? Math.max(0, Math.round(deck.totalCards)) : 0;
-    const lookupKeys = [normalizedLabel, toFlashcardLabelLookupKey(normalizedLabel)].filter(Boolean);
-    lookupKeys.forEach((lookupKey) => {
+    getFlashcardDeckLookupKeys(deck).forEach((lookupKey) => {
       const previous = map.get(lookupKey);
       if (!Number.isFinite(previous) || totalCards > previous) {
         map.set(lookupKey, totalCards);
@@ -4222,8 +4315,7 @@ function createFlashcardDeckProblemCountByLabelMap() {
     if (!deck) {
       return;
     }
-    const lookupKeys = [label, toFlashcardLabelLookupKey(label)].filter(Boolean);
-    lookupKeys.forEach((lookupKey) => {
+    getFlashcardLookupKeysForValues([label, deck.id, deck.label, getFlashcardBookEnglishTitle(deck.id)]).forEach((lookupKey) => {
       map.set(lookupKey, deck.totalCards);
     });
   });
@@ -4236,12 +4328,7 @@ function createFlashcardDeckByLabelMap() {
     return map;
   }
   flashcardState.decks.forEach((deck) => {
-    const normalizedLabel = normalizeFlashcardText(deck?.label);
-    if (!normalizedLabel) {
-      return;
-    }
-    const lookupKeys = [normalizedLabel, toFlashcardLabelLookupKey(normalizedLabel)].filter(Boolean);
-    lookupKeys.forEach((lookupKey) => {
+    getFlashcardDeckLookupKeys(deck).forEach((lookupKey) => {
       if (!map.has(lookupKey)) {
         map.set(lookupKey, deck);
       }
@@ -4252,8 +4339,7 @@ function createFlashcardDeckByLabelMap() {
     if (!deck) {
       return;
     }
-    const lookupKeys = [label, toFlashcardLabelLookupKey(label)].filter(Boolean);
-    lookupKeys.forEach((lookupKey) => {
+    getFlashcardLookupKeysForValues([label, deck.id, deck.label, getFlashcardBookEnglishTitle(deck.id)]).forEach((lookupKey) => {
       if (!map.has(lookupKey)) {
         map.set(lookupKey, deck);
       }
@@ -4281,17 +4367,7 @@ function resolveFlashcardDeckForNote(note, deckByLabel = createFlashcardDeckByLa
       return deck;
     }
   }
-  const noteLabelElement = note.querySelector(".flashcard-note-jp");
-  const noteLabel = normalizeFlashcardText(noteLabelElement?.textContent);
-  const noteLookupKeys = [noteLabel, toFlashcardLabelLookupKey(noteLabel)].filter(Boolean);
-  for (const lookupKey of noteLookupKeys) {
-    if (deckByLabel.has(lookupKey)) {
-      return deckByLabel.get(lookupKey) ?? null;
-    }
-  }
-  const ariaLabel = normalizeFlashcardText(note.getAttribute("aria-label"));
-  const ariaLookupKeys = [ariaLabel, toFlashcardLabelLookupKey(ariaLabel)].filter(Boolean);
-  for (const lookupKey of ariaLookupKeys) {
+  for (const lookupKey of getFlashcardNoteLookupKeys(note)) {
     if (deckByLabel.has(lookupKey)) {
       return deckByLabel.get(lookupKey) ?? null;
     }
@@ -4303,17 +4379,7 @@ function resolveFlashcardProblemCountForNote(note, deckProblemCountByLabel) {
   if (!(note instanceof Element) || !(deckProblemCountByLabel instanceof Map)) {
     return 0;
   }
-  const noteLabelElement = note.querySelector(".flashcard-note-jp");
-  const noteLabel = normalizeFlashcardText(noteLabelElement?.textContent);
-  const noteLookupKeys = [noteLabel, toFlashcardLabelLookupKey(noteLabel)].filter(Boolean);
-  for (const lookupKey of noteLookupKeys) {
-    if (deckProblemCountByLabel.has(lookupKey)) {
-      return deckProblemCountByLabel.get(lookupKey) ?? 0;
-    }
-  }
-  const ariaLabel = normalizeFlashcardText(note.getAttribute("aria-label"));
-  const ariaLookupKeys = [ariaLabel, toFlashcardLabelLookupKey(ariaLabel)].filter(Boolean);
-  for (const lookupKey of ariaLookupKeys) {
+  for (const lookupKey of getFlashcardNoteLookupKeys(note)) {
     if (deckProblemCountByLabel.has(lookupKey)) {
       return deckProblemCountByLabel.get(lookupKey) ?? 0;
     }
@@ -4400,6 +4466,12 @@ function handleFlashcardNoteBinderClick(event) {
   const readerAction = target.closest("[data-flashcard-note-reader-action]");
   if (readerAction && isInFlashcardBinderInteractionSurface(readerAction)) {
     handleFlashcardNoteReaderAction(readerAction);
+    return;
+  }
+
+  const answerChoice = target.closest("[data-flashcard-answer-choice]");
+  if (answerChoice && isInFlashcardBinderInteractionSurface(answerChoice)) {
+    selectFlashcardNotebookAnswerChoice(answerChoice);
     return;
   }
 
@@ -5113,8 +5185,113 @@ function handleFlashcardNoteReaderAction(actionButton) {
     return;
   }
   if (action === "answer") {
+    submitActiveFlashcardNotebookAnswer(actionButton);
     return;
   }
+}
+
+function selectFlashcardNotebookAnswerChoice(choiceButton) {
+  if (!(choiceButton instanceof HTMLElement)) {
+    return;
+  }
+  const list = choiceButton.closest(".flashcard-note-answer-choice-list");
+  if (!list) {
+    return;
+  }
+  Array.from(list.querySelectorAll("[data-flashcard-answer-choice]")).forEach((button) => {
+    const isSelected = button === choiceButton;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
+  });
+}
+
+function submitActiveFlashcardNotebookAnswer(actionButton) {
+  const reader = actionButton?.closest?.(".flashcard-note-reader");
+  const page = getActiveFlashcardNotebookProblemPage();
+  if (!reader || !page) {
+    return;
+  }
+  const submittedAnswer = readFlashcardNotebookSubmittedAnswer(reader);
+  const feedback = reader.querySelector("[data-flashcard-answer-feedback]");
+  if (!submittedAnswer) {
+    if (feedback) {
+      feedback.textContent = "答えを入力してください。";
+      feedback.classList.remove("is-correct", "is-wrong");
+    }
+    return;
+  }
+  const correctAnswer = Array.isArray(page.answers) ? page.answers.map(normalizeFlashcardText).find(Boolean) || "" : "";
+  const isCorrect = isFlashcardNotebookAnswerCorrect(submittedAnswer, page.answers);
+  const progress = ensureLearningProgressState();
+  const answerKey = getFlashcardNotebookAnswerRecordKey(page);
+  progress.notebooks[answerKey] = {
+    ...(progress.notebooks[answerKey] ?? {}),
+    deckId: normalizeFlashcardText(activeFlashcardNotebookState?.note?.dataset?.flashcardDeckId),
+    noteLabel: getFlashcardNoteJapaneseLabel(activeFlashcardNotebookState?.note),
+    cardId: normalizeFlashcardText(page.cardId),
+    questionName: normalizeFlashcardText(page.title),
+    pageNumber: Number(page.pageNumber) || 1,
+    questionNumber: Number(page.questionNumber) || 1,
+    mode: normalizeFlashcardNotebookMode(activeFlashcardNotebookState?.mode),
+    selectedAnswer: submittedAnswer,
+    answer: correctAnswer,
+    answered: true,
+    correct: isCorrect,
+    updatedAt: toJstIsoString(),
+  };
+  saveState();
+  if (feedback) {
+    feedback.textContent = isCorrect ? "正解です。" : `もう一度確認しよう。答え: ${correctAnswer || "未設定"}`;
+    feedback.classList.toggle("is-correct", isCorrect);
+    feedback.classList.toggle("is-wrong", !isCorrect);
+  }
+}
+
+function getActiveFlashcardNotebookProblemPage() {
+  if (!activeFlashcardNotebookState?.note) {
+    return null;
+  }
+  const spreads = buildFlashcardNotebookSpreads(activeFlashcardNotebookState.note);
+  const pageIndex = Math.max(0, Math.min(Math.max(0, spreads.length - 1), Number(activeFlashcardNotebookState.pageIndex) || 0));
+  return spreads[pageIndex]?.right?.kind === "problem" ? spreads[pageIndex].right : null;
+}
+
+function readFlashcardNotebookSubmittedAnswer(reader) {
+  const mode = normalizeFlashcardNotebookMode(activeFlashcardNotebookState?.mode);
+  if (mode === "text") {
+    return normalizeFlashcardText(reader.querySelector("[data-flashcard-answer-input='text']")?.value);
+  }
+  const selectedChoice = reader.querySelector("[data-flashcard-answer-choice].is-selected");
+  return normalizeFlashcardText(selectedChoice?.dataset.flashcardAnswerChoice || selectedChoice?.textContent);
+}
+
+function isFlashcardNotebookAnswerCorrect(answer, answers) {
+  const submitted = normalizeFlashcardAnswerForCompare(answer);
+  if (!submitted) {
+    return false;
+  }
+  return (Array.isArray(answers) ? answers : []).some((candidate) => normalizeFlashcardAnswerForCompare(candidate) === submitted);
+}
+
+function normalizeFlashcardAnswerForCompare(value) {
+  return normalizeFlashcardText(value)
+    .normalize("NFKC")
+    .replace(/[\s\u3000]+/g, "")
+    .toLowerCase();
+}
+
+function getFlashcardNotebookAnswerRecord(page) {
+  const progress = ensureLearningProgressState();
+  return progress.notebooks[getFlashcardNotebookAnswerRecordKey(page)] ?? null;
+}
+
+function getFlashcardNotebookAnswerRecordKey(page) {
+  const deckId = normalizeFlashcardText(activeFlashcardNotebookState?.note?.dataset?.flashcardDeckId);
+  const noteLabel = getFlashcardNoteJapaneseLabel(activeFlashcardNotebookState?.note);
+  const pageNumber = Number(page?.pageNumber) || Number(activeFlashcardNotebookState?.pageIndex) + 1 || 1;
+  const questionNumber = Number(page?.questionNumber) || pageNumber;
+  const cardId = normalizeFlashcardText(page?.cardId) || `p${pageNumber}-q${questionNumber}`;
+  return `${deckId || toFlashcardLabelLookupKey(noteLabel)}::${cardId}`;
 }
 
 function normalizeFlashcardNotebookMode(mode) {
@@ -5365,10 +5542,19 @@ function buildFlashcardNotebookSpreads(note) {
       right: createFlashcardNotebookProblemPage({
         noteLabel,
         dateText,
-        title: `問題 ${cardNumber}`,
+        title: entry.card.questionName || `問題 ${cardNumber}`,
         body: entry.card.prompt,
+        cardId: entry.card.remoteId || entry.card.id,
+        pageNumber: entry.card.pageNumber,
+        questionNumber: entry.card.questionNumber || cardNumber,
         imageSrc: entry.card.imageSrc,
         imageAlt: entry.card.imageAlt,
+        tableData: entry.card.tableData,
+        graphData: entry.card.graphData,
+        questionTextPlacement: entry.card.questionTextPlacement,
+        imagePlacement: entry.card.imagePlacement,
+        tablePlacement: entry.card.tablePlacement,
+        graphPlacement: entry.card.graphPlacement,
         answers: entry.card.answers,
         choices: entry.card.choices,
       }),
@@ -5398,15 +5584,42 @@ function createFlashcardNotebookTextPage(noteLabel, dateText, body) {
   };
 }
 
-function createFlashcardNotebookProblemPage({ noteLabel, dateText, title, body, imageSrc, imageAlt, answers, choices }) {
+function createFlashcardNotebookProblemPage({
+  noteLabel,
+  dateText,
+  title,
+  body,
+  cardId,
+  pageNumber,
+  questionNumber,
+  imageSrc,
+  imageAlt,
+  tableData,
+  graphData,
+  questionTextPlacement,
+  imagePlacement,
+  tablePlacement,
+  graphPlacement,
+  answers,
+  choices,
+}) {
   return {
     kind: "problem",
     noteLabel,
     dateText,
     title: normalizeFlashcardText(title),
     body: normalizeFlashcardText(body),
+    cardId: normalizeFlashcardText(cardId),
+    pageNumber: Number.isFinite(Number(pageNumber)) ? Math.max(1, Math.floor(Number(pageNumber))) : 1,
+    questionNumber: Number.isFinite(Number(questionNumber)) ? Math.max(1, Math.floor(Number(questionNumber))) : 1,
     imageSrc,
     imageAlt,
+    tableData,
+    graphData,
+    questionTextPlacement: normalizeFlashcardPlacement(questionTextPlacement, 10),
+    imagePlacement: normalizeFlashcardPlacement(imagePlacement, 20),
+    tablePlacement: normalizeFlashcardPlacement(tablePlacement, 30),
+    graphPlacement: normalizeFlashcardPlacement(graphPlacement, 40),
     answers: Array.isArray(answers) ? answers : [],
     choices: Array.isArray(choices) ? choices : [],
   };
@@ -5450,17 +5663,7 @@ function createFlashcardNotebookPageElement(page, side) {
     subtitle.textContent = page.subtitle;
     body.append(subtitle);
   }
-  const bodyText = document.createElement("p");
-  bodyText.className = "flashcard-note-paper-body";
-  bodyText.textContent = page.body || "";
-  body.append(bodyText);
-  if (page.imageSrc) {
-    const image = document.createElement("img");
-    image.className = "flashcard-note-paper-image";
-    image.src = page.imageSrc;
-    image.alt = page.imageAlt || "";
-    body.append(image);
-  }
+  appendFlashcardNotebookPageBlocks(body, page);
   if (Array.isArray(page.items) && page.items.length > 0) {
     const list = document.createElement("ol");
     list.className = "flashcard-note-paper-list";
@@ -5480,6 +5683,133 @@ function createFlashcardNotebookPageElement(page, side) {
   pageElement.append(inner);
 
   return pageElement;
+}
+
+function appendFlashcardNotebookPageBlocks(body, page) {
+  const blocks = [];
+  if (page.body) {
+    blocks.push({
+      type: "text",
+      placement: normalizeFlashcardPlacement(page.questionTextPlacement, 10),
+      render: () => {
+        const bodyText = document.createElement("p");
+        bodyText.className = "flashcard-note-paper-body flashcard-note-paper-block";
+        bodyText.dataset.flashcardBlockType = "question-text";
+        bodyText.textContent = page.body || "";
+        return bodyText;
+      },
+    });
+  }
+  if (page.imageSrc) {
+    blocks.push({
+      type: "image",
+      placement: normalizeFlashcardPlacement(page.imagePlacement, 20),
+      render: () => {
+        const image = document.createElement("img");
+        image.className = "flashcard-note-paper-image flashcard-note-paper-block";
+        image.dataset.flashcardBlockType = "image";
+        image.src = page.imageSrc;
+        image.alt = page.imageAlt || "";
+        return image;
+      },
+    });
+  }
+  if (page.tableData) {
+    blocks.push({
+      type: "table",
+      placement: normalizeFlashcardPlacement(page.tablePlacement, 30),
+      render: () => createFlashcardNotebookTableElement(page.tableData),
+    });
+  }
+  if (page.graphData) {
+    blocks.push({
+      type: "graph",
+      placement: normalizeFlashcardPlacement(page.graphPlacement, 40),
+      render: () => createFlashcardNotebookGraphElement(page.graphData),
+    });
+  }
+
+  blocks
+    .sort((a, b) => (Number(a.placement.order) || 0) - (Number(b.placement.order) || 0))
+    .forEach((block) => {
+      const element = block.render();
+      element.dataset.flashcardPlacementArea = block.placement.area || "right";
+      element.dataset.flashcardPlacementOrder = String(Number(block.placement.order) || 0);
+      applyFlashcardPlacementStyle(element, block.placement);
+      body.append(element);
+    });
+}
+
+function applyFlashcardPlacementStyle(element, placement) {
+  if (!(element instanceof HTMLElement) || !placement || typeof placement !== "object") {
+    return;
+  }
+  ["x", "y", "width", "height"].forEach((key) => {
+    const value = normalizeFlashcardText(placement[key]);
+    if (value) {
+      element.style.setProperty(`--flashcard-placement-${key}`, value);
+    }
+  });
+  const align = normalizeFlashcardText(placement.align);
+  if (align) {
+    element.dataset.flashcardPlacementAlign = align;
+  }
+}
+
+function createFlashcardNotebookTableElement(tableData) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "flashcard-note-paper-table-wrap flashcard-note-paper-block";
+  wrapper.dataset.flashcardBlockType = "table";
+  const rows = normalizeFlashcardTableRows(tableData);
+  if (rows.length === 0) {
+    wrapper.textContent = normalizeFlashcardText(tableData);
+    return wrapper;
+  }
+  const table = document.createElement("table");
+  table.className = "flashcard-note-paper-table";
+  rows.forEach((row, rowIndex) => {
+    const tr = document.createElement("tr");
+    row.forEach((cell) => {
+      const cellElement = document.createElement(rowIndex === 0 ? "th" : "td");
+      cellElement.textContent = normalizeFlashcardText(cell);
+      tr.append(cellElement);
+    });
+    table.append(tr);
+  });
+  wrapper.append(table);
+  return wrapper;
+}
+
+function normalizeFlashcardTableRows(tableData) {
+  if (Array.isArray(tableData)) {
+    return tableData
+      .map((row) => (Array.isArray(row) ? row : [row]).map((cell) => normalizeFlashcardText(cell)))
+      .filter((row) => row.some(Boolean));
+  }
+  if (tableData && typeof tableData === "object") {
+    const headers = Array.isArray(tableData.headers) ? tableData.headers : Array.isArray(tableData.columns) ? tableData.columns : [];
+    const rows = Array.isArray(tableData.rows) ? tableData.rows : [];
+    return [headers, ...rows]
+      .filter((row) => Array.isArray(row) && row.length > 0)
+      .map((row) => row.map((cell) => normalizeFlashcardText(cell)));
+  }
+  return [];
+}
+
+function createFlashcardNotebookGraphElement(graphData) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "flashcard-note-paper-graph flashcard-note-paper-block";
+  wrapper.dataset.flashcardBlockType = "graph";
+  const graphSrc = typeof graphData === "string" ? resolveFlashcardImageSrc(graphData) : normalizeFlashcardText(graphData?.src ?? graphData?.url);
+  if (graphSrc) {
+    const image = document.createElement("img");
+    image.src = graphSrc;
+    image.alt = normalizeFlashcardText(graphData?.alt) || "";
+    wrapper.append(image);
+    return wrapper;
+  }
+  wrapper.textContent = typeof graphData === "object" ? JSON.stringify(graphData) : normalizeFlashcardText(graphData);
+  return wrapper;
 }
 
 function createFlashcardNotebookPageHeader(page) {
@@ -5504,9 +5834,10 @@ function createFlashcardNotebookAnswerArea(page) {
   if (mode === "text") {
     const textarea = document.createElement("textarea");
     textarea.className = "flashcard-note-answer-textbox";
+    textarea.dataset.flashcardAnswerInput = "text";
     textarea.rows = 5;
     textarea.placeholder = "答えを入力";
-    area.append(textarea);
+    area.append(textarea, createFlashcardNotebookFeedbackElement(page));
     return area;
   }
 
@@ -5518,7 +5849,7 @@ function createFlashcardNotebookAnswerArea(page) {
     const transcript = document.createElement("p");
     transcript.className = "flashcard-note-answer-transcript";
     transcript.textContent = "文字起こしがここに表示されます。";
-    area.append(button, transcript);
+    area.append(button, transcript, createFlashcardNotebookFeedbackElement(page));
     return area;
   }
 
@@ -5529,11 +5860,27 @@ function createFlashcardNotebookAnswerArea(page) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "flashcard-note-answer-choice";
+    button.dataset.flashcardAnswerChoice = choice;
+    button.setAttribute("aria-pressed", "false");
     button.textContent = choice || `選択肢 ${index + 1}`;
     list.append(button);
   });
-  area.append(list);
+  area.append(list, createFlashcardNotebookFeedbackElement(page));
   return area;
+}
+
+function createFlashcardNotebookFeedbackElement(page) {
+  const feedback = document.createElement("p");
+  feedback.className = "flashcard-note-answer-feedback";
+  feedback.dataset.flashcardAnswerFeedback = "1";
+  feedback.setAttribute("aria-live", "polite");
+  const record = getFlashcardNotebookAnswerRecord(page);
+  if (record?.answered) {
+    feedback.textContent = record.correct ? "正解です。" : `もう一度確認しよう。答え: ${record.answer || "未設定"}`;
+    feedback.classList.toggle("is-correct", Boolean(record.correct));
+    feedback.classList.toggle("is-wrong", !record.correct);
+  }
+  return feedback;
 }
 
 function getFlashcardNotebookAnswerChoices(page) {
@@ -5569,9 +5916,35 @@ function getFlashcardNoteEnglishLabel(note) {
 }
 
 async function loadRemoteFlashcardDecks() {
+  const supabaseQuestions = await loadSupabaseFlashcardQuestions();
+  const supabaseDecks = normalizeRemoteFlashcardQuestionArray(supabaseQuestions);
   const managerDraftQuestions = loadApprovedManagerDraftFlashcardQuestions();
   const managerDraftDecks = normalizeRemoteFlashcardQuestionArray(managerDraftQuestions);
-  return mergeFlashcardDeckCollections([], managerDraftDecks);
+  return mergeFlashcardDeckCollections(supabaseDecks, managerDraftDecks);
+}
+
+async function loadSupabaseFlashcardQuestions() {
+  try {
+    const response = await withTimeout(
+      fetch(`${REVIEW_API_BASE_URL}/flashcards`, {
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }),
+      FLASHCARD_INIT_TIMEOUT_MS,
+      null,
+      "Supabase flashcards"
+    );
+    if (!response || !response.ok) {
+      return [];
+    }
+    const payload = await response.json().catch(() => []);
+    return Array.isArray(payload) ? payload : [];
+  } catch (error) {
+    console.warn("Failed to load Supabase flashcards:", error);
+    return [];
+  }
 }
 
 function loadApprovedManagerDraftFlashcardQuestions() {
@@ -5739,6 +6112,10 @@ function createRemoteFlashcardSource(deckId, question) {
 }
 
 function resolveRemoteFlashcardUnitName(question) {
+  const pageNumber = Number(question.pageNumber ?? question.page_number);
+  if (Number.isFinite(pageNumber) && pageNumber > 0) {
+    return `Page ${Math.floor(pageNumber)}`;
+  }
   return (
     normalizeFlashcardText(
       question.unit ?? question.unitName ?? question.lesson ?? question.chapter ?? question.section ?? question.category
@@ -5760,16 +6137,30 @@ function normalizeRemoteFlashcardQuestion(question) {
     h: question.h ?? question.hint ?? question.note ?? question.explanation,
     i: question.i ?? question.image ?? question.img ?? question.imageSrc ?? question.imageUrl,
     iAlt: question.iAlt ?? question.imageAlt ?? question.alt,
+    questionName: question.questionName ?? question.question_name ?? question.name,
+    pageNumber: question.pageNumber ?? question.page_number,
+    questionNumber: question.questionNumber ?? question.question_number,
+    table: question.table,
+    graph: question.graph,
+    choices: question.choices ?? question.threeOptions ?? question.three_options,
+    questionTextPlacement: question.questionTextPlacement ?? question.question_text_placement,
+    imagePlacement: question.imagePlacement ?? question.image_placement,
+    tablePlacement: question.tablePlacement ?? question.table_placement,
+    graphPlacement: question.graphPlacement ?? question.graph_placement,
   };
 }
 
 function buildRemoteFlashcardPrompt(question) {
   const basePrompt = normalizeFlashcardText(
-    question.q ?? question.question ?? question.prompt ?? question.contentText ?? stripFlashcardHtml(question.contentHtml)
+    question.q ??
+      question.questionText ??
+      question.question_text ??
+      question.question ??
+      question.prompt ??
+      question.contentText ??
+      stripFlashcardHtml(question.contentHtml)
   );
-  const choices = Array.isArray(question.choices)
-    ? question.choices.map((choice) => normalizeFlashcardText(choice)).filter(Boolean)
-    : [];
+  const choices = normalizeFlashcardChoiceArray(question.choices ?? question.threeOptions ?? question.three_options);
   if (choices.length === 0) {
     return basePrompt;
   }
@@ -5811,8 +6202,8 @@ function normalizeRemoteFlashcardAnswers(question) {
   pushAnswer(question.correctAnswer);
   pushAnswer(question.answers);
   pushAnswer(question.a);
+  pushAnswer(question.answer);
   if (answers.length === 0) {
-    pushAnswer(question.answer);
     pushAnswer(question.answerIndex);
     pushAnswer(question.correctChoiceIndex);
   }
@@ -5919,28 +6310,85 @@ function normalizeFlashcardCard(rawCard, sourceId, unitIndex, cardIndex) {
   if (!rawCard || typeof rawCard !== "object") {
     return null;
   }
-  const prompt = normalizeFlashcardText(rawCard.q ?? rawCard.question ?? rawCard.prompt ?? rawCard.contentText);
+  const prompt = normalizeFlashcardText(
+    rawCard.q ?? rawCard.questionText ?? rawCard.question_text ?? rawCard.question ?? rawCard.prompt ?? rawCard.contentText
+  );
   if (!prompt) {
     return null;
   }
 
   const answers = normalizeFlashcardAnswers(rawCard);
-  const choices = Array.isArray(rawCard.choices)
-    ? rawCard.choices.map((choice) => normalizeFlashcardText(choice)).filter(Boolean)
-    : [];
+  const choices = normalizeFlashcardChoiceArray(rawCard.choices ?? rawCard.threeOptions ?? rawCard.three_options);
+  const pageNumber = Number(rawCard.pageNumber ?? rawCard.page_number);
+  const questionNumber = Number(rawCard.questionNumber ?? rawCard.question_number);
   return {
     id: `${sourceId}-u${unitIndex + 1}-c${cardIndex + 1}`,
+    remoteId: normalizeFlashcardText(rawCard.id),
+    questionName: normalizeFlashcardText(rawCard.questionName ?? rawCard.question_name ?? rawCard.name),
+    pageNumber: Number.isFinite(pageNumber) && pageNumber > 0 ? Math.floor(pageNumber) : unitIndex + 1,
+    questionNumber: Number.isFinite(questionNumber) && questionNumber > 0 ? Math.floor(questionNumber) : cardIndex + 1,
     prompt,
     imageSrc: resolveFlashcardImageSrc(
       rawCard.i ?? rawCard.image ?? rawCard.img ?? rawCard.imageSrc ?? rawCard.imageUrl
     ),
     imageAlt: normalizeFlashcardText(rawCard.iAlt ?? rawCard.imageAlt ?? rawCard.alt),
+    tableData: normalizeFlashcardBlockData(rawCard.table ?? rawCard.tableData),
+    graphData: normalizeFlashcardBlockData(rawCard.graph ?? rawCard.graphData),
+    questionTextPlacement: normalizeFlashcardPlacement(rawCard.questionTextPlacement ?? rawCard.question_text_placement, 10),
+    imagePlacement: normalizeFlashcardPlacement(rawCard.imagePlacement ?? rawCard.image_placement, 20),
+    tablePlacement: normalizeFlashcardPlacement(rawCard.tablePlacement ?? rawCard.table_placement, 30),
+    graphPlacement: normalizeFlashcardPlacement(rawCard.graphPlacement ?? rawCard.graph_placement, 40),
     preKnowledge: normalizeFlashcardText(
       rawCard.preKnowledge ?? rawCard.pre ?? rawCard.before ?? rawCard.knowledge ?? rawCard.k
     ),
     hint: normalizeFlashcardText(rawCard.h ?? rawCard.hint ?? rawCard.note ?? rawCard.explanation),
     answers,
     choices,
+  };
+}
+
+function normalizeFlashcardChoiceArray(value) {
+  if (Array.isArray(value)) {
+    return value.map((choice) => normalizeFlashcardText(choice)).filter(Boolean).slice(0, 3);
+  }
+  const text = normalizeFlashcardText(value);
+  if (!text) {
+    return [];
+  }
+  return text
+    .split(/\r?\n|[|,、]/)
+    .map((choice) => normalizeFlashcardText(choice))
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function normalizeFlashcardBlockData(value) {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "object") {
+    return value;
+  }
+  return normalizeFlashcardText(value) || null;
+}
+
+function normalizeFlashcardPlacement(value, fallbackOrder = 0) {
+  const fallback = {
+    area: "right",
+    order: fallbackOrder,
+  };
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return fallback;
+  }
+  const order = Number(value.order ?? value.z ?? value.index);
+  return {
+    area: normalizeFlashcardText(value.area ?? value.page ?? value.side) || fallback.area,
+    order: Number.isFinite(order) ? order : fallbackOrder,
+    x: normalizeFlashcardText(value.x),
+    y: normalizeFlashcardText(value.y),
+    width: normalizeFlashcardText(value.width),
+    height: normalizeFlashcardText(value.height),
+    align: normalizeFlashcardText(value.align),
   };
 }
 
@@ -9906,39 +10354,15 @@ function getHomeGreetingMessage(date) {
 }
 
 function generateEmbeddedRanLine(context) {
-  const lines = [];
+  const lines = RAN_HOME_GREETING_TEMPLATES;
   const nickname = context.nickname && context.nickname !== "Guest Mode" ? `${context.nickname}さん、` : "";
-
-  if (context.hour < 6) {
-    lines.push(`${nickname}遅い時間までお疲れさま！睡眠も大事だから、無理のない範囲でね。`);
-  } else if (context.hour < 11) {
-    lines.push(`${nickname}おはよう！最初の1問は、頭の準備運動くらいの気持ちでいきましょう。`);
-  } else if (context.hour < 18) {
-    lines.push(`${nickname}できるかぎりやってみよ！絶対自分の力になるからね。`);
-  } else {
-    lines.push(`${nickname}少し進めるだけでも十分よー！`);
-  }
-
-  if (context.streak >= 7) {
-    lines.push(`リビュー日数、${context.streak}日目！ちゃんと積み上がってるね！`);
-  } else if (context.streak >= 2) {
-    lines.push(`リビュー日数、${context.streak}日目！この調子で、昨日の自分からアップデートしよう！`);
-  }
-
-  if (!context.hasDailyTry) {
-    lines.push("1日1問の問題があるからやってみよ。");
-  }
-  if (context.reviewCoin >= 100) {
-    lines.push(`Review Coinが${REVIEW_COIN_FORMATTER.format(context.reviewCoin)}枚あるから何か買ってほしいな…！`);
-  }
-  if (!context.isBusinessDay) {
-    lines.push("休みの日だけどがんばってるね！");
-  }
-
-  lines.push("今日もリビューしよう！");
   const seedSource = `${context.dateKey}:${context.hour}:${Math.floor(context.minute / 10)}:${context.streak}:${context.reviewCoin}:${context.activeScreen}`;
   const seed = Array.from(seedSource).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return lines[seed % lines.length];
+  const template = lines[seed % lines.length] || lines[0] || "";
+  return template
+    .replaceAll("{nickname}", nickname)
+    .replaceAll("{streak}", REVIEW_COIN_FORMATTER.format(Math.max(0, Number(context.streak) || 0)))
+    .replaceAll("{coin}", hasUnlimitedReviewCoins() ? "∞" : REVIEW_COIN_FORMATTER.format(Math.max(0, Number(context.reviewCoin) || 0)));
 }
 
 function isJapaneseBusinessDay(date) {

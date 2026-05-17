@@ -14,6 +14,10 @@ export default {
       return json(getFallbackQuestions());
     }
 
+    if (pathname === "/flashcards" && request.method === "GET") {
+      return listFlashcards(request, env);
+    }
+
     if (pathname === "/me" && ["GET", "POST", "PATCH"].includes(request.method)) {
       return upsertCurrentReviewAccount(request, env);
     }
@@ -62,6 +66,25 @@ const AUTH0_JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const auth0JwksCache = new Map();
 const REVIEW_DATA_STORAGE_KEY = "the-review-quest-v1";
 const REVIEW_DATA_MAX_PAYLOAD_BYTES = 750 * 1024;
+const FLASHCARD_SELECT_FIELDS = [
+  "id",
+  "subject",
+  "page_number",
+  "question_number",
+  "question_name",
+  "question_text",
+  "question_text_placement",
+  "image",
+  "image_placement",
+  "table",
+  "table_placement",
+  "graph",
+  "graph_placement",
+  "three_options",
+  "answer",
+  "created_at",
+  "updated_at",
+].join(",");
 const USER_SELECT_FIELDS = [
   "id",
   "auth0_sub",
@@ -1439,6 +1462,91 @@ function isBootstrapManagerOwner(claims, env) {
     .map((value) => value.trim())
     .filter(Boolean)
     .includes(auth0Sub);
+}
+
+async function listFlashcards(request, env) {
+  const supabase = getSupabaseConfig(env);
+  if (!supabase) {
+    return json([]);
+  }
+
+  const url = new URL(request.url);
+  const subject = normalizeSupabaseText(url.searchParams.get("subject"));
+  const filters = subject ? `&subject=eq.${encodeURIComponent(subject)}` : "";
+  const response = await supabaseRequest(
+    supabase,
+    `/flashcard?select=${FLASHCARD_SELECT_FIELDS}${filters}&order=subject.asc,page_number.asc,question_number.asc`
+  );
+
+  if (!response.ok) {
+    const error = await supabaseError(response, "Failed to list flashcards");
+    console.warn("Failed to list flashcards:", error.body);
+    return json([]);
+  }
+
+  const rows = await response.json().catch(() => []);
+  return json(Array.isArray(rows) ? rows.map(serializeFlashcardRow).filter(Boolean) : []);
+}
+
+function serializeFlashcardRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) {
+    return null;
+  }
+  const id = normalizeSupabaseUuid(row.id) || normalizeSupabaseText(row.id);
+  const subject = normalizeSupabaseText(row.subject);
+  const pageNumber = normalizeNonNegativeInteger(row.page_number, 0);
+  const questionNumber = normalizeNonNegativeInteger(row.question_number, 0);
+  const questionName = normalizeSupabaseText(row.question_name);
+  const questionText = normalizeSupabaseText(row.question_text);
+  if (!subject || (!questionText && !questionName)) {
+    return null;
+  }
+  const tableData = normalizeFlashcardJsonValue(row.table);
+  const graphData = normalizeFlashcardJsonValue(row.graph);
+  const threeOptions = normalizeSupabaseTextArray(row.three_options);
+  const answer = normalizeSupabaseText(row.answer);
+  return {
+    id,
+    subject,
+    subjectId: subject,
+    subjectLabel: subject,
+    pageNumber,
+    page_number: pageNumber,
+    questionNumber,
+    question_number: questionNumber,
+    questionName,
+    question_name: questionName,
+    questionText,
+    question_text: questionText,
+    questionTextPlacement: normalizeJsonObject(row.question_text_placement),
+    question_text_placement: normalizeJsonObject(row.question_text_placement),
+    image: normalizeSupabaseText(row.image),
+    imagePlacement: normalizeJsonObject(row.image_placement),
+    image_placement: normalizeJsonObject(row.image_placement),
+    table: tableData,
+    tablePlacement: normalizeJsonObject(row.table_placement),
+    table_placement: normalizeJsonObject(row.table_placement),
+    graph: graphData,
+    graphPlacement: normalizeJsonObject(row.graph_placement),
+    graph_placement: normalizeJsonObject(row.graph_placement),
+    threeOptions,
+    three_options: threeOptions,
+    answer,
+    answers: answer ? [answer] : [],
+    createdAt: normalizeIsoTimestamp(row.created_at),
+    updatedAt: normalizeIsoTimestamp(row.updated_at),
+  };
+}
+
+function normalizeFlashcardJsonValue(value) {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "object") {
+    return value;
+  }
+  const text = normalizeSupabaseText(value);
+  return text || null;
 }
 
 
