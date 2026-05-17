@@ -2802,8 +2802,8 @@ function syncAccountEditProviderUi() {
   }
   if (elements.accountEditGoogleStatusText) {
     elements.accountEditGoogleStatusText.textContent = isGoogleAccount
-      ? "IdP: Google。メールアドレスとパスワードはGoogle側で管理されます。"
-      : "IdP: Auth0。Googleに切り替えるとGoogleでログインできるようになります。";
+      ? "メールアドレスとパスワードはGoogleアカウントで管理してください。"
+      : "切り替えるとGoogleでログインできるようになります。";
   }
   if (elements.accountEditGoogleActionBtn) {
     elements.accountEditGoogleActionBtn.dataset.accountEditAction = isGoogleAccount ? "google-unlink" : "google-link";
@@ -9447,35 +9447,32 @@ function generateEmbeddedRanLine(context) {
   const nickname = context.nickname && context.nickname !== "Guest Mode" ? `${context.nickname}さん、` : "";
 
   if (context.hour < 6) {
-    lines.push(`${nickname}遅い時間までお疲れさまです。今日は短めに整えて、休む準備も忘れずに。`);
+    lines.push(`${nickname}遅い時間までお疲れさま！睡眠も大事だから、無理のない範囲でね。`);
   } else if (context.hour < 11) {
-    lines.push(`${nickname}おはようございます。最初の1問は、頭の準備運動くらいの気持ちでいきましょう。`);
+    lines.push(`${nickname}おはよう！最初の1問は、頭の準備運動くらいの気持ちでいきましょう。`);
   } else if (context.hour < 18) {
-    lines.push(`${nickname}こんにちは。今の集中を少しだけノートに残しておくと、あとで効いてきます。`);
+    lines.push(`${nickname}できるかぎりやってみよ！絶対自分の力になるからね。`);
   } else {
-    lines.push(`${nickname}こんばんは。今日の復習は、できたところをひとつ見つけるだけでも十分です。`);
+    lines.push(`${nickname}少し進めるだけでも十分よー！`);
   }
 
   if (context.streak >= 7) {
-    lines.push(`リビュー${context.streak}日目。続いている力、ちゃんと積み上がっています。`);
+    lines.push(`リビュー${context.streak}日目です。ちゃんと積み上がってるね！`);
   } else if (context.streak >= 2) {
-    lines.push(`リビュー${context.streak}日目です。この調子で、昨日の自分に少しだけ勝ちましょう。`);
+    lines.push(`リビュー${context.streak}日目です。この調子で、昨日の自分からアップデートしよ！`);
   }
 
   if (!context.hasDailyTry) {
-    lines.push("まずは問題を解いて、TRYできる問題を少しずつ増やしていきましょう。");
+    lines.push("1日1問の問題があるからやってみよ。");
   }
   if (context.reviewCoin >= 100) {
-    lines.push(`Review Coinが${REVIEW_COIN_FORMATTER.format(context.reviewCoin)}枚あります。テーマやアイテムも見てみましょう。`);
+    lines.push(`Review Coinが${REVIEW_COIN_FORMATTER.format(context.reviewCoin)}枚あるから何か買ってほしいな。`);
   }
   if (!context.isBusinessDay) {
-    lines.push("今日は休日ペースで大丈夫です。軽く振り返るだけでも、記憶は起きてくれます。");
-  }
-  if (context.activeScreen === "settings") {
-    lines.push("設定を整えるのも学習環境づくりです。使いやすい形にしておきましょう。");
+    lines.push("休みの日だけどがんばってるね！");
   }
 
-  lines.push("わからない問題は、今わからないと名前をつけられた時点で一歩前進です。");
+  lines.push("今日もリビューしよう！");
   const seedSource = `${context.dateKey}:${context.hour}:${Math.floor(context.minute / 10)}:${context.streak}:${context.reviewCoin}:${context.activeScreen}`;
   const seed = Array.from(seedSource).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return lines[seed % lines.length];
