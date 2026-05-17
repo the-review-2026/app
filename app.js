@@ -9457,16 +9457,16 @@ function generateEmbeddedRanLine(context) {
   }
 
   if (context.streak >= 7) {
-    lines.push(`リビュー日数、${context.streak}日目です！ちゃんと積み上がってるね！`);
+    lines.push(`リビュー日数、${context.streak}日目！ちゃんと積み上がってるね！`);
   } else if (context.streak >= 2) {
-    lines.push(`リビュー日数、${context.streak}日目です。この調子で、昨日の自分からアップデートしよう！`);
+    lines.push(`リビュー日数、${context.streak}日目！この調子で、昨日の自分からアップデートしよう！`);
   }
 
   if (!context.hasDailyTry) {
     lines.push("1日1問の問題があるからやってみよ。");
   }
   if (context.reviewCoin >= 100) {
-    lines.push(`Review Coinが${REVIEW_COIN_FORMATTER.format(context.reviewCoin)}枚あるから何か買ってほしいな。`);
+    lines.push(`Review Coinが${REVIEW_COIN_FORMATTER.format(context.reviewCoin)}枚あるから何か買ってほしいな…！`);
   }
   if (!context.isBusinessDay) {
     lines.push("休みの日だけどがんばってるね！");
