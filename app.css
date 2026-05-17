@@ -6615,7 +6615,7 @@ button {
   }
 }
 
-/* Login page onboarding styles (moved from login.html) */
+/* Index onboarding styles */
 body.login-page {
   --onboarding-fixed-stack-width: 560px;
   --onboarding-fixed-progress-bottom: max(0.6rem, calc(env(safe-area-inset-bottom) + 0.35rem));
@@ -15381,20 +15381,21 @@ body.review-coin-menu-scroll-locked {
   line-height: 1;
 }
 
-.review-coin-menu-tabs,
-.review-coin-menu-categories {
+.review-coin-menu-categories,
+.review-coin-menu-theme-row,
+.review-coin-menu-avater-row {
   display: flex;
   gap: 0.38rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
-.review-coin-menu-tabs::-webkit-scrollbar,
-.review-coin-menu-categories::-webkit-scrollbar {
+.review-coin-menu-categories::-webkit-scrollbar,
+.review-coin-menu-theme-row::-webkit-scrollbar,
+.review-coin-menu-avater-row::-webkit-scrollbar {
   display: none;
 }
 
-.review-coin-menu-tabs button,
 .review-coin-menu-category {
   appearance: none;
   flex: 0 0 auto;
@@ -15410,7 +15411,6 @@ body.review-coin-menu-scroll-locked {
   cursor: pointer;
 }
 
-.review-coin-menu-tabs button.is-active,
 .review-coin-menu-category.is-active {
   border-color: transparent;
   background:
@@ -15423,7 +15423,7 @@ body.review-coin-menu-scroll-locked {
 .review-coin-menu-layout {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(120px, 0.68fr) minmax(0, 0.92fr);
+  grid-template-columns: minmax(0, 1.28fr) minmax(170px, 0.82fr);
   gap: 0.7rem;
   align-items: stretch;
 }
@@ -15436,6 +15436,25 @@ body.review-coin-menu-scroll-locked {
   gap: 0.46rem;
   overflow: auto;
   padding-right: 0.08rem;
+}
+
+.review-coin-menu-section {
+  display: grid;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.review-coin-menu-section-title {
+  margin: 0;
+  color: #1d1d1d;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.review-coin-menu-theme-row,
+.review-coin-menu-avater-row {
+  padding-bottom: 0.08rem;
 }
 
 .review-coin-menu-item {
@@ -15454,6 +15473,12 @@ body.review-coin-menu-scroll-locked {
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.review-coin-menu-theme-row .review-coin-menu-item,
+.review-coin-menu-avater-row .review-coin-menu-item {
+  flex: 0 0 min(10.8rem, 72vw);
+  width: auto;
 }
 
 .review-coin-menu-item.is-selected {
@@ -15498,15 +15523,6 @@ body.review-coin-menu-scroll-locked {
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1.2;
-}
-
-.review-coin-menu-ran {
-  align-self: center;
-  justify-self: center;
-  width: min(138px, 100%);
-  height: auto;
-  aspect-ratio: 1 / 1.1;
-  overflow: visible;
 }
 
 .review-coin-menu-detail {
@@ -15667,16 +15683,12 @@ body:not(.learn-popover-open) #screen-learn > .page-title-row .page-script-title
   }
 
   .review-coin-menu-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(82px, 0.42fr) minmax(0, 0.86fr);
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 0.58fr);
     gap: 0.48rem;
   }
 
   .review-coin-menu-list {
     max-height: min(48dvh, 360px);
-  }
-
-  .review-coin-menu-ran {
-    width: min(92px, 100%);
   }
 
   .review-coin-menu-item {

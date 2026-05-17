@@ -3,7 +3,7 @@ window.AUTH0_CONFIG = {
   clientId: "sREm6xFL7Sx57uPbBwLR6MrZfuL64A34",
   audience: "https://api.the-review.net",
   scope: "openid profile email",
-  redirectUri: window.location.origin + window.location.pathname,
+  redirectUri: new URL("./index.html", window.location.href).href,
   defaultConnection: "",
   googleConnection: "google-oauth2",
 };
