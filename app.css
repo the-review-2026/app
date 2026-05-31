@@ -856,6 +856,10 @@ body[data-theme="strawberry"] .aurora-right {
     min-height var(--focus-mode-transition);
 }
 
+.app-header[hidden] {
+  display: none !important;
+}
+
 .app-logo {
   width: clamp(270px, 27vw, 375px);
   height: auto;
@@ -6634,6 +6638,10 @@ body.login-page {
 
 body.login-page .aurora {
   display: none;
+}
+
+body.login-page .app-header {
+  display: none !important;
 }
 
 .login-shell {
