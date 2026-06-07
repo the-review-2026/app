@@ -17663,3 +17663,204 @@ body:not(.manager-migrated-root) {
     text-overflow: clip !important;
   }
 }
+
+/* 2026-06-07 page transitions and tab open/close motion. */
+:root {
+  --review-page-transition-duration: 320ms;
+  --review-tab-transition-duration: 220ms;
+  --review-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --review-motion-snap: cubic-bezier(0.2, 0.72, 0.24, 1);
+}
+
+.screens {
+  position: relative;
+}
+
+.screen.is-transitioning-in {
+  display: block !important;
+  position: relative;
+  z-index: 2;
+  will-change: opacity, transform, filter;
+}
+
+.screen.is-transitioning-out {
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  pointer-events: none;
+  will-change: opacity, transform, filter;
+}
+
+.screen.is-page-enter-forward {
+  animation: review-page-enter-forward var(--review-page-transition-duration) var(--review-motion-ease) both;
+}
+
+.screen.is-page-exit-forward {
+  animation: review-page-exit-forward var(--review-page-transition-duration) var(--review-motion-ease) both;
+}
+
+.screen.is-page-enter-back {
+  animation: review-page-enter-back var(--review-page-transition-duration) var(--review-motion-ease) both;
+}
+
+.screen.is-page-exit-back {
+  animation: review-page-exit-back var(--review-page-transition-duration) var(--review-motion-ease) both;
+}
+
+@keyframes review-page-enter-forward {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, 10px, 0) scale(0.992);
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes review-page-exit-forward {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(-12px, -6px, 0) scale(0.988);
+    filter: blur(2px);
+  }
+}
+
+@keyframes review-page-enter-back {
+  from {
+    opacity: 0;
+    transform: translate3d(-16px, 10px, 0) scale(0.992);
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes review-page-exit-back {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(12px, -6px, 0) scale(0.988);
+    filter: blur(2px);
+  }
+}
+
+.settings-tab-panel.is-tab-entering,
+.mypage-subpage.is-tab-entering,
+.onboarding-step.is-tab-entering,
+.review-coin-menu.is-tab-opening,
+.manager-migrated-root [data-problem-tab-panel]:not([hidden]),
+.manager-migrated-root [data-store-tab-panel]:not([hidden]) {
+  animation: review-tab-open var(--review-tab-transition-duration) var(--review-motion-snap) both;
+  transform-origin: top center;
+}
+
+.onboarding-step.is-tab-closing,
+.review-coin-menu.is-tab-closing {
+  animation: review-tab-close var(--review-tab-transition-duration) ease both;
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+.mypage-submenu.is-open {
+  animation: review-popover-open 190ms var(--review-motion-snap) both;
+  transform-origin: bottom center;
+}
+
+.info-menu-panel.is-open {
+  animation: review-side-panel-open 220ms var(--review-motion-snap) both;
+}
+
+.review-coin-menu {
+  transform-origin: top right;
+}
+
+@keyframes review-tab-open {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.985);
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes review-tab-close {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.985);
+    filter: blur(2px);
+  }
+}
+
+@keyframes review-popover-open {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.965);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes review-side-panel-open {
+  from {
+    opacity: 0;
+    transform: translateX(-104%) scale(0.992);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.is-transitioning-in,
+  .screen.is-transitioning-out,
+  .settings-tab-panel.is-tab-entering,
+  .mypage-subpage.is-tab-entering,
+  .onboarding-step.is-tab-entering,
+  .onboarding-step.is-tab-closing,
+  .review-coin-menu.is-tab-opening,
+  .review-coin-menu.is-tab-closing,
+  .mypage-submenu.is-open,
+  .info-menu-panel.is-open,
+  .manager-migrated-root [data-problem-tab-panel]:not([hidden]),
+  .manager-migrated-root [data-store-tab-panel]:not([hidden]) {
+    animation: none !important;
+    filter: none !important;
+  }
+}

@@ -51,6 +51,7 @@ const THEME_FADE_MS = 360;
 const SELFCHECK_DEFAULT_TIMER_SECONDS = 25 * 60;
 const MYPAGE_PAGE_IDS = ["top"];
 const SCREEN_IDS = ["home", "login", "mypage", "learn", "notice", "settings", "manager"];
+const SCREEN_TRANSITION_ORDER = ["home", "learn", "mypage", "notice", "settings", "manager", "login"];
 const SETTINGS_TAB_IDS = ["account", "education-code", "review-data", "update"];
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const DAILY_LOGIN_REWARD_RULES = Object.freeze({
@@ -653,7 +654,10 @@ const elements = {
 };
 
 const state = loadState();
+const PAGE_TRANSITION_MS = 320;
+const TAB_TRANSITION_MS = 220;
 let activeScreen = "home";
+let pageTransitionTimerId = 0;
 let homeGreetingTimerId = null;
 let dailyTryRun = createDailyTryRun();
 let themeFadeTimerId = null;
@@ -681,6 +685,7 @@ let pendingAuthLoginRequiredAppState = null;
 let pendingAccountAction = null;
 let pendingThemeUnlockKey = null;
 let isReviewCoinMenuOpen = false;
+let reviewCoinMenuCloseTimerId = 0;
 let reviewCoinMenuSelection = { type: "theme", id: state.settings.theme };
 let managerMigrationPromise = null;
 let accountActionCountdownTimerId = 0;
@@ -2455,6 +2460,89 @@ function updateManagerMenuState(screenName = "home") {
   });
 }
 
+function prefersReducedAppMotion() {
+  return Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+}
+
+function clearPageTransitionClasses(element) {
+  element?.classList?.remove(
+    "is-transitioning-in",
+    "is-transitioning-out",
+    "is-page-enter-forward",
+    "is-page-enter-back",
+    "is-page-exit-forward",
+    "is-page-exit-back"
+  );
+}
+
+function getScreenTransitionDirection(previousScreen, nextScreen) {
+  const previousIndex = SCREEN_TRANSITION_ORDER.indexOf(previousScreen);
+  const nextIndex = SCREEN_TRANSITION_ORDER.indexOf(nextScreen);
+  if (previousIndex < 0 || nextIndex < 0 || nextIndex >= previousIndex) {
+    return "forward";
+  }
+  return "back";
+}
+
+function setActiveScreenWithTransition(previousScreen, nextScreen) {
+  const nextElement = elements.screens.find((element) => element.id === `screen-${nextScreen}`);
+  const previousElement = elements.screens.find((element) => element.id === `screen-${previousScreen}`);
+  const shouldAnimate =
+    previousElement instanceof HTMLElement &&
+    nextElement instanceof HTMLElement &&
+    previousElement !== nextElement &&
+    !prefersReducedAppMotion();
+
+  if (pageTransitionTimerId) {
+    window.clearTimeout(pageTransitionTimerId);
+    pageTransitionTimerId = 0;
+  }
+
+  elements.screens.forEach((element) => {
+    clearPageTransitionClasses(element);
+    if (!shouldAnimate || (element !== previousElement && element !== nextElement)) {
+      element.classList.toggle("is-active", element === nextElement);
+    }
+  });
+
+  if (!shouldAnimate) {
+    return;
+  }
+
+  const direction = getScreenTransitionDirection(previousScreen, nextScreen);
+  previousElement.classList.add(
+    "is-active",
+    "is-transitioning-out",
+    direction === "back" ? "is-page-exit-back" : "is-page-exit-forward"
+  );
+  nextElement.classList.add(
+    "is-active",
+    "is-transitioning-in",
+    direction === "back" ? "is-page-enter-back" : "is-page-enter-forward"
+  );
+
+  pageTransitionTimerId = window.setTimeout(() => {
+    if (activeScreen === nextScreen) {
+      previousElement.classList.remove("is-active");
+      clearPageTransitionClasses(previousElement);
+      clearPageTransitionClasses(nextElement);
+    }
+    pageTransitionTimerId = 0;
+  }, PAGE_TRANSITION_MS);
+}
+
+function playTabPanelAnimation(element, className = "is-tab-entering", duration = TAB_TRANSITION_MS) {
+  if (!(element instanceof HTMLElement) || prefersReducedAppMotion()) {
+    return;
+  }
+  element.classList.remove("is-tab-entering", "is-tab-opening", "is-tab-closing");
+  void element.offsetWidth;
+  element.classList.add(className);
+  window.setTimeout(() => {
+    element.classList.remove(className);
+  }, duration);
+}
+
 async function navigateManagerHostScreen(screenName = "home") {
   if (!state.auth.isLoggedIn || state.auth.provider === "guest") {
     showAuthLoginRequiredDialog({
@@ -2489,6 +2577,7 @@ async function navigateManagerHostScreen(screenName = "home") {
 
 function activateScreen(screen) {
   const normalizedScreen = normalizeScreen(screen);
+  const previousScreen = activeScreen;
   closeReviewCoinMenu();
   if (normalizedScreen !== "learn") {
     closeLearnPopover();
@@ -2499,9 +2588,7 @@ function activateScreen(screen) {
   }
   activeScreen = normalizedScreen;
   updateAppLogoForScreen(normalizedScreen);
-  elements.screens.forEach((element) => {
-    element.classList.toggle("is-active", element.id === `screen-${normalizedScreen}`);
-  });
+  setActiveScreenWithTransition(previousScreen, normalizedScreen);
   elements.navButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.screen === normalizedScreen);
   });
@@ -8221,8 +8308,14 @@ function openReviewCoinMenu() {
   renderReviewCoinMenu();
   const menu = ensureReviewCoinMenu();
   if (menu) {
+    if (reviewCoinMenuCloseTimerId) {
+      window.clearTimeout(reviewCoinMenuCloseTimerId);
+      reviewCoinMenuCloseTimerId = 0;
+    }
+    menu.classList.remove("is-tab-closing");
     menu.hidden = false;
     menu.setAttribute("aria-hidden", "false");
+    playTabPanelAnimation(menu, "is-tab-opening");
   }
   elements.reviewCoinBoard?.setAttribute("aria-expanded", "true");
   syncReviewCoinMenuGeometry();
@@ -8239,8 +8332,24 @@ function closeReviewCoinMenu() {
   elements.reviewCoinBoard?.setAttribute("aria-expanded", "false");
   const menu = document.getElementById("reviewCoinMenu");
   if (menu) {
-    menu.hidden = true;
     menu.setAttribute("aria-hidden", "true");
+    menu.classList.remove("is-tab-opening");
+    if (reviewCoinMenuCloseTimerId) {
+      window.clearTimeout(reviewCoinMenuCloseTimerId);
+      reviewCoinMenuCloseTimerId = 0;
+    }
+    if (prefersReducedAppMotion()) {
+      menu.hidden = true;
+    } else {
+      menu.classList.add("is-tab-closing");
+      reviewCoinMenuCloseTimerId = window.setTimeout(() => {
+        if (!isReviewCoinMenuOpen) {
+          menu.hidden = true;
+          menu.classList.remove("is-tab-closing");
+        }
+        reviewCoinMenuCloseTimerId = 0;
+      }, TAB_TRANSITION_MS);
+    }
   }
   renderAvaterPreview(elements.navCharacter);
 }
@@ -9813,6 +9922,7 @@ function closeMypageSubmenu() {
 
 function setSettingsTab(tab) {
   const normalizedTab = normalizeSettingsTab(tab);
+  const previousTab = activeSettingsTab;
   activeSettingsTab = normalizedTab;
 
   elements.settingsTabButtons.forEach((button) => {
@@ -9825,6 +9935,9 @@ function setSettingsTab(tab) {
   elements.settingsTabPanels.forEach((panel) => {
     panel.classList.add("is-active");
     panel.hidden = false;
+    if (previousTab !== normalizedTab) {
+      playTabPanelAnimation(panel, "is-tab-entering");
+    }
   });
 }
 
@@ -9859,6 +9972,7 @@ function normalizeSettingsTab(tab) {
 
 function setMypagePage(page) {
   const normalizedPage = normalizeMypagePage(page);
+  const previousPage = activeMypagePage;
   activeMypagePage = normalizedPage;
 
   elements.mypagePages.forEach((section) => {
@@ -9866,6 +9980,9 @@ function setMypagePage(page) {
     section.classList.toggle("is-active", isActive);
     section.hidden = !isActive;
     section.style.display = isActive ? "grid" : "none";
+    if (isActive && previousPage !== normalizedPage) {
+      playTabPanelAnimation(section, "is-tab-entering");
+    }
   });
 
   if (normalizedPage !== "top") {
@@ -11890,11 +12007,36 @@ async function validateEducationCodeValue(value) {
 
   function setActiveStep(nextIndex) {
     const clampedIndex = Math.max(0, Math.min(nextIndex, steps.length - 1));
+    const previousStepIndex = activeStepIndex;
+    const previousStep = steps[previousStepIndex];
+    const shouldAnimate = previousStepIndex !== clampedIndex && !prefersReducedAppMotion();
     activeStepIndex = clampedIndex;
     steps.forEach((step, index) => {
       const isActive = index === clampedIndex;
-      step.hidden = !isActive;
-      step.classList.toggle("is-active", isActive);
+      step.classList.remove("is-tab-entering");
+      if (isActive) {
+        step.hidden = false;
+        step.classList.remove("is-tab-closing");
+        step.classList.add("is-active");
+        if (shouldAnimate) {
+          playTabPanelAnimation(step, "is-tab-entering");
+        }
+        return;
+      }
+      step.classList.remove("is-active");
+      if (shouldAnimate && step === previousStep) {
+        step.hidden = false;
+        step.classList.add("is-tab-closing");
+        window.setTimeout(() => {
+          if (activeStepIndex !== index) {
+            step.hidden = true;
+          }
+          step.classList.remove("is-tab-closing");
+        }, TAB_TRANSITION_MS);
+        return;
+      }
+      step.hidden = true;
+      step.classList.remove("is-tab-closing");
     });
 
     const activeStepName = String(steps[clampedIndex]?.dataset.onboardingStep || "");
