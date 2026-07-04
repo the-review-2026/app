@@ -1,1631 +1,418 @@
 <!doctype html>
 <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#99a6af" />
     <title>The Review</title>
-    <script>
-      (() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.has("state") && (params.has("code") || params.has("error"))) {
-          return;
-        }
-        window.__THE_REVIEW_INDEX_BOOT__ = true;
-      })();
-    </script>
-    <!-- App shell assets: shared fonts and app styles. -->
-    <link rel="icon" type="image/png" href="./assets/favicon/favicon.png?v=20260326-1" />
-    <link rel="apple-touch-icon" href="./assets/favicon/favicon.png?v=20260326-1" />
-    <meta name="theme-color" content="#1d1d1d" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&icon_names=account_circle,arrow_back,arrow_forward,expand_less,expand_more,login,logout,menu&display=block"
       rel="stylesheet"
     />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./styles.css?v=20260531-1" />
-    <link rel="stylesheet" href="./Loaders.css?v=20260326-1" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="auth0-config.js"></script>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.18/auth0-spa-js.production.js" defer></script>
+    <script src="app.js" defer></script>
   </head>
-  <body data-theme="sea">
-    <div id="appLoader" class="app-loader" role="status" aria-live="polite" aria-label="読み込み中">
-      <div class="loader-inner ball-scale" aria-hidden="true">
-        <div></div>
-      </div>
-    </div>
-    <div class="aurora aurora-left"></div>
-    <div class="aurora aurora-right"></div>
-
-    <main id="loginShell" class="screens login-shell" hidden>
-      <div class="login-brand" aria-hidden="true">
-        <img class="app-logo" src="./assets/logos/original.png?v=20260326-1" alt="" />
-      </div>
-
-      <section class="panel auth-panel onboarding-panel">
-        <section class="onboarding-step is-active" data-onboarding-step="welcome">
-          <video
-            class="login-pr-video"
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="auto"
-            controlslist="nodownload nofullscreen noremoteplayback"
-            disablepictureinpicture
-            aria-label="理解は記憶にかえる"
-          >
-            <source src="./assets/movies/PR%202.mp4" type="video/mp4" />
-          </video>
-          <div class="login-usage-notes" aria-label="ご利用時の注意">
-            <p>※ アプリをご利用になる際に料金は発生しませんが、通信量は自己負担となります。</p>
-            <p>※ 一部の公共Wi-Fiなどでは、フィルタリング機能によりご利用いただけない場合があります。</p>
-            <p>※ SNSアプリ内のブラウザーではなく、Google Chromeなどの外部ブラウザーでご利用ください。</p>
-          </div>
-          <div class="action-row onboarding-step-actions">
-            <div class="onboarding-action-callout">
-              <span class="onboarding-action-callout-label">Review Accountを持っている方</span>
-              <button class="secondary" type="button" data-auth-provider="auth0" data-auth-return="index">ログインする</button>
-            </div>
-            <div class="onboarding-action-callout">
-              <span class="onboarding-action-callout-label">はじめてご利用になる方</span>
-              <button class="primary" type="button" data-onboarding-nav="next">はじめる</button>
-            </div>
-          </div>
-        </section>
-
-        <section class="onboarding-step" data-onboarding-step="terms">
-          <h2>利用規約とプライバシーポリシーへの同意</h2>
-          <div class="onboarding-legal-tabs" aria-label="利用規約とプライバシーポリシー">
-            <section class="panel daily-try-panel onboarding-legal-panel">
-              <h2>利用規約</h2>
-              <article id="termsTabPanelTerms" class="onboarding-legal-content">
-                <p>読みこみ中...</p>
-              </article>
-            </section>
-            <section class="panel daily-try-panel onboarding-legal-panel">
-              <h2>プライバシーポリシー</h2>
-              <article id="termsTabPanelPrivacy" class="onboarding-legal-content">
-                <p>読みこみ中...</p>
-              </article>
-            </section>
-          </div>
-          <label class="onboarding-check">
-            <input id="termsAgreeCheckbox" type="checkbox" />
-            <span>利用規約とプライバシーポリシーに同意します。</span>
-          </label>
-          <div class="action-row onboarding-step-actions">
-            <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="termsNextBtn" class="primary" type="button" data-onboarding-nav="next" disabled>次へ</button>
-          </div>
-        </section>
-
-        <section class="onboarding-step" data-onboarding-step="auth">
-          <h2>Review Account</h2>
-          <p class="hint-text">Review Dataをクラウド上に保存できます。他のデバイスでも、ログインするだけでReview Dataを引きつげます。</p>
-          <p class="hint-text">Googleアカウントで作成することもできます。</p>
-          <div class="action-row auth-provider-actions auth-guest-actions">
-            <button id="authLoginGuestBtn" class="secondary" data-auth-provider="guest" type="button">Guest Modeで続ける</button>
-          </div>
-          <p id="authConfigHint" class="hint-text auth-config-hint" hidden>
-            auth0-config.js の domain / clientId / defaultConnection を確認してください。
-          </p>
-          <div class="action-row onboarding-step-actions">
-            <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="authLoginAuth0Btn" class="primary" data-auth-provider="auth0" type="button">ログインする</button>
-          </div>
-        </section>
-
-        <section class="onboarding-step" data-onboarding-step="nickname">
-          <h2>Nickname</h2>
-          <p class="hint-text">The Review内で表示する名前を入力してください。</p>
-          <div class="onboarding-field">
-            <label for="nicknameInput">Nickname</label>
-            <input id="nicknameInput" type="text" inputmode="text" autocomplete="nickname" maxlength="24" />
-          </div>
-          <div class="action-row onboarding-step-actions">
-            <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="nicknameNextBtn" class="primary" type="button" data-onboarding-nav="next" disabled>次へ</button>
-          </div>
-        </section>
-
-        <section class="onboarding-step" data-onboarding-step="educationCode">
-          <h2>Education Code</h2>
-          <p class="hint-text">入力すると、限定の教材・アイテムが利用できます。後からでも設定できます。</p>
-          <div class="education-code-mode-actions">
-            <div class="education-code-start-scan-wrap">
-              <button id="educationCodeStartScanBtn" class="secondary education-code-action-btn" type="button">
-                <span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>
-                <span>QRコードを読みとる</span>
-              </button>
-              <button id="educationCodeStopScanBtn" class="secondary education-code-action-btn" type="button" hidden>
-                <span class="material-symbols-rounded" aria-hidden="true">stop_circle</span>
-                <span>読みとりをやめる</span>
-              </button>
-            </div>
-          </div>
-          <div id="educationCodeScanner" class="education-code-scanner" hidden>
-            <video id="educationCodeVideo" class="education-code-video" playsinline muted></video>
-          </div>
-          <div class="onboarding-field">
-            <label for="educationCodeInput">手入力で入力する</label>
-            <input id="educationCodeInput" type="text" inputmode="text" maxlength="32" />
-            <p id="educationCodeFeedback" class="education-code-feedback" aria-live="polite"></p>
-          </div>
-          <div class="action-row onboarding-step-actions">
-            <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="educationCodeNextBtn" class="primary" type="button" data-onboarding-nav="next">次へ</button>
-          </div>
-        </section>
-
-        <section class="onboarding-step" data-onboarding-step="avatar">
-          <h2>Avater</h2>
-          <div class="avater-editor avater-editor-login">
-            <div class="avater-editor-preview-wrap">
-              <div class="avater-preview avater-preview-large" data-avater-preview>
-                <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
-              </div>
-            </div>
-            <div id="loginAvaterItemList" class="avater-item-list"></div>
-          </div>
-          <div class="action-row onboarding-step-actions">
-            <button class="secondary" type="button" data-onboarding-nav="prev">戻る</button>
-            <button id="onboardingSaveBtn" class="primary" type="button">設定を保存</button>
-          </div>
-          <p id="onboardingSavedNote" class="onboarding-note" hidden>設定を保存しました。</p>
-        </section>
-      </section>
-    </main>
-
-    <header class="app-header">
-      <img class="app-logo" src="./assets/logos/original.png?v=20260326-1" alt="The Review" />
-      <div class="header-menu-block">
-        <div id="reviewCoinBoard" class="review-coin-board" role="button" tabindex="0" aria-label="Review Coin枚数へ移動">
-          <img class="review-coin-icon" src="./assets/icons/coin.png?v=20260326-1" alt="Review Coin" />
-          <strong id="reviewCoinValue" class="review-coin-value">0</strong>
-        </div>
-
-        <nav class="top-nav" aria-label="モード切替">
-          <button class="top-nav-item is-active" type="button" data-screen="home">
-            <span class="material-symbols-rounded top-nav-material-icon" aria-hidden="true">home</span>
-            <span>ホーム</span>
-          </button>
-          <button class="top-nav-item" type="button" data-screen="learn" aria-label="らーん">
-              <span class="top-nav-avatar-label">らーん</span>
-          </button>
-          <div class="top-nav-character avater-preview avater-preview-nav" data-avater-preview aria-hidden="true">
-            <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
-          </div>
-          <button class="top-nav-item" type="button" data-screen="mypage">
-            <span class="material-symbols-rounded top-nav-material-icon" aria-hidden="true">person</span>
-            <span>マイページ</span>
-          </button>
-        </nav>
-      </div>
-    </header>
-
-    <p id="homeGreeting" class="home-greeting" aria-live="polite"></p>
-
-    <main id="appScreens" class="screens">
-      <section id="screen-home" class="screen is-active">
-        <div class="home-top-row">
-          <div class="page-title-row home-greeting-hero">
-            <h1 class="page-script-title">Home</h1>
-          </div>
-          <div id="homeFlashcardSlot" class="home-flashcard-slot" aria-label="Let's Review"></div>
-          <div class="home-card-carousel" aria-label="ホームカード">
-            <div id="homeCardTrack" class="home-card-track" tabindex="0">
-              <section class="panel daily-login-panel home-card-slide">
-                <div id="dailyLoginCard" class="daily-login-card">
-                  <div class="daily-login-card-head">リビュー日数</div>
-                  <div class="daily-login-card-body">
-                    <div class="daily-login-count-wrap">
-                      <p class="daily-login-count" aria-live="polite">
-                        <span id="dailyLoginCount">0</span>
-                        <span class="daily-login-unit">日</span>
-                      </p>
-                    </div>
-                    <div class="daily-login-progress-area" aria-hidden="true">
-                      <ol id="dailyLoginScale" class="daily-login-scale">
-                        <li>1</li>
-                        <li>2</li>
-                        <li>3</li>
-                        <li>4</li>
-                        <li>5</li>
-                        <li>6</li>
-                        <li>7</li>
-                      </ol>
-                      <div class="daily-login-track">
-                        <div id="dailyLoginProgressFill" class="daily-login-track-fill"></div>
-                        <span id="dailyLoginPrevOuterNode" class="daily-login-node is-faded" hidden></span>
-                        <span id="dailyLoginPrevFarNode" class="daily-login-node is-faded" hidden></span>
-                        <span id="dailyLoginPrevNearNode" class="daily-login-node" hidden></span>
-                        <span id="dailyLoginCurrentNode" class="daily-login-current-node" hidden></span>
-                        <span id="dailyLoginNextNearNode" class="daily-login-node" hidden></span>
-                        <span id="dailyLoginNextFarNode" class="daily-login-node is-faded" hidden></span>
-                        <span id="dailyLoginNextOuterNode" class="daily-login-node is-faded" hidden></span>
-                      </div>
-                      <div id="dailyLoginRewards" class="daily-login-rewards">
-                        <span class="daily-login-reward reward-1">
-                          <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                          <span>10</span>
-                        </span>
-                        <span class="daily-login-reward reward-3">
-                          <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                          <span>20</span>
-                        </span>
-                        <span class="daily-login-reward reward-recurring">
-                          <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                          <span>30</span>
-                        </span>
-                      </div>
-                      <p class="daily-login-script">Review Period</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-              <section class="panel home-card-wide daily-try-panel home-card-slide">
-                <h2>この問題にTRY!</h2>
-                <p id="dailyTryPrompt" class="hint-text daily-try-placeholder">
-                  <span class="daily-try-placeholder-lead">まずは問題を解いてみましょう。</span>
-                  <span class="daily-try-placeholder-note">この問題にTRY!は今まで解いた問題から出題されます。</span>
-                </p>
-                <div id="dailyTryChoiceList" class="choice-list"></div>
-                <div class="action-row daily-try-action-row">
-                  <button id="dailyTrySubmitBtn" class="primary" type="button">回答する</button>
-                  <p id="dailyTryFeedback" class="feedback daily-try-feedback"></p>
-                </div>
-                <p class="daily-try-script">Today's Mission</p>
-              </section>
-            </div>
-            <div class="home-card-controls" aria-label="ホームカードを移動">
-              <button class="home-card-nav-btn home-card-nav-btn-prev" type="button" data-home-card-nav="prev" aria-label="リビュー日数へ移動">
-                <span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_left</span>
-              </button>
-              <button class="home-card-nav-btn home-card-nav-btn-next" type="button" data-home-card-nav="next" aria-label="この問題にTRY!へ移動">
-                <span class="home-card-nav-bubble" aria-hidden="true">1日1回問題に挑戦しよう！</span>
-                <span class="material-symbols-rounded home-card-nav-symbol" aria-hidden="true">chevron_right</span>
-              </button>
-            </div>
-          <div id="homeCardProgress" class="home-card-progress" aria-label="ホームカードの位置">
-            <span class="home-card-progress-dot is-active" aria-hidden="true"></span>
-            <span class="home-card-progress-dot" aria-hidden="true"></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-      <section id="screen-learn" class="screen learn-layout">
-        <div class="page-title-row">
-          <h1 class="page-script-title">らーん</h1>
-        </div>
-        <section class="learn-overview" aria-label="らーん">
-          <article class="learn-overview-section">
-            <p id="learnGreetingMessage" class="learn-overview-message" aria-live="polite"></p>
-          </article>
-        </section>
-      </section>
-
-      <section id="screen-mypage" class="screen">
-        <div class="page-title-row mypage-page-head">
-          <h1 class="page-script-title">My Page</h1>
-        </div>
-        <section id="mypage-top" class="mypage-subpage mypage-top-page is-active" data-mypage-page="top">
-          <section id="mypageFlashcardPanel" class="panel mypage-flashcard-panel">
-            <h2 class="flashcard-panel-head flashcard-script-title">Let's Review!</h2>
-            <div id="flashcardPanel" class="flashcard-panel">
-              <div class="flashcard-header-guard" aria-hidden="true"></div>
-              <p class="flashcard-static-message">リビューする科目のノートをとってください。</p>
-              <div id="flashcardBinderList" class="flashcard-note-library" aria-label="リビューする科目のノート一覧" data-flashcard-direct-notes="1">
-                <section class="flashcard-note-surface" aria-label="リビューする科目のノート">
-                  <div class="flashcard-note-list">
-                  <article class="flashcard-series-index index-reboot" aria-label="Reboot 1st Edition">
-                    <span>Reboot 1st Edition</span>
-                  </article>
-                  <article class="flashcard-note note-red">
-                    <p class="flashcard-note-jp">現代の国語</p>
-                    <p class="flashcard-note-en">Contemporary Japanese Language</p>
-                  </article>
-                  <article class="flashcard-note note-red">
-                    <p class="flashcard-note-jp">言語文化</p>
-                    <p class="flashcard-note-en">Language Culture</p>
-                  </article>
-                  <article class="flashcard-note note-orange">
-                    <p class="flashcard-note-jp">論理・表現Ⅰ</p>
-                    <p class="flashcard-note-en">Logic &amp; Expression I</p>
-                  </article>
-                  <article class="flashcard-note note-orange">
-                    <p class="flashcard-note-jp">ＥＣⅠ</p>
-                    <p class="flashcard-note-en">English Communication I</p>
-                  </article>
-                  <article class="flashcard-note note-yellow">
-                    <p class="flashcard-note-jp">公共</p>
-                    <p class="flashcard-note-en">Public</p>
-                  </article>
-                  <article class="flashcard-note note-gray">
-                    <p class="flashcard-note-jp">保健</p>
-                    <p class="flashcard-note-en">Health</p>
-                  </article>
-                  <article class="flashcard-note note-blue">
-                    <p class="flashcard-note-jp">数学Ⅰ</p>
-                    <p class="flashcard-note-en">Mathematics I</p>
-                  </article>
-                  <article class="flashcard-note note-blue">
-                    <p class="flashcard-note-jp">数学Ａ</p>
-                    <p class="flashcard-note-en">Mathematics A</p>
-                  </article>
-                  <article class="flashcard-note note-green">
-                    <p class="flashcard-note-jp">物理基礎</p>
-                    <p class="flashcard-note-en">Basic Physics</p>
-                  </article>
-                  <article class="flashcard-note note-green">
-                    <p class="flashcard-note-jp">化学基礎</p>
-                    <p class="flashcard-note-en">Basic Chemistry</p>
-                  </article>
-                  <article class="flashcard-note note-green">
-                    <p class="flashcard-note-jp">生物基礎</p>
-                    <p class="flashcard-note-en">Basic Biology</p>
-                  </article>
-                  <article class="flashcard-note note-gray">
-                    <p class="flashcard-note-jp">情報（工業情報数理）</p>
-                    <p class="flashcard-note-en">Information Study</p>
-                  </article>
-                  <article class="flashcard-series-index index-refine" aria-label="Refine 2nd Edition">
-                    <span>Refine 2nd Edition</span>
-                  </article>
-                  <article class="flashcard-note note-red">
-                    <p class="flashcard-note-jp">論理国語</p>
-                    <p class="flashcard-note-en">Japanese Language (Logic)</p>
-                  </article>
-                  <article class="flashcard-note note-orange">
-                    <p class="flashcard-note-jp">論理・表現Ⅱ</p>
-                    <p class="flashcard-note-en">Logic &amp; Expression II</p>
-                  </article>
-                  <article class="flashcard-note note-orange">
-                    <p class="flashcard-note-jp">ＥＣⅡ</p>
-                    <p class="flashcard-note-en">English Communication II</p>
-                  </article>
-                  <article class="flashcard-note note-yellow">
-                    <p class="flashcard-note-jp">地理総合</p>
-                    <p class="flashcard-note-en">Geography</p>
-                  </article>
-                  <article class="flashcard-note note-gray">
-                    <p class="flashcard-note-jp">家庭基礎</p>
-                    <p class="flashcard-note-en">Basic Home Economics</p>
-                  </article>
-                  <article class="flashcard-note note-gray">
-                    <p class="flashcard-note-jp">保健</p>
-                    <p class="flashcard-note-en">Health</p>
-                  </article>
-                  <article class="flashcard-note note-blue">
-                    <p class="flashcard-note-jp">数学Ⅱ</p>
-                    <p class="flashcard-note-en">Mathematics II</p>
-                  </article>
-                  <article class="flashcard-note note-blue">
-                    <p class="flashcard-note-jp">数学Ｃ</p>
-                    <p class="flashcard-note-en">Mathematics C</p>
-                  </article>
-                  <article class="flashcard-note note-blue">
-                    <p class="flashcard-note-jp">数学Ｂ</p>
-                    <p class="flashcard-note-en">Mathematics B</p>
-                  </article>
-                  <article class="flashcard-note note-green">
-                    <p class="flashcard-note-jp">物理</p>
-                    <p class="flashcard-note-en">Physics</p>
-                  </article>
-                  <article class="flashcard-note note-green">
-                    <p class="flashcard-note-jp">化学</p>
-                    <p class="flashcard-note-en">Chemistry</p>
-                  </article>
-                  <article class="flashcard-note note-green">
-                    <p class="flashcard-note-jp">生物</p>
-                    <p class="flashcard-note-en">Biology</p>
-                  </article>
-                  <article class="flashcard-note note-theme">
-                    <p class="flashcard-note-jp">ＳＳ科学技術理論Ⅰ（１分野）</p>
-                    <p class="flashcard-note-en">1st Field</p>
-                  </article>
-                  <article class="flashcard-note note-theme">
-                    <p class="flashcard-note-jp">ＳＳ科学技術理論Ⅰ（２分野）</p>
-                    <p class="flashcard-note-en">2nd Field</p>
-                  </article>
-                  <article class="flashcard-note note-theme">
-                    <p class="flashcard-note-jp">ＳＳ科学技術理論Ⅰ（３分野）</p>
-                    <p class="flashcard-note-en">3rd Field</p>
-                  </article>
-                  <article class="flashcard-series-index index-colorful" aria-label="On COLORFUL">
-                    <span>On COLORFUL</span>
-                  </article>
-                  <article class="flashcard-note note-theme">
-                    <p class="flashcard-note-jp">朝学習テスト（１学年）</p>
-                    <p class="flashcard-note-en">Week Test (1st Grade)</p>
-                  </article>
-                  <article class="flashcard-note note-theme">
-                    <p class="flashcard-note-jp">朝学習テスト（２学年）</p>
-                    <p class="flashcard-note-en">Week Test (2nd Grade)</p>
-                  </article>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </section>
-          <div id="mypageCardSlot" class="mypage-card-slot" aria-label="マイページカード"></div>
-          <div class="home-menu-actions mypage-menu-actions learn-menu-actions" aria-label="マイページメニュー">
-            <button class="secondary learn-menu-action home-menu-action mypage-menu-action" type="button" data-learn-action="settings">
-              <span class="material-symbols-rounded" aria-hidden="true">settings</span>
-              <span>設定</span>
-            </button>
-            <button
-              id="managerMenuLink"
-              class="secondary learn-menu-action home-menu-action mypage-menu-action"
-              type="button"
-              data-learn-action="manager"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>
-              <span>The Review Manager（制作チーム用管理プログラム）</span>
-            </button>
-          </div>
-        </section>
-
-      </section>
-
-      <section id="screen-settings" class="screen settings-page">
-        <div class="page-title-row settings-page-head">
-          <h1 class="page-script-title">Settings</h1>
-        </div>
-
-        <section
-          id="settingsPanelAccount"
-          class="panel settings-section settings-tab-panel is-active"
-          data-settings-panel="account"
-        >
-            <h2 class="account-panel-title">
-              <span class="account-title-main">
-                <span>Review Account</span>
-                <strong id="authLoginStatusText" class="account-status-badge is-guest">Guest Mode</strong>
-              </span>
-
-            <button
-              id="accountEditBtn"
-              class="secondary account-icon-button account-edit-button"
-              type="button"
-              aria-label="Review Accountを編集する"
-              title="編集する"
-            >
-              <span class="material-symbols-rounded account-edit-symbol" aria-hidden="true">edit</span>
-            </button>
-            </h2>
-            <div class="settings-section-content settings-line-list">
-              <div class="setting-row" id="authNicknameRow">
-                <span class="setting-row-label">
-                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">badge</span>
-                  <span>Nickname</span>
-                </span>
-                <strong id="authNicknameText">未設定</strong>
-              </div>
-              <div class="setting-row" id="authEmailRow">
-                <span class="setting-row-label">
-                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">mail</span>
-                  <span>メールアドレス</span>
-                </span>
-                <strong id="authEmailText">未設定</strong>
-              </div>
-              <div class="setting-row account-password-row" id="authPasswordRow">
-                <span class="setting-row-label">
-                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">lock</span>
-                  <span>パスワード</span>
-                  <button
-                    id="authPasswordToggleBtn"
-                    class="account-password-toggle"
-                    type="button"
-                    aria-label="パスワードを表示する"
-                    title="パスワードを表示する"
-                  >
-                    <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
-                  </button>
-                </span>
-                <strong id="authPasswordText">*****</strong>
-              </div>
-              <div class="setting-row account-google-row" id="authGoogleRow" hidden>
-                <span class="setting-row-label">
-                  <span class="material-symbols-rounded setting-row-icon" aria-hidden="true">account_circle</span>
-                  <span>IdP</span>
-                </span>
-                <strong id="authGoogleStatusText">Auth0</strong>
-              </div>
-              <div class="setting-row account-action-row">
-                <button id="logoutBtn" class="secondary account-icon-button account-logout-button" type="button">
-                  <span class="material-symbols-rounded" aria-hidden="true">logout</span>
-                  <span>ログアウト</span>
-                </button>
-                <button id="deleteAccountBtn" class="danger account-icon-button account-delete-button" type="button">
-                  <span class="material-symbols-rounded" aria-hidden="true">delete</span>
-                  <span>削除する</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-        <section
-          id="settingsPanelEducationCode"
-          class="panel settings-section settings-tab-panel"
-          data-settings-panel="education-code"
-        >
-            <h2 class="education-code-section-title">
-              <span>Education Code</span>
-              <strong id="settingsEducationCodeStatusText" class="education-code-status-badge">未設定</strong>
-            </h2>
-            <div class="settings-section-content education-code-setting-content">
-              <div id="settingsEducationCodeList" class="education-code-list" aria-label="登録済みEducation Code"></div>
-              <button id="settingsEducationCodeAddBtn" class="primary education-code-add-btn" type="button">
-                <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                <span>Education Codeを追加する</span>
-              </button>
-            </div>
-          </section>
-
-        <section
-          id="settingsPanelReviewData"
-          class="panel settings-section settings-tab-panel"
-          data-settings-panel="review-data"
-        >
-            <h2>Review Data</h2>
-            <div class="settings-section-content">
-              <div class="review-data-actions" aria-label="Review Data操作">
-                <button id="reviewDataExportBtn" class="secondary review-data-action" type="button">
-                  <span class="material-symbols-rounded review-data-action-icon" aria-hidden="true">upload</span>
-                  <span>エクスポート</span>
-                </button>
-                <button id="reviewDataImportBtn" class="secondary review-data-action" type="button">
-                  <span class="material-symbols-rounded review-data-action-icon" aria-hidden="true">download</span>
-                  <span>インポート</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-        <section
-          id="settingsPanelUpdate"
-          class="panel settings-section settings-tab-panel"
-          data-settings-panel="update"
-        >
-            <h2 class="app-update-title">
-              <span>アプリのバージョン</span>
-            </h2>
-            <div class="settings-section-content app-update-setting-content">
-              <p class="app-update-version"><strong id="appCurrentVersion">2026.05.16.1</strong></p>
-            </div>
-          </section>
-      </section>
-
-      <section id="screen-notice" class="screen notice-layout">
-        <div class="page-title-row">
-          <h1 class="page-script-title">Store</h1>
-        </div>
-        <section class="panel settings-section">
-          <h2 class="review-coin-section-title">
-            <span>Review Coin枚数</span>
-          </h2>
-          <div class="settings-section-content">
-            <p class="mypage-coin-value">
-              <img class="mypage-coin-value-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-              <span id="mypageCoinValueNumber" class="mypage-coin-number">0</span>
-            </p>
-          </div>
-        </section>
-        <section class="panel settings-section">
-          <h2>Avater</h2>
-          <div class="settings-section-content">
-            <div class="avater-store">
-              <div class="avater-editor-preview-wrap">
-                <div class="avater-preview avater-preview-large" data-avater-preview>
-                  <img class="avater-base-image" src="./assets/avater/らーん1-1.png" alt="" />
-                </div>
-              </div>
-              <div id="storeAvatarHint" class="avater-store-list"></div>
-            </div>
-          </div>
-        </section>
-        <section class="panel settings-section">
-          <h2>カラーテーマ</h2>
-          <div class="settings-section-content">
-            <div id="themeCardList" class="theme-card-list" role="radiogroup" aria-label="カラーテーマ">
-              <button class="theme-card" type="button" data-theme-choice="sea" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-sea" aria-hidden="true"></span>
-                <span class="theme-card-name">Sea</span>
-              </button>
-              <button class="theme-card" type="button" data-theme-choice="midnight" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-midnight" aria-hidden="true"></span>
-                <span class="theme-card-name">Midnight</span>
-              </button>
-              <button class="theme-card theme-card-premium" type="button" data-theme-choice="forest" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-forest">
-                  <span class="theme-card-lock" data-theme-lock-label>
-                    <img class="theme-card-lock-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                    <span data-theme-lock-cost>100</span>
-                  </span>
-                </span>
-                <span class="theme-card-name">Forest</span>
-              </button>
-              <button class="theme-card theme-card-premium" type="button" data-theme-choice="aojiru" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-aojiru">
-                  <span class="theme-card-lock" data-theme-lock-label>
-                    <img class="theme-card-lock-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                    <span data-theme-lock-cost>100</span>
-                  </span>
-                </span>
-                <span class="theme-card-name">Aojiru</span>
-              </button>
-              <button class="theme-card theme-card-premium" type="button" data-theme-choice="lemonade" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-lemonade">
-                  <span class="theme-card-lock" data-theme-lock-label>
-                    <img class="theme-card-lock-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                    <span data-theme-lock-cost>100</span>
-                  </span>
-                </span>
-                <span class="theme-card-name">Lemonade</span>
-              </button>
-              <button class="theme-card theme-card-premium" type="button" data-theme-choice="strawberry" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-strawberry">
-                  <span class="theme-card-lock" data-theme-lock-label>
-                    <img class="theme-card-lock-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                    <span data-theme-lock-cost>100</span>
-                  </span>
-                </span>
-                <span class="theme-card-name">Strawberry</span>
-              </button>
-              <button class="theme-card theme-card-premium" type="button" data-theme-choice="the-paper" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-the-paper">
-                  <span class="theme-card-lock" data-theme-lock-label>
-                    <img class="theme-card-lock-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                    <span data-theme-lock-cost>300</span>
-                  </span>
-                </span>
-                <span class="theme-card-name">The Paper</span>
-              </button>
-              <button class="theme-card theme-card-premium" type="button" data-theme-choice="the-black" role="radio" aria-checked="false">
-                <span class="theme-swatch theme-swatch-the-black">
-                  <span class="theme-card-lock" data-theme-lock-label>
-                    <img class="theme-card-lock-icon" src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                    <span data-theme-lock-cost>300</span>
-                  </span>
-                </span>
-                <span class="theme-card-name">The Black</span>
-              </button>
-            </div>
-          </div>
-        </section>
-      </section>
-
-      <section id="screen-manager" class="screen manager-integrated-screen">
-        <div class="page-title-row">
-          <h1 class="page-script-title" data-page-title-ja="トップ">Top</h1>
-        </div>
-        <section class="manager-integrated-shell" aria-label="The Review Manager">
-          <div id="managerMount" class="manager-migrated-mount" aria-live="polite">
-            <p class="hint-text">制作チーム用管理プログラムを読み込んでいます。</p>
-          </div>
-        </section>
-        <button id="managerReturnToReviewBtn" class="manager-return-button" type="button">
-          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-          <span>The Reviewに戻る</span>
-        </button>
-        <nav class="manager-bottom-menu" aria-label="Manager Menu">
-          <button class="manager-bottom-menu-item is-active" type="button" data-manager-menu-target="home">
-            <span class="material-symbols-rounded" aria-hidden="true">home</span>
-            <span>トップ</span>
-          </button>
-          <button class="manager-bottom-menu-item" type="button" data-manager-menu-target="members">
-            <span class="material-symbols-rounded" aria-hidden="true">group</span>
-            <span>ユーザー</span>
-          </button>
-          <button class="manager-bottom-menu-item" type="button" data-manager-menu-target="problem">
-            <span class="material-symbols-rounded" aria-hidden="true">edit_note</span>
-            <span>問題</span>
-          </button>
-          <button class="manager-bottom-menu-item" type="button" data-manager-menu-target="store">
-            <span class="material-symbols-rounded" aria-hidden="true">storefront</span>
-            <span>ストア</span>
-          </button>
-        </nav>
-      </section>
-    </main>
-
-    <div id="onboardingFixedProgress" class="onboarding-fixed-progress" hidden aria-hidden="true">
-      <p id="onboardingFixedStepLabel" class="onboarding-fixed-step-label"></p>
-      <div class="onboarding-fixed-progress-track">
-        <span id="onboardingFixedProgressFill" class="onboarding-fixed-progress-fill"></span>
-      </div>
-      <p id="onboardingFixedStepNumber" class="onboarding-fixed-step-number">
-        <span id="onboardingFixedStepCurrent" class="onboarding-fixed-step-current">1</span>
-        <span class="onboarding-fixed-step-rest">/ 5</span>
-      </p>
-    </div>
-
-    <dialog id="guestModeDialog" class="text-reset-dialog" aria-labelledby="guestModeDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="guestModeDialogTitle">Guest Mode</h3>
-        <p>Review Dataはサーバー上に保存されず、お持ちのデバイスに保存されます。よろしいですか？</p>
-        <div class="guest-mode-actions">
-          <button class="secondary" type="button" data-guest-mode-action="cancel">キャンセル</button>
-          <button class="secondary" type="button" data-guest-mode-action="import">データをインポートする</button>
-          <button class="primary" type="button" data-guest-mode-action="ok">OK</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="accountEditDialog" class="text-reset-dialog account-edit-dialog" aria-labelledby="accountEditDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="accountEditDialogTitle">Review Accountを編集する</h3>
-        <div class="account-edit-options">
-          <article class="account-edit-option" id="accountEditNicknameOption">
-            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">badge</span>
-            <div>
-              <h4>Nickname</h4>
-              <label class="account-edit-field" for="accountEditNicknameInput">
-                <span class="sr-only">Nickname</span>
-                <input id="accountEditNicknameInput" type="text" inputmode="text" autocomplete="nickname" maxlength="24" />
-              </label>
-            </div>
-          </article>
-          <article class="account-edit-option" id="accountEditEmailOption">
-            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">mail</span>
-            <div>
-              <h4>メールアドレス</h4>
-              <label class="account-edit-field" for="accountEditEmailInput">
-                <span class="sr-only">メールアドレス</span>
-                <input id="accountEditEmailInput" type="email" inputmode="email" autocomplete="email" maxlength="120" />
-              </label>
-            </div>
-          </article>
-          <article class="account-edit-option" id="accountEditPasswordOption">
-            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">lock</span>
-            <div>
-              <h4>パスワード</h4>
-              <label class="account-edit-field account-edit-password-field" for="accountEditPasswordInput">
-                <span class="sr-only">パスワード</span>
-                <input id="accountEditPasswordInput" type="password" inputmode="text" autocomplete="new-password" maxlength="64" />
-                <button
-                  id="accountEditPasswordToggleBtn"
-                  class="account-password-toggle"
-                  type="button"
-                  aria-label="パスワードを表示する"
-                  title="パスワードを表示する"
-                >
-                  <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
-                </button>
-              </label>
-            </div>
-          </article>
-          <article class="account-edit-option account-edit-google-option" id="accountEditGoogleOption">
-            <span class="material-symbols-rounded account-edit-option-icon" aria-hidden="true">account_circle</span>
-            <div>
-              <h4>IdP</h4>
-              <p id="accountEditGoogleStatusText">IdP: Auth0</p>
-              <button
-                id="accountEditGoogleActionBtn"
-                class="secondary account-google-link-btn"
-                type="button"
-                data-account-edit-action="google-link"
-              >
-                Googleに切り替える
-              </button>
-            </div>
-          </article>
-          <p id="accountEditNicknameFeedback" class="account-edit-feedback" aria-live="polite"></p>
-        </div>
-        <div class="guest-mode-actions account-edit-actions">
-          <button class="secondary" type="button" data-account-edit-action="close">閉じる</button>
-          <button id="accountEditNicknameSaveBtn" class="primary" type="button" data-account-edit-action="profile-save">
-            <span class="material-symbols-rounded" aria-hidden="true">save</span>
-            <span>保存する</span>
-          </button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="settingsEducationCodeDialog" class="text-reset-dialog education-code-dialog" aria-labelledby="settingsEducationCodeDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="settingsEducationCodeDialogTitle">Education Codeを追加する</h3>
-        <div class="education-code-mode-actions">
-          <div class="education-code-start-scan-wrap">
-            <button id="settingsEducationCodeStartScanBtn" class="secondary education-code-action-btn" type="button">
-              <span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>
-              <span>QRコードを読みとる</span>
-            </button>
-            <button id="settingsEducationCodeStopScanBtn" class="secondary education-code-action-btn" type="button" hidden>
-              <span class="material-symbols-rounded" aria-hidden="true">stop_circle</span>
-              <span>読みとりをやめる</span>
-            </button>
-          </div>
-        </div>
-        <div id="settingsEducationCodeScanner" class="education-code-scanner" hidden>
-          <video id="settingsEducationCodeVideo" class="education-code-video" playsinline muted></video>
-        </div>
-        <div class="education-code-setting-field">
-          <label for="settingsEducationCodeInput">手入力で入力する</label>
-          <div class="education-code-setting-input-row">
-            <input
-              id="settingsEducationCodeInput"
-              type="text"
-              inputmode="text"
-              maxlength="32"
-              autocomplete="off"
-              placeholder="Education Codeを入力"
-            />
-          </div>
-          <p id="settingsEducationCodeFeedback" class="education-code-feedback" aria-live="polite"></p>
-        </div>
-        <div class="guest-mode-actions account-edit-actions education-code-dialog-actions">
-          <button class="secondary" type="button" data-settings-education-code-action="close">閉じる</button>
-          <button id="settingsEducationCodeSaveBtn" class="primary education-code-save-btn" type="button" disabled>
-            <span class="material-symbols-rounded" aria-hidden="true">add</span>
-            <span>追加する</span>
-          </button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="settingsEducationCodeRemoveDialog" class="text-reset-dialog education-code-remove-dialog" aria-labelledby="settingsEducationCodeRemoveDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="settingsEducationCodeRemoveDialogTitle">Education Codeを削除する</h3>
-        <p id="settingsEducationCodeRemoveDialogMessage">このEducation Codeを削除しますか？</p>
-        <div class="guest-mode-actions education-code-remove-actions">
-          <button class="secondary" type="button" data-settings-education-code-remove-action="cancel">キャンセル</button>
-          <button class="primary danger" type="button" data-settings-education-code-remove-action="confirm">削除する</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="legalInfoDialog" class="text-reset-dialog legal-info-dialog" aria-labelledby="legalInfoDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="legalInfoDialogTitle">利用規約・プライバシーポリシー</h3>
-        <div class="legal-info-stack">
-          <section class="legal-info-panel">
-            <h4>利用規約</h4>
-            <article id="legalTermsContent" class="legal-info-content">
-              <p>読み込んでいます。</p>
-            </article>
-          </section>
-          <section class="legal-info-panel">
-            <h4>プライバシーポリシー</h4>
-            <article id="legalPrivacyContent" class="legal-info-content">
-              <p>読み込んでいます。</p>
-            </article>
-          </section>
-        </div>
-        <div class="guest-mode-actions account-edit-actions">
-          <button class="primary" type="button" data-legal-dialog-action="close">閉じる</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="licenseInfoDialog" class="text-reset-dialog legal-info-dialog" aria-labelledby="licenseInfoDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="licenseInfoDialogTitle">ライセンス・謝辞</h3>
-        <div class="legal-info-stack">
-          <section class="legal-info-panel">
-            <h4>ライセンス</h4>
-            <article class="legal-info-content">
-              <p>The Reviewのアプリ本体、画像・問題データはThe Review Production Teamに帰属します。</p>
-              <p>©2026 The Review Production Team</p>
-              <p>Google Fonts / Material Symbols、Auth0、Cloudflare Workersなど、利用している外部サービスとフォントのライセンスに従って構成しています。</p>
-            </article>
-          </section>
-          <section class="legal-info-panel">
-            <h4>謝辞</h4>
-            <article class="legal-info-content">
-              <p>学習を続けるユーザー、制作と確認に関わるチームメンバー、検証に協力してくださった皆さまに感謝します。</p>
-            </article>
-          </section>
-        </div>
-        <div class="guest-mode-actions account-edit-actions">
-          <button class="primary" type="button" data-license-dialog-action="close">閉じる</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="accountActionDialog" class="text-reset-dialog" aria-labelledby="accountActionDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="accountActionDialogTitle">ログアウト</h3>
-        <p id="accountActionDialogMessage">ログイン画面に戻ります。続行しますか？</p>
-        <div class="guest-mode-actions account-action-actions">
-          <button class="secondary" type="button" data-account-action="cancel">いいえ</button>
-          <button id="accountActionExportBtn" class="secondary" type="button" data-account-action="export">Review Dataをエクスポートする</button>
-          <button id="accountActionConfirmBtn" class="primary" type="button" data-account-action="confirm">はい</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="themeUnlockDialog" class="text-reset-dialog" aria-labelledby="themeUnlockDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="themeUnlockDialogTitle">カラーテーマの購入</h3>
-        <p>
-          「<span id="themeUnlockName"></span>」を
-          <span class="coin-inline">
-            <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-            <span id="themeUnlockCost">100</span>
-          </span>
-          で解放しますか？
-        </p>
-        <p class="theme-unlock-balance">
-          <span class="coin-inline">
-            <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-            <span id="themeUnlockCurrentCoin">0</span>
-          </span>
-          <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
-          <span class="coin-inline">
-            <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-            <span id="themeUnlockAfterCoin">0</span>
-          </span>
-        </p>
-        <div class="guest-mode-actions theme-unlock-actions">
-          <button class="secondary" type="button" data-theme-unlock-action="cancel">キャンセル</button>
-          <button class="primary" type="button" data-theme-unlock-action="purchase">購入する</button>
-        </div>
-      </form>
-    </dialog>
-
-    <input id="reviewDataImportInput" type="file" accept=".json,application/json" hidden />
-    <p class="pc-use-notice">※ 本アプリはスマートフォンまたはタブレット縦向きでのご利用を想定しております。</p>
-
-
-    <!-- The Review Manager template. Styles live in styles.css; keep this before app.js so it can be mounted directly. -->
-    <template id="managerMigratedTemplate">
-<div id="appLoader" class="app-loader" role="status" aria-live="polite" aria-label="読み込み中">
-      <div class="loader-inner ball-scale" aria-hidden="true">
-        <div></div>
-      </div>
-    </div>
-    <div class="aurora aurora-left"></div>
-    <div class="aurora aurora-right"></div>
-
-    <header class="app-header">
-      <div class="header-info-block">
+  <body>
+    <main class="app-frame" aria-label="The Review ホーム">
+      <header class="app-header">
         <button
-          id="infoMenuTrigger"
-          class="info-menu-trigger"
+          class="edge-button edge-button-left"
           type="button"
-          aria-haspopup="true"
+          data-panel="menu"
+          aria-controls="menuPanel"
+          aria-label="メニューを開く"
           aria-expanded="false"
-          aria-controls="infoMenuPanel"
-          aria-label="Informationメニューを開く"
         >
-          <span class="info-hamburger-icon" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
+          <span class="material-symbols-outlined header-icon" aria-hidden="true">menu</span>
+          <span class="notification-badge" id="menuNotificationBadge" aria-hidden="true" hidden></span>
         </button>
-        <section id="infoMenuPanel" class="info-menu-panel" aria-label="Informationメニュー" hidden>
-          <button id="infoMenuCloseBtn" class="info-menu-close-btn" type="button" aria-label="Informationメニューを閉じる">
-            <span aria-hidden="true">×</span>
-          </button>
-          <div class="info-menu-user">
-            <span class="info-menu-user-label">Nickname</span>
-            <strong id="managerInfoMenuNickname" class="info-menu-user-value">未設定</strong>
-          </div>
-          <div class="info-menu-list">
-            <button class="info-menu-item" type="button" data-menu-url="./index.html">
-              <span class="material-symbols-rounded info-menu-item-icon" aria-hidden="true">arrow_back</span>
-              <span>The Reviewへ戻る</span>
-            </button>
-          </div>
-        </section>
-      </div>
 
-      <img class="app-logo manager-logo" src="./assets/logos/manager.png?v=20260326-1" alt="The Review Manager" />
-
-      <div class="header-menu-block">
-        <nav class="top-nav manager-nav" aria-label="画面切替">
-          <button class="top-nav-item is-active" type="button" data-screen="home">
-            <span>トップ</span>
-          </button>
-          <button class="top-nav-item" type="button" data-screen="members">
-            <span>ユーザー</span>
-          </button>
-          <button class="top-nav-item" type="button" data-screen="problem">
-            <span>問題</span>
-          </button>
-          <button class="top-nav-item" type="button" data-screen="store">
-            <span>ストア</span>
-          </button>
-        </nav>
-      </div>
-    </header>
-
-    <main class="screens">
-      <section id="screen-home" class="screen is-active">
-        <div class="page-title-row">
-          <h1 class="page-script-title">トップ</h1>
+        <div class="brand-lockup">
+          <img src="assets/logos/the-review.png" alt="The Review" class="brand-logo" />
         </div>
-        <div class="panel">
-          <h2>トップ</h2>
-          <p class="hint-text">ご希望の項目を選択してください。</p>
-          <div class="manager-home-grid">
-            <article class="panel manager-home-card">
-              <div class="manager-title-row">
-                <h3>ユーザーを管理する</h3>
-                <span class="manager-role-tags" aria-label="対象ロール">
-                  <span class="manager-role-tag">オーナー</span>
-                </span>
-              </div>
-              <p>ユーザーに関わる管理ができます。</p>
-              <button class="primary" type="button" data-home-link="members">開く</button>
-            </article>
-            <article class="panel manager-home-card">
-              <div class="manager-title-row">
-                <h3>問題を作成する</h3>
-                <span class="manager-role-tags" aria-label="対象ロール">
-                  <span class="manager-role-tag">デベロッパー</span>
-                  <span class="manager-role-tag">チェッカー</span>
-                </span>
-              </div>
-              <p>問題の作成と提出ができます。</p>
-              <button class="primary" type="button" data-home-link="problem">開く</button>
-            </article>
-            <article class="panel manager-home-card">
-              <div class="manager-title-row">
-                <h3>ストアを管理する</h3>
-                <span class="manager-role-tags" aria-label="対象ロール">
-                  <span class="manager-role-tag">キャラクターデザイナー</span>
-                </span>
-              </div>
-              <p>アイテムの管理ができます。</p>
-              <button class="primary" type="button" data-home-link="store">開く</button>
-            </article>
-          </div>
-        </div>
-      </section>
 
-      <section id="screen-members" class="screen" hidden>
-        <div class="page-title-row">
-          <h1 class="page-script-title">ユーザー</h1>
-        </div>
-          <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
-            <div class="manager-members-head">
-              <div class="manager-title-row">
-                <h2>ユーザーを管理する</h2>
-                <span class="manager-role-tags" aria-label="対象ロール">
-                  <span class="manager-role-tag">オーナー</span>
-                </span>
-              </div>
-              <button id="managerMembersRefreshBtn" class="secondary manager-icon-btn" type="button" aria-label="ユーザーを更新">
-                <span class="material-symbols-rounded" aria-hidden="true">sync</span>
+        <button
+          class="edge-button edge-button-right"
+          type="button"
+          data-panel="profile"
+          aria-controls="profilePanel"
+          aria-label="マイページを開く"
+          aria-expanded="false"
+        >
+          <span class="material-symbols-outlined header-icon profile-icon" aria-hidden="true">account_circle</span>
+        </button>
+      </header>
+
+      <section class="home-content">
+        <nav class="home-actions" aria-label="メインメニュー">
+          <div class="home-review-stack">
+            <div class="home-review-choice">
+              <button
+                class="home-action primary-action"
+                id="reviewButton"
+                type="button"
+                data-action="review"
+                aria-pressed="false"
+              >
+                <span>リビューする</span>
+              </button>
+              <button
+                class="corner-arrow-button home-review-next"
+                id="homeReviewNext"
+                type="button"
+                aria-label="教材選択へ進む"
+                hidden
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
               </button>
             </div>
-            <label class="field-block manager-member-search" for="managerMemberSearchInput">
-              <span class="field-label-row">検索する</span>
-              <input id="managerMemberSearchInput" type="search" placeholder="Nickname、メールアドレス、Auth0 ID、役割" />
-            </label>
-            <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
-            <div id="managerMembersList" class="manager-members-list"></div>
-          </section>
+
+            <button class="home-action continue-action" id="continueButton" type="button" data-action="continue" hidden>
+              <span>続きから</span>
+            </button>
+          </div>
+
+          <div class="home-store-choice">
+            <button class="home-action store-action" id="storeButton" type="button" data-action="store" aria-pressed="false">
+              <span>ストア</span>
+            </button>
+            <button
+              class="corner-arrow-button store-next"
+              id="storeNext"
+              type="button"
+              aria-label="ストアへ進む"
+              hidden
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+            </button>
+          </div>
+        </nav>
+
+        <p class="visually-hidden" id="actionStatus" aria-live="polite"></p>
       </section>
 
-      <section id="screen-problem" class="screen" hidden>
-        <div class="page-title-row">
-          <h1 class="page-script-title">問題</h1>
-        </div>
-        <div class="manager-problem-tabs" role="tablist" aria-label="問題メニュー">
-          <button class="manager-problem-tab is-active" type="button" role="tab" aria-selected="true" data-problem-tab="create">問題を作成する</button>
-          <button class="manager-problem-tab" type="button" role="tab" aria-selected="false" data-problem-tab="manage">
-            <span>問題を管理する</span>
-            <span class="manager-role-tag">チェッカー</span>
+      <section class="review-screen review-library-screen" id="reviewLibraryScreen" aria-labelledby="reviewLibraryTitle" hidden>
+        <header class="review-screen-header">
+          <button
+            class="review-header-button review-header-button-left"
+            id="reviewLibraryBack"
+            type="button"
+            aria-label="ホームへ戻る"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          </button>
+          <button
+            class="screen-title-toggle"
+            type="button"
+            data-header-drawer-toggle="reviewLibraryDrawer"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">expand_less</span>
+            <span id="reviewLibraryTitle" role="heading" aria-level="1">リビューする</span>
+          </button>
+          <button
+            class="review-header-button review-header-button-right"
+            id="reviewStartButton"
+            type="button"
+            aria-label="選択した教材でリビューを始める"
+            hidden
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </button>
+        </header>
+        <div class="screen-header-drawer" id="reviewLibraryDrawer" aria-hidden="true">
+          <button
+            class="edge-button edge-button-left"
+            type="button"
+            data-panel="menu"
+            aria-controls="menuPanel"
+            aria-label="メニューを開く"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined header-icon" aria-hidden="true">menu</span>
+          </button>
+          <button class="brand-lockup drawer-brand-lockup" type="button" data-header-drawer-close aria-label="ヘッダーを閉じる">
+            <img src="assets/logos/the-review.png" alt="The Review" class="brand-logo" />
+          </button>
+          <button
+            class="edge-button edge-button-right"
+            type="button"
+            data-panel="profile"
+            aria-controls="profilePanel"
+            aria-label="マイページを開く"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined header-icon profile-icon" aria-hidden="true">account_circle</span>
+          </button>
+          <button class="screen-header-collapse" type="button" data-header-drawer-close aria-label="ヘッダーを閉じる">
+            <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
           </button>
         </div>
-        <div class="problem-workspace" data-problem-tab-panel="create">
-          <section class="panel problem-list-panel" hidden aria-hidden="true">
-            <div class="problem-list-header">
-              <h2>作成済み問題</h2>
-              <time id="questionListUpdatedAt" class="problem-list-updated" datetime="">最終更新: -</time>
-            </div>
-            <div class="published-question-layout">
-              <aside class="published-filter-block" aria-label="ノート選択">
-                <label class="field-block" for="publishedBinderSelect">
-                  <span class="field-label-row">バインダー</span>
-                  <select id="publishedBinderSelect"></select>
-                </label>
-                <div id="publishedNoteMenu" class="published-note-menu" role="listbox" aria-label="ノート"></div>
-              </aside>
-              <div class="published-question-main">
-                <ul id="createdQuestionList" class="manager-question-list" aria-label="作成済み問題一覧"></ul>
-              </div>
-            </div>
-          </section>
 
-          <section class="panel problem-composer-panel">
-            <div class="problem-section-head">
-              <div>
-                <div class="manager-title-row">
-                  <h2>問題を作成する</h2>
-                  <span class="manager-role-tags" aria-label="対象ロール">
-                    <span class="manager-role-tag">デベロッパー</span>
-                    <span class="manager-role-tag">チェッカー</span>
-                  </span>
-                </div>
-                <p class="hint-text">問題の種別わけを選び、問題を入力してから確認へ進みます。</p>
-              </div>
-              <ol class="problem-stepper" aria-label="作成手順">
-                <li class="problem-step is-active" data-problem-step="create"><span class="problem-step-number">1</span><span>問題の作成</span></li>
-                <li class="problem-step" data-problem-step="confirm"><span class="problem-step-number">2</span><span>確認</span></li>
-                <li class="problem-step" data-problem-step="submit"><span class="problem-step-number">3</span><span>提出</span></li>
-              </ol>
-            </div>
-            <form id="problemCreateForm" class="manager-field-grid">
-              <div class="problem-compose-grid">
-                <div class="problem-form-main">
-                  <fieldset class="problem-fieldset">
-                    <legend>問題の種別わけ</legend>
-                    <div class="field-block">
-                      <select id="binderSelect" name="binder" hidden></select>
-                      <label class="field-label-row" for="noteSelect">
-                        <span>ノート</span>
-                        <span class="field-badge">必須</span>
-                      </label>
-                      <select id="noteSelect" name="note" required></select>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="problem-fieldset problem-import-fieldset">
-                    <legend>CSVから不足問題を追加</legend>
-                    <p class="hint-text">数学ＣなどのCSVを読み込み、ローカルの問題データへまとめて追加できます。</p>
-                    <div class="problem-import-actions">
-                      <label class="field-block" for="problemCsvInput">
-                        <span class="field-label-row">問題CSV</span>
-                        <input id="problemCsvInput" type="file" accept=".csv,text/csv" />
-                      </label>
-                      <button id="problemCsvLoadBtn" class="secondary white-button" type="button">
-                        <span class="material-symbols-rounded" aria-hidden="true">upload_file</span>
-                        <span>読み込む</span>
-                      </button>
-                      <button id="problemCsvSubmitMissingBtn" class="primary" type="button" disabled>
-                        <span class="material-symbols-rounded" aria-hidden="true">playlist_add_check</span>
-                        <span>不足分を追加</span>
-                      </button>
-                    </div>
-                    <p id="problemCsvImportSummary" class="problem-import-summary" aria-live="polite">CSVを選択してください。</p>
-                    <ul id="problemCsvImportList" class="manager-question-list problem-import-list" aria-label="CSV読み込み結果"></ul>
-                  </fieldset>
-
-                  <fieldset class="problem-fieldset problem-notebook-fieldset">
-                    <legend>Let's Review! ノート</legend>
-                    <p class="hint-text">ノート上をクリックして直接追加できます。ブロックは長押し、またはドラッグで移動できます。</p>
-                    <div class="notebook-editor-shell">
-                      <div id="notebookEditorToolbar" class="notebook-editor-toolbar" role="toolbar" aria-label="ノートに追加する項目">
-                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="heading">
-                          <span class="material-symbols-rounded" aria-hidden="true">title</span>
-                          <span>見出し</span>
-                        </button>
-                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="text">
-                          <span class="material-symbols-rounded" aria-hidden="true">notes</span>
-                          <span>本文</span>
-                        </button>
-                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="question">
-                          <span class="material-symbols-rounded" aria-hidden="true">help</span>
-                          <span>問題文</span>
-                        </button>
-                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="formula">
-                          <span class="material-symbols-rounded" aria-hidden="true">functions</span>
-                          <span>数式</span>
-                        </button>
-                      </div>
-                      <div id="notebookEditorBook" class="notebook-editor-book" aria-label="Let's Review! ノート編集">
-                        <section class="notebook-editor-page notebook-editor-page-text" aria-label="テキストページ">
-                          <header class="notebook-editor-page-head">
-                            <div>
-                              <p id="notebookTextSubject" class="notebook-editor-page-title">ノート</p>
-                              <p class="notebook-editor-page-subtitle">Text</p>
-                            </div>
-                            <time id="notebookEditorDate" class="notebook-editor-date" data-notebook-editor-date datetime=""></time>
-                          </header>
-                          <div id="notebookTextSurface" class="notebook-page-grid" data-notebook-page-surface="text" aria-label="テキスト本文"></div>
-                          <p class="notebook-editor-watermark">Text</p>
-                        </section>
-                        <section class="notebook-editor-page notebook-editor-page-question" aria-label="問題ページ">
-                          <header class="notebook-editor-page-head">
-                            <div>
-                              <p id="notebookQuestionSubject" class="notebook-editor-page-title">ノート</p>
-                              <p class="notebook-editor-page-subtitle">Question</p>
-                            </div>
-                            <time class="notebook-editor-date" data-notebook-editor-date datetime=""></time>
-                          </header>
-                          <div id="notebookQuestionSurface" class="notebook-page-grid" data-notebook-page-surface="question" aria-label="問題本文"></div>
-                          <p class="notebook-editor-watermark">Question</p>
-                        </section>
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="problem-fieldset">
-                    <legend>テキスト</legend>
-                    <div class="problem-field-row">
-                      <label class="field-block" for="textNumberInput">
-                        <span class="field-label-row">テキスト番号</span>
-                        <input id="textNumberInput" type="text" maxlength="24" placeholder="例: 4" />
-                      </label>
-                      <label class="field-block" for="textNameInput">
-                        <span class="field-label-row">テキスト名</span>
-                        <input id="textNameInput" type="text" maxlength="64" placeholder="例: 恒等式" />
-                      </label>
-                    </div>
-                    <div class="manager-repeatable-editor" aria-label="テキスト文">
-                      <div class="manager-repeatable-actions">
-                        <button class="secondary white-button" type="button" data-add-text-block="heading">
-                          <span class="material-symbols-rounded" aria-hidden="true">title</span>
-                          <span>見出しを追加</span>
-                        </button>
-                        <button class="secondary white-button" type="button" data-add-text-block="body">
-                          <span class="material-symbols-rounded" aria-hidden="true">notes</span>
-                          <span>本文を追加</span>
-                        </button>
-                      </div>
-                      <div id="textBlockList" class="text-block-list"></div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset class="problem-fieldset">
-                    <legend>問題</legend>
-                    <div class="problem-field-row">
-                      <label class="field-block" for="questionNumberInput">
-                        <span class="field-label-row">問題番号</span>
-                        <input id="questionNumberInput" type="text" maxlength="24" placeholder="例: 12" />
-                      </label>
-                      <label class="field-block" for="questionNameInput">
-                        <span class="field-label-row">問題名</span>
-                        <input id="questionNameInput" type="text" maxlength="64" placeholder="例: 等式の証明①" />
-                      </label>
-                    </div>
-                    <div class="field-block">
-                      <div class="field-label-row">
-                        <span>問題文</span>
-                        <span class="field-badge">必須</span>
-                      </div>
-                      <div class="editor-shell problem-rich-editor">
-                        <div id="editorToolbar" class="editor-toolbar" role="toolbar" aria-label="問題文エディター">
-                          <button class="editor-tool-btn" type="button" data-command="bold" aria-label="太字">B</button>
-                          <button class="editor-tool-btn" type="button" data-command="italic" aria-label="斜体">I</button>
-                          <button class="editor-tool-btn" type="button" data-insert="formula">
-                            <span class="material-symbols-rounded" aria-hidden="true">functions</span>
-                            <span>数式</span>
-                          </button>
-                          <button class="editor-tool-btn" type="button" data-insert="image">
-                            <span class="material-symbols-rounded" aria-hidden="true">image</span>
-                            <span>画像</span>
-                          </button>
-                          <button class="editor-tool-btn" type="button" data-insert="vector-graph">
-                            <span class="material-symbols-rounded" aria-hidden="true">show_chart</span>
-                            <span>グラフ</span>
-                          </button>
-                        </div>
-                        <div
-                          id="problemEditor"
-                          class="editor-surface"
-                          contenteditable="true"
-                          role="textbox"
-                          aria-multiline="true"
-                          aria-label="問題文"
-                          data-placeholder="問題文を入力してください。数式や画像も追加できます。"
-                        ></div>
-                        <div class="editor-footer">
-                          <p class="editor-counter">
-                            単語数: <span id="editorWordCount">0</span> / 文字数: <span id="editorCharCount">0</span>
-                          </p>
-                        </div>
-                      </div>
-                      <input id="problemImageInput" name="image" type="file" accept="image/*" hidden />
-                    </div>
-                  </fieldset>
-
-                  <div class="action-row problem-action-row">
-                    <button id="proofreadingSubmitBtn" class="primary" type="submit">問題の確認</button>
-                    <button id="saveProblemDraftBtn" class="secondary" type="button">下書き保存</button>
-                    <button id="resetProblemFormBtn" class="secondary" type="button">入力をクリア</button>
-                  </div>
-                  <p id="proofreadingFeedback" class="feedback" aria-live="polite"></p>
-                </div>
-              </div>
-            </form>
-          </section>
-        </div>
-        <div class="problem-manage-workspace" data-problem-tab-panel="manage" hidden>
-          <section class="panel problem-manage-panel">
-            <div class="problem-section-head problem-manage-head">
-              <div>
-                <div class="manager-title-row">
-                  <h2>問題を管理する</h2>
-                  <span class="manager-role-tags" aria-label="対象ロール">
-                    <span class="manager-role-tag">チェッカー</span>
-                  </span>
-                </div>
-                <p class="hint-text">未承認の問題を確認し、必要に応じて本文を編集してから承認できます。</p>
-              </div>
-            </div>
-            <div class="problem-manage-grid">
-              <section class="problem-pending-list-block" aria-labelledby="pendingQuestionListTitle">
-                <h3 id="pendingQuestionListTitle">未承認の問題一覧</h3>
-                <ul id="pendingQuestionList" class="manager-question-list" aria-label="未承認の問題一覧"></ul>
-              </section>
-              <section id="pendingQuestionDetail" class="problem-pending-detail" aria-live="polite">
-                <p id="pendingQuestionEmpty" class="manager-empty-note">未承認の問題を選択してください。</p>
-                <div id="pendingQuestionEditorPanel" class="manager-field-grid" hidden>
-                  <ul class="manager-info-list" aria-label="問題の詳細">
-                    <li>
-                      <strong>バインダー</strong>
-                      <p id="pendingQuestionBinder">-</p>
-                    </li>
-                    <li>
-                      <strong>ノート</strong>
-                      <p id="pendingQuestionNote">-</p>
-                    </li>
-                    <li>
-                      <strong>ステータス</strong>
-                      <p id="pendingQuestionStatus">-</p>
-                    </li>
-                  </ul>
-                  <label class="field-block" for="pendingQuestionEditor">
-                    <span class="field-label-row">問題本文</span>
-                    <textarea id="pendingQuestionEditor" rows="10"></textarea>
-                  </label>
-                  <div class="action-row">
-                    <button id="pendingQuestionSaveBtn" class="secondary white-button" type="button">編集を保存する</button>
-                    <button id="pendingQuestionApproveBtn" class="primary" type="button">承認する</button>
-                  </div>
-                  <p id="pendingQuestionFeedback" class="feedback" aria-live="polite"></p>
-                </div>
-              </section>
-            </div>
-          </section>
+        <div class="review-library-content">
+          <p class="review-screen-lead">リビューする教材を選んでください。</p>
+          <p class="review-book-status" id="reviewBookStatus" aria-live="polite">教材を読み込んでいます…</p>
+          <div class="review-book-empty" id="reviewBookEmpty" hidden>
+            <img src="assets/avater/404.png" alt="" />
+            <p>教材データが見つかりませんでした</p>
+          </div>
+          <div class="review-book-list" id="reviewBookList" role="listbox" aria-label="教材一覧"></div>
         </div>
       </section>
 
-      <section id="screen-store" class="screen" hidden>
-        <div class="page-title-row">
-          <h1 class="page-script-title">ストア</h1>
-        </div>
-        <div class="manager-store-tabs" role="tablist" aria-label="ストアメニュー">
-          <button class="manager-store-tab is-active" type="button" role="tab" aria-selected="true" data-store-tab="create">アイテムを作成する</button>
-          <button class="manager-store-tab" type="button" role="tab" aria-selected="false" data-store-tab="manage">アイテムを管理する</button>
-        </div>
-        <div class="manager-store-layout">
-          <section class="panel manager-published-items-panel" data-store-tab-panel="manage" hidden>
-            <div class="manager-title-row">
-              <h2>配信しているアイテム</h2>
-            </div>
-            <div id="managerAvaterItemList" class="manager-store-list manager-published-avater-list"></div>
-          </section>
-          <section class="panel manager-store-create-panel" data-store-tab-panel="create">
-            <div class="manager-title-row">
-              <h2>ストアを管理する</h2>
-              <span class="manager-role-tags" aria-label="対象ロール">
-                <span class="manager-role-tag">キャラクターデザイナー</span>
-              </span>
-            </div>
-            <div class="manager-field-grid">
-              <div class="field-block">
-                <span class="field-label-row">アイテム画像</span>
-                <div id="avaterItemImageDropzone" class="manager-image-dropzone" tabindex="0" role="button" aria-label="アイテム画像をアップロード">
-                  <input id="avaterItemImageInput" type="file" accept="image/*" hidden />
-                  <div id="avaterItemImageEmpty" class="manager-image-dropzone-empty">
-                    <span class="material-symbols-rounded" aria-hidden="true">upload</span>
-                    <strong>画像をアップロード</strong>
-                    <span>タップ、またはドラッグアンドドロップ</span>
-                  </div>
-                  <img id="avaterItemImagePreview" class="manager-image-dropzone-preview" alt="" hidden />
-                </div>
-                <div class="image-picker-actions">
-                  <button id="adjustAvaterItemImageBtn" class="secondary white-button" type="button" disabled>画像を調整</button>
-                  <button id="clearAvaterItemImageBtn" class="secondary white-button" type="button">画像を削除</button>
-                </div>
-                <p id="avaterItemImageMeta" class="image-picker-filename"></p>
-              </div>
-              <label class="field-block" for="avaterItemNameInput">
-                <span class="field-label-row">アイテム名</span>
-                <input id="avaterItemNameInput" type="text" maxlength="32" />
-              </label>
-              <label class="field-block" for="avaterItemCategorySelect">
-                <span class="field-label-row">カテゴリー</span>
-                <select id="avaterItemCategorySelect">
-                  <option value="clothes">うわぎ</option>
-                  <option value="glasses">めがね</option>
-                  <option value="accessory">アクセサリー</option>
-                </select>
-              </label>
-              <label class="field-block" for="avaterItemCostInput">
-                <span class="field-label-row">価格</span>
-                <span class="manager-price-field">
-                  <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
-                  <input id="avaterItemCostInput" type="number" inputmode="numeric" min="0" step="1" value="100" />
-                </span>
-              </label>
-              <div class="action-row">
-                <button id="addAvaterItemBtn" class="primary" type="button">アイテムを追加</button>
-              </div>
-              <p id="storeConfigFeedback" class="feedback" aria-live="polite"></p>
-            </div>
-          </section>
-        </div>
-      </section>
-
-    </main>
-
-    <dialog id="avaterItemImageAdjustDialog" class="text-reset-dialog manager-image-adjust-dialog" aria-labelledby="avaterItemImageAdjustTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="avaterItemImageAdjustTitle">アイテム画像を調整</h3>
-        <div class="manager-image-adjust-preview" aria-label="調整プレビュー">
-          <div class="manager-image-adjust-stage">
-            <img class="manager-image-adjust-guide" src="./assets/avater/らーん1-1.png" alt="" aria-hidden="true" />
-            <img id="avaterItemAdjustImage" alt="" />
-          </div>
-        </div>
-        <div class="manager-image-adjust-controls">
-          <label>
-            <span>サイズ</span>
-            <input id="avaterItemImageScaleInput" type="range" min="40" max="220" value="100" />
-          </label>
-          <label>
-            <span>横の変形</span>
-            <input id="avaterItemImageScaleXInput" type="range" min="60" max="160" value="100" />
-          </label>
-          <label>
-            <span>縦の変形</span>
-            <input id="avaterItemImageScaleYInput" type="range" min="60" max="160" value="100" />
-          </label>
-          <label>
-            <span>横位置</span>
-            <input id="avaterItemImageOffsetXInput" type="range" min="-120" max="120" value="0" />
-          </label>
-          <label>
-            <span>縦位置</span>
-            <input id="avaterItemImageOffsetYInput" type="range" min="-120" max="120" value="0" />
-          </label>
-          <label>
-            <span>回転</span>
-            <input id="avaterItemImageRotateInput" type="range" min="-45" max="45" value="0" />
-          </label>
-        </div>
-        <div class="manager-dialog-actions">
-          <button class="secondary" type="button" data-avater-image-adjust-action="cancel">キャンセル</button>
-          <button class="primary" type="button" data-avater-image-adjust-action="apply">決定</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="vectorGraphDialog" class="text-reset-dialog vector-graph-dialog" aria-labelledby="vectorGraphDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="vectorGraphDialogTitle">グラフ・ベクトルを追加</h3>
-        <div class="vector-graph-tools">
-          <label class="field-block" for="vectorGraphModeSelect">
-            <span class="field-label-row">作図モード</span>
-            <select id="vectorGraphModeSelect">
-              <option value="vector">ベクトル</option>
-              <option value="answer">回答線</option>
-            </select>
-          </label>
-          <div class="vector-graph-tool-actions">
-            <button class="secondary white-button" type="button" data-vector-graph-action="undo">1本戻す</button>
-            <button class="secondary white-button" type="button" data-vector-graph-action="clear">クリア</button>
-          </div>
-        </div>
-        <div class="vector-graph-canvas-wrap">
-          <svg
-            id="vectorGraphSvg"
-            class="vector-graph-canvas"
-            viewBox="0 0 640 400"
-            role="application"
-            aria-label="始点から終点までドラッグして線を引く"
+      <section class="review-screen review-session-screen" id="reviewSessionScreen" aria-labelledby="reviewSessionTitle" hidden>
+        <header class="review-screen-header">
+          <button
+            class="review-header-button review-header-button-left"
+            id="reviewSessionBack"
+            type="button"
+            aria-label="教材選択へ戻る"
           >
-            <defs>
-              <marker id="vectorGraphArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-                <path d="M 0 0 L 10 5 L 0 10 z"></path>
-              </marker>
-            </defs>
-            <g id="vectorGraphGrid"></g>
-            <g id="vectorGraphLines"></g>
-            <line id="vectorGraphPreview" class="vector-graph-preview" x1="0" y1="0" x2="0" y2="0" hidden></line>
-          </svg>
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          </button>
+          <h1 id="reviewSessionTitle">リビュー</h1>
+        </header>
+
+        <div class="review-session-content">
+          <p class="review-progress" id="reviewProgress"></p>
+          <article class="review-question-card">
+            <p class="review-question-name" id="reviewQuestionName"></p>
+            <p class="review-question-text" id="reviewQuestionText"></p>
+            <img class="review-question-image" id="reviewQuestionImage" alt="" hidden />
+            <div class="review-choice-list" id="reviewChoiceList"></div>
+            <div class="review-answer" id="reviewAnswer" hidden>
+              <span>答え</span>
+              <p id="reviewAnswerText"></p>
+            </div>
+          </article>
+          <div class="review-session-actions">
+            <button type="button" id="reviewRevealButton">答えを見る</button>
+            <button type="button" id="reviewNextButton">次の問題</button>
+          </div>
         </div>
-        <p class="hint-text vector-graph-hint">方眼上をドラッグすると線を引けます。ベクトルは矢印つき、回答線は太線で入ります。</p>
-        <div class="manager-dialog-actions">
-          <button class="secondary" type="button" data-vector-graph-action="cancel">キャンセル</button>
-          <button class="primary" type="button" data-vector-graph-action="insert">挿入する</button>
+      </section>
+
+      <section class="review-screen utility-screen" id="storeScreen" aria-labelledby="storeScreenTitle" hidden>
+        <header class="review-screen-header utility-screen-header">
+          <button class="review-header-button review-header-button-left" type="button" data-close-utility aria-label="ホームへ戻る">
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          </button>
+          <button
+            class="screen-title-toggle"
+            type="button"
+            data-header-drawer-toggle="storeHeaderDrawer"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">expand_less</span>
+            <span id="storeScreenTitle" role="heading" aria-level="1">ストア</span>
+          </button>
+        </header>
+        <div class="screen-header-drawer" id="storeHeaderDrawer" aria-hidden="true">
+          <button
+            class="edge-button edge-button-left"
+            type="button"
+            data-panel="menu"
+            aria-controls="menuPanel"
+            aria-label="メニューを開く"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined header-icon" aria-hidden="true">menu</span>
+          </button>
+          <button class="brand-lockup drawer-brand-lockup" type="button" data-header-drawer-close aria-label="ヘッダーを閉じる">
+            <img src="assets/logos/the-review.png" alt="The Review" class="brand-logo" />
+          </button>
+          <button
+            class="edge-button edge-button-right"
+            type="button"
+            data-panel="profile"
+            aria-controls="profilePanel"
+            aria-label="マイページを開く"
+            aria-expanded="false"
+          >
+            <span class="material-symbols-outlined header-icon profile-icon" aria-hidden="true">account_circle</span>
+          </button>
+          <button class="screen-header-collapse" type="button" data-header-drawer-close aria-label="ヘッダーを閉じる">
+            <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+          </button>
         </div>
-      </form>
-    </dialog>
-
-    <dialog id="problemResetDialog" class="text-reset-dialog" aria-labelledby="problemResetDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="problemResetDialogTitle">入力をクリア</h3>
-        <p>入力中の内容を削除します。よろしいですか？</p>
-        <div class="manager-dialog-actions">
-          <button class="secondary" type="button" data-reset-dialog-action="cancel">キャンセル</button>
-          <button class="primary" type="button" data-reset-dialog-action="clear">クリア</button>
+        <div class="utility-screen-content">
+          <article class="store-balance-card">
+            <span>Review Coin</span>
+            <strong><span id="storeCoinBalance">0</span><small>枚</small></strong>
+          </article>
+          <section class="utility-section">
+            <h2>アイテム</h2>
+            <div class="utility-empty-card">
+              <p>現在購入できるアイテムはありません。</p>
+              <span>新しいアイテムを準備中です。</span>
+            </div>
+          </section>
         </div>
-      </form>
-    </dialog>
+      </section>
 
-    <dialog id="managerMemberActionDialog" class="text-reset-dialog manager-member-action-dialog" aria-labelledby="managerMemberActionDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="managerMemberActionDialogTitle">確認</h3>
-        <p id="managerMemberActionDialogMessage">操作を続行しますか？</p>
-        <div class="manager-dialog-actions manager-member-action-dialog-actions">
-          <button class="secondary white-button" type="button" data-manager-member-dialog-action="cancel">キャンセル</button>
-          <button id="managerMemberActionConfirmBtn" class="primary" type="button" data-manager-member-dialog-action="confirm">実行する</button>
+      <section class="review-screen utility-screen" id="noticeScreen" aria-labelledby="noticeScreenTitle" hidden>
+        <header class="review-screen-header utility-screen-header">
+          <button class="review-header-button review-header-button-left" type="button" data-close-utility aria-label="ホームへ戻る">
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          </button>
+          <h1 id="noticeScreenTitle">お知らせ</h1>
+        </header>
+        <div class="utility-screen-content">
+          <article class="notice-detail-card">
+            <div class="notice-detail-head">
+              <span>お知らせ</span>
+              <time datetime="2026-07-04">2026.07.04</time>
+            </div>
+            <h2>新しいお知らせがあります</h2>
+            <p>The Reviewの新しいホーム画面をご利用いただけます。今後のお知らせもこちらでご案内します。</p>
+          </article>
         </div>
-      </form>
-    </dialog>
+      </section>
 
-    <dialog id="problemConfirmDialog" class="text-reset-dialog" aria-labelledby="problemConfirmDialogTitle">
-      <form method="dialog" class="text-reset-dialog-body">
-        <h3 id="problemConfirmDialogTitle">問題の確認</h3>
-        <dl class="manager-dialog-summary">
-          <dt>ノート</dt>
-          <dd id="confirmProblemNote">-</dd>
-        </dl>
-        <p id="confirmProblemContent" class="manager-dialog-content"></p>
-        <div class="manager-dialog-actions">
-          <button class="secondary" type="button" data-confirm-dialog-action="cancel">戻る</button>
-          <button class="primary" type="button" data-confirm-dialog-action="submit">提出</button>
+      <section class="raan-panel" id="raanPanel" aria-labelledby="raanMenuTitle" aria-hidden="true" hidden>
+        <div class="raan-menu-content">
+          <h2 id="raanMenuTitle">こんにちは！</h2>
+          <p class="raan-greeting">
+            <span id="raanTodayText"></span>
+            <span id="raanSeasonalText"></span>
+          </p>
+
+          <article class="raan-recommendation">
+            <p>今日のおすすめの勉強科目はー</p>
+            <strong id="raanRecommendedSubject">数学Ⅱ</strong>
+          </article>
         </div>
-      </form>
-    </dialog>
-    </template>
-    <script src="./auth0-config.js?v=20260517-2"></script>
-    <script src="./app.js?v=20260518-1" charset="UTF-8"></script>
-    <script src="./pwa.js?v=20260516-2" charset="UTF-8"></script>
-    <script>
-  function isElementActuallyVisible(element) {
-    if (!element) return false;
+      </section>
 
-    const style = window.getComputedStyle(element);
+      <button
+        class="review-header-button review-header-button-left raan-menu-back"
+        id="raanMenuBack"
+        type="button"
+        aria-label="らーんメニューを閉じる"
+        hidden
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+      </button>
 
-    if (
-      element.hidden ||
-      style.display === "none" ||
-      style.visibility === "hidden" ||
-      style.opacity === "0"
-    ) {
-      return false;
-    }
+      <button
+        class="character-dock"
+        id="raanMenuButton"
+        type="button"
+        aria-controls="raanPanel"
+        aria-expanded="false"
+        aria-label="らーんメニューを開く"
+      >
+        <img src="assets/avater/raan.png" alt="白いフクロウのキャラクター、らーん" />
+      </button>
 
-    const rect = element.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  }
+      <div class="panel-scrim" id="panelScrim" hidden></div>
 
-  function updateEmptyFlashcardSeriesIndexes() {
-    const indexes = document.querySelectorAll(".flashcard-series-index");
+      <section class="side-panel" id="menuPanel" aria-labelledby="menuPanelTitle" hidden>
+        <div class="panel-heading">
+          <h2 id="menuPanelTitle">メニュー</h2>
+        </div>
+        <button type="button" class="panel-row is-current" data-navigation-home>ホーム</button>
+        <button type="button" class="panel-row" data-navigation-review>リビューする</button>
+        <button type="button" class="panel-row" data-utility-page="store">ストア</button>
+        <button type="button" class="panel-row" data-panel="profile">マイページ</button>
 
-    indexes.forEach((index) => {
-      let hasVisibleNote = false;
-      let current = index.nextElementSibling;
+        <section class="panel-notices" aria-labelledby="noticesTitle">
+          <h3 id="noticesTitle">お知らせ</h3>
+          <button type="button" class="notice-row" data-notice-unread data-utility-page="notice">
+            <span class="notice-title">新しいお知らせがあります</span>
+            <span class="notice-meta">未読</span>
+          </button>
+        </section>
+      </section>
 
-      while (current && !current.classList.contains("flashcard-series-index")) {
-        if (
-          current.classList.contains("flashcard-note") &&
-          isElementActuallyVisible(current)
-        ) {
-          hasVisibleNote = true;
-          break;
-        }
+      <section class="side-panel side-panel-right" id="profilePanel" aria-labelledby="profilePanelTitle" hidden>
+        <div class="panel-heading">
+          <h2 id="profilePanelTitle">マイページ</h2>
+        </div>
+        <section class="profile-section" aria-labelledby="profileSummaryTitle">
+          <h3 id="profileSummaryTitle">プロフィール</h3>
+          <div class="profile-auth-identity">
+            <span class="material-symbols-outlined" aria-hidden="true">account_circle</span>
+            <div>
+              <strong id="authUserName">ログインしていません</strong>
+              <span id="authUserEmail">Guest Mode</span>
+            </div>
+          </div>
+          <button class="profile-auth-button" id="authLoginButton" type="button">
+            <span class="material-symbols-outlined" aria-hidden="true">login</span>
+            <span>ログインする</span>
+          </button>
+          <button class="profile-auth-button" id="authLogoutButton" type="button" hidden>
+            <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+            <span>ログアウト</span>
+          </button>
+        </section>
 
-        current = current.nextElementSibling;
-      }
+        <section class="profile-section" aria-labelledby="learningHistoryTitle">
+          <h3 id="learningHistoryTitle">学習履歴</h3>
+          <div class="profile-history-card">
+            <span>現在の学習</span>
+            <strong id="profileCurrentStudy">学習データはありません</strong>
+          </div>
+        </section>
 
-      index.classList.toggle("is-empty-series", !hasVisibleNote);
-      index.classList.toggle("is-ready-series", hasVisibleNote);
-    });
-  }
+        <section class="profile-section profile-auth-card" aria-labelledby="accountSectionTitle">
+          <h3 id="accountSectionTitle">アカウント</h3>
+          <div class="profile-account-info">
+            <span>認証サービス</span>
+            <strong>Review Account / Auth0</strong>
+          </div>
+        </section>
 
-  document.addEventListener("DOMContentLoaded", updateEmptyFlashcardSeriesIndexes);
-
-  window.addEventListener("load", () => {
-    updateEmptyFlashcardSeriesIndexes();
-    setTimeout(updateEmptyFlashcardSeriesIndexes, 100);
-    setTimeout(updateEmptyFlashcardSeriesIndexes, 500);
-  });
-</script>
+        <section class="profile-section" aria-labelledby="profileSettingsTitle">
+          <h3 id="profileSettingsTitle">設定</h3>
+          <div class="settings-list" aria-label="アプリ設定">
+            <label class="app-setting-row">
+              <span>
+                <strong>お知らせ通知</strong>
+                <small>新しいお知らせを表示します</small>
+              </span>
+              <input id="notificationSetting" type="checkbox" />
+            </label>
+            <label class="app-setting-row">
+              <span>
+                <strong>サウンド</strong>
+                <small>操作音を有効にします</small>
+              </span>
+              <input id="soundSetting" type="checkbox" />
+            </label>
+            <div class="app-setting-row performance-setting-row">
+              <span>
+                <strong>パフォーマンス</strong>
+                <small>アニメーションと描画品質を一括調整します</small>
+              </span>
+              <div class="performance-control">
+                <span class="performance-endpoint" aria-hidden="true">L</span>
+                <div class="performance-range-wrap">
+                  <div class="performance-recommendation" id="performanceRecommendation" aria-hidden="true">推奨</div>
+                  <span class="performance-stop" aria-hidden="true"></span>
+                  <span class="performance-stop" aria-hidden="true"></span>
+                  <span class="performance-stop" aria-hidden="true"></span>
+                  <span class="performance-stop" aria-hidden="true"></span>
+                  <input
+                    id="performanceSetting"
+                    type="range"
+                    min="1"
+                    max="4"
+                    step="1"
+                    aria-label="パフォーマンス"
+                  />
+                </div>
+                <span class="performance-endpoint" aria-hidden="true">H</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
   </body>
 </html>

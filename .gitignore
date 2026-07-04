@@ -2,6 +2,7 @@ node_modules/
 /private/
 .env
 /.vscode/
+old/
 
 # wrangler files
 .wrangler
