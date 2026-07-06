@@ -1,0 +1,597 @@
+<div id="appLoader" class="app-loader" role="status" aria-live="polite" aria-label="読み込み中">
+      <div class="loader-inner ball-scale" aria-hidden="true">
+        <div></div>
+      </div>
+    </div>
+    <div class="aurora aurora-left"></div>
+    <div class="aurora aurora-right"></div>
+
+    <header class="app-header">
+      <div class="header-info-block">
+        <button
+          id="infoMenuTrigger"
+          class="info-menu-trigger"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="infoMenuPanel"
+          aria-label="Informationメニューを開く"
+        >
+          <span class="info-hamburger-icon" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
+        <section id="infoMenuPanel" class="info-menu-panel" aria-label="Informationメニュー" hidden>
+          <button id="infoMenuCloseBtn" class="info-menu-close-btn" type="button" aria-label="Informationメニューを閉じる">
+            <span aria-hidden="true">×</span>
+          </button>
+          <div class="info-menu-user">
+            <span class="info-menu-user-label">Nickname</span>
+            <strong id="managerInfoMenuNickname" class="info-menu-user-value">未設定</strong>
+          </div>
+          <div class="info-menu-list">
+            <button class="info-menu-item" type="button" data-menu-url="./index.html">
+              <span class="material-symbols-rounded info-menu-item-icon" aria-hidden="true">arrow_back</span>
+              <span>The Reviewへ戻る</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <img class="app-logo manager-logo" src="./assets/logos/manager.png?v=20260326-1" alt="The Review Manager" />
+
+      <div class="header-menu-block">
+        <nav class="top-nav manager-nav" aria-label="画面切替">
+          <button class="top-nav-item is-active" type="button" data-screen="home">
+            <span>ダッシュボード</span>
+          </button>
+          <button class="top-nav-item" type="button" data-screen="members">
+            <span>ユーザー</span>
+          </button>
+          <button class="top-nav-item" type="button" data-screen="problem">
+            <span>問題</span>
+          </button>
+          <button class="top-nav-item" type="button" data-screen="store">
+            <span>ストア</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="screens">
+      <section id="screen-home" class="screen is-active">
+        <div class="page-title-row">
+          <h1 class="page-script-title">ダッシュボード</h1>
+        </div>
+        <div class="panel">
+          <h2>ダッシュボード</h2>
+          <p class="hint-text">ご希望の項目を選択してください。</p>
+          <div class="manager-home-grid">
+            <article class="panel manager-home-card">
+              <div class="manager-title-row">
+                <h3>ユーザーを管理する</h3>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">オーナー</span>
+                </span>
+              </div>
+              <p>ユーザーに関わる管理ができます。</p>
+              <button class="primary" type="button" data-home-link="members">開く</button>
+            </article>
+            <article class="panel manager-home-card">
+              <div class="manager-title-row">
+                <h3>問題を作成する</h3>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">デベロッパー</span>
+                  <span class="manager-role-tag">チェッカー</span>
+                </span>
+              </div>
+              <p>問題の作成と提出ができます。</p>
+              <button class="primary" type="button" data-home-link="problem">開く</button>
+            </article>
+            <article class="panel manager-home-card">
+              <div class="manager-title-row">
+                <h3>ストアを管理する</h3>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">キャラクターデザイナー</span>
+                </span>
+              </div>
+              <p>アイテムの管理ができます。</p>
+              <button class="primary" type="button" data-home-link="store">開く</button>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-members" class="screen" hidden>
+        <div class="page-title-row">
+          <h1 class="page-script-title">ユーザー</h1>
+        </div>
+          <section id="managerMembersPanel" class="panel manager-members-panel" hidden>
+            <div class="manager-members-head">
+              <div class="manager-title-row">
+                <h2>ユーザーを管理する</h2>
+                <span class="manager-role-tags" aria-label="対象ロール">
+                  <span class="manager-role-tag">オーナー</span>
+                </span>
+              </div>
+              <button id="managerMembersRefreshBtn" class="secondary manager-icon-btn" type="button" aria-label="ユーザーを更新">
+                <span class="material-symbols-rounded" aria-hidden="true">sync</span>
+              </button>
+            </div>
+            <label class="field-block manager-member-search" for="managerMemberSearchInput">
+              <span class="field-label-row">検索する</span>
+              <input id="managerMemberSearchInput" type="search" placeholder="Nickname、メールアドレス、Auth0 ID、役割" />
+            </label>
+            <p id="managerMembersStatus" class="hint-text">Ownerのみ表示されます。</p>
+            <div id="managerMembersList" class="manager-members-list"></div>
+          </section>
+      </section>
+
+      <section id="screen-problem" class="screen" hidden>
+        <div class="page-title-row">
+          <h1 class="page-script-title">問題</h1>
+        </div>
+        <div class="manager-problem-tabs" role="tablist" aria-label="問題メニュー">
+          <button class="manager-problem-tab is-active" type="button" role="tab" aria-selected="true" data-problem-tab="create">問題を作成する</button>
+          <button class="manager-problem-tab" type="button" role="tab" aria-selected="false" data-problem-tab="manage">
+            <span>問題を管理する</span>
+            <span class="manager-role-tag">チェッカー</span>
+          </button>
+        </div>
+        <div class="problem-workspace" data-problem-tab-panel="create">
+          <section class="panel problem-list-panel" hidden aria-hidden="true">
+            <div class="problem-list-header">
+              <h2>作成済み問題</h2>
+              <time id="questionListUpdatedAt" class="problem-list-updated" datetime="">最終更新: -</time>
+            </div>
+            <div class="published-question-layout">
+              <aside class="published-filter-block" aria-label="ノート選択">
+                <label class="field-block" for="publishedBinderSelect">
+                  <span class="field-label-row">バインダー</span>
+                  <select id="publishedBinderSelect"></select>
+                </label>
+                <div id="publishedNoteMenu" class="published-note-menu" role="listbox" aria-label="ノート"></div>
+              </aside>
+              <div class="published-question-main">
+                <ul id="createdQuestionList" class="manager-question-list" aria-label="作成済み問題一覧"></ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel problem-composer-panel">
+            <div class="problem-section-head">
+              <div>
+                <div class="manager-title-row">
+                  <h2>問題を作成する</h2>
+                  <span class="manager-role-tags" aria-label="対象ロール">
+                    <span class="manager-role-tag">デベロッパー</span>
+                    <span class="manager-role-tag">チェッカー</span>
+                  </span>
+                </div>
+                <p class="hint-text">問題の種別わけを選び、問題を入力してから確認へ進みます。</p>
+              </div>
+              <ol class="problem-stepper" aria-label="作成手順">
+                <li class="problem-step is-active" data-problem-step="create"><span class="problem-step-number">1</span><span>問題の作成</span></li>
+                <li class="problem-step" data-problem-step="confirm"><span class="problem-step-number">2</span><span>確認</span></li>
+                <li class="problem-step" data-problem-step="submit"><span class="problem-step-number">3</span><span>提出</span></li>
+              </ol>
+            </div>
+            <form id="problemCreateForm" class="manager-field-grid">
+              <div class="problem-compose-grid">
+                <div class="problem-form-main">
+                  <fieldset class="problem-fieldset">
+                    <legend>問題の種別わけ</legend>
+                    <div class="field-block">
+                      <select id="binderSelect" name="binder" hidden></select>
+                      <label class="field-label-row" for="noteSelect">
+                        <span>ノート</span>
+                        <span class="field-badge">必須</span>
+                      </label>
+                      <select id="noteSelect" name="note" required></select>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset problem-import-fieldset">
+                    <legend>CSVから不足問題を追加</legend>
+                    <p class="hint-text">数学ＣなどのCSVを読み込み、ローカルの問題データへまとめて追加できます。</p>
+                    <div class="problem-import-actions">
+                      <label class="field-block" for="problemCsvInput">
+                        <span class="field-label-row">問題CSV</span>
+                        <input id="problemCsvInput" type="file" accept=".csv,text/csv" />
+                      </label>
+                      <button id="problemCsvLoadBtn" class="secondary white-button" type="button">
+                        <span class="material-symbols-rounded" aria-hidden="true">upload_file</span>
+                        <span>読み込む</span>
+                      </button>
+                      <button id="problemCsvSubmitMissingBtn" class="primary" type="button" disabled>
+                        <span class="material-symbols-rounded" aria-hidden="true">playlist_add_check</span>
+                        <span>不足分を追加</span>
+                      </button>
+                    </div>
+                    <p id="problemCsvImportSummary" class="problem-import-summary" aria-live="polite">CSVを選択してください。</p>
+                    <ul id="problemCsvImportList" class="manager-question-list problem-import-list" aria-label="CSV読み込み結果"></ul>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset problem-notebook-fieldset">
+                    <legend>Let's Review! ノート</legend>
+                    <p class="hint-text">ノート上をクリックして直接追加できます。ブロックは長押し、またはドラッグで移動できます。</p>
+                    <div class="notebook-editor-shell">
+                      <div id="notebookEditorToolbar" class="notebook-editor-toolbar" role="toolbar" aria-label="ノートに追加する項目">
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="heading">
+                          <span class="material-symbols-rounded" aria-hidden="true">title</span>
+                          <span>見出し</span>
+                        </button>
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="text">
+                          <span class="material-symbols-rounded" aria-hidden="true">notes</span>
+                          <span>本文</span>
+                        </button>
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="question">
+                          <span class="material-symbols-rounded" aria-hidden="true">help</span>
+                          <span>問題文</span>
+                        </button>
+                        <button class="notebook-editor-tool" type="button" data-add-notebook-block="formula">
+                          <span class="material-symbols-rounded" aria-hidden="true">functions</span>
+                          <span>数式</span>
+                        </button>
+                      </div>
+                      <div id="notebookEditorBook" class="notebook-editor-book" aria-label="Let's Review! ノート編集">
+                        <section class="notebook-editor-page notebook-editor-page-text" aria-label="テキストページ">
+                          <header class="notebook-editor-page-head">
+                            <div>
+                              <p id="notebookTextSubject" class="notebook-editor-page-title">ノート</p>
+                              <p class="notebook-editor-page-subtitle">Text</p>
+                            </div>
+                            <time id="notebookEditorDate" class="notebook-editor-date" data-notebook-editor-date datetime=""></time>
+                          </header>
+                          <div id="notebookTextSurface" class="notebook-page-grid" data-notebook-page-surface="text" aria-label="テキスト本文"></div>
+                          <p class="notebook-editor-watermark">Text</p>
+                        </section>
+                        <section class="notebook-editor-page notebook-editor-page-question" aria-label="問題ページ">
+                          <header class="notebook-editor-page-head">
+                            <div>
+                              <p id="notebookQuestionSubject" class="notebook-editor-page-title">ノート</p>
+                              <p class="notebook-editor-page-subtitle">Question</p>
+                            </div>
+                            <time class="notebook-editor-date" data-notebook-editor-date datetime=""></time>
+                          </header>
+                          <div id="notebookQuestionSurface" class="notebook-page-grid" data-notebook-page-surface="question" aria-label="問題本文"></div>
+                          <p class="notebook-editor-watermark">Question</p>
+                        </section>
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset">
+                    <legend>テキスト</legend>
+                    <div class="problem-field-row">
+                      <label class="field-block" for="textNumberInput">
+                        <span class="field-label-row">テキスト番号</span>
+                        <input id="textNumberInput" type="text" maxlength="24" placeholder="例: 4" />
+                      </label>
+                      <label class="field-block" for="textNameInput">
+                        <span class="field-label-row">テキスト名</span>
+                        <input id="textNameInput" type="text" maxlength="64" placeholder="例: 恒等式" />
+                      </label>
+                    </div>
+                    <div class="manager-repeatable-editor" aria-label="テキスト文">
+                      <div class="manager-repeatable-actions">
+                        <button class="secondary white-button" type="button" data-add-text-block="heading">
+                          <span class="material-symbols-rounded" aria-hidden="true">title</span>
+                          <span>見出しを追加</span>
+                        </button>
+                        <button class="secondary white-button" type="button" data-add-text-block="body">
+                          <span class="material-symbols-rounded" aria-hidden="true">notes</span>
+                          <span>本文を追加</span>
+                        </button>
+                      </div>
+                      <div id="textBlockList" class="text-block-list"></div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="problem-fieldset">
+                    <legend>問題</legend>
+                    <div class="problem-field-row">
+                      <label class="field-block" for="questionNumberInput">
+                        <span class="field-label-row">問題番号</span>
+                        <input id="questionNumberInput" type="text" maxlength="24" placeholder="例: 12" />
+                      </label>
+                      <label class="field-block" for="questionNameInput">
+                        <span class="field-label-row">問題名</span>
+                        <input id="questionNameInput" type="text" maxlength="64" placeholder="例: 等式の証明①" />
+                      </label>
+                    </div>
+                    <div class="field-block">
+                      <div class="field-label-row">
+                        <span>問題文</span>
+                        <span class="field-badge">必須</span>
+                      </div>
+                      <div class="editor-shell problem-rich-editor">
+                        <div id="editorToolbar" class="editor-toolbar" role="toolbar" aria-label="問題文エディター">
+                          <button class="editor-tool-btn" type="button" data-command="bold" aria-label="太字">B</button>
+                          <button class="editor-tool-btn" type="button" data-command="italic" aria-label="斜体">I</button>
+                          <button class="editor-tool-btn" type="button" data-insert="formula">
+                            <span class="material-symbols-rounded" aria-hidden="true">functions</span>
+                            <span>数式</span>
+                          </button>
+                          <button class="editor-tool-btn" type="button" data-insert="image">
+                            <span class="material-symbols-rounded" aria-hidden="true">image</span>
+                            <span>画像</span>
+                          </button>
+                          <button class="editor-tool-btn" type="button" data-insert="vector-graph">
+                            <span class="material-symbols-rounded" aria-hidden="true">show_chart</span>
+                            <span>グラフ</span>
+                          </button>
+                        </div>
+                        <div
+                          id="problemEditor"
+                          class="editor-surface"
+                          contenteditable="true"
+                          role="textbox"
+                          aria-multiline="true"
+                          aria-label="問題文"
+                          data-placeholder="問題文を入力してください。数式や画像も追加できます。"
+                        ></div>
+                        <div class="editor-footer">
+                          <p class="editor-counter">
+                            単語数: <span id="editorWordCount">0</span> / 文字数: <span id="editorCharCount">0</span>
+                          </p>
+                        </div>
+                      </div>
+                      <input id="problemImageInput" name="image" type="file" accept="image/*" hidden />
+                    </div>
+                  </fieldset>
+
+                  <div class="action-row problem-action-row">
+                    <button id="proofreadingSubmitBtn" class="primary" type="submit">問題の確認</button>
+                    <button id="saveProblemDraftBtn" class="secondary" type="button">下書き保存</button>
+                    <button id="resetProblemFormBtn" class="secondary" type="button">入力をクリア</button>
+                  </div>
+                  <p id="proofreadingFeedback" class="feedback" aria-live="polite"></p>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+        <div class="problem-manage-workspace" data-problem-tab-panel="manage" hidden>
+          <section class="panel problem-manage-panel">
+            <div class="problem-section-head problem-manage-head">
+              <div>
+                <div class="manager-title-row">
+                  <h2>問題を管理する</h2>
+                  <span class="manager-role-tags" aria-label="対象ロール">
+                    <span class="manager-role-tag">チェッカー</span>
+                  </span>
+                </div>
+                <p class="hint-text">未承認の問題を確認し、必要に応じて本文を編集してから承認できます。</p>
+              </div>
+            </div>
+            <div class="problem-manage-grid">
+              <section class="problem-pending-list-block" aria-labelledby="pendingQuestionListTitle">
+                <h3 id="pendingQuestionListTitle">未承認の問題一覧</h3>
+                <ul id="pendingQuestionList" class="manager-question-list" aria-label="未承認の問題一覧"></ul>
+              </section>
+              <section id="pendingQuestionDetail" class="problem-pending-detail" aria-live="polite">
+                <p id="pendingQuestionEmpty" class="manager-empty-note">未承認の問題を選択してください。</p>
+                <div id="pendingQuestionEditorPanel" class="manager-field-grid" hidden>
+                  <ul class="manager-info-list" aria-label="問題の詳細">
+                    <li>
+                      <strong>バインダー</strong>
+                      <p id="pendingQuestionBinder">-</p>
+                    </li>
+                    <li>
+                      <strong>ノート</strong>
+                      <p id="pendingQuestionNote">-</p>
+                    </li>
+                    <li>
+                      <strong>ステータス</strong>
+                      <p id="pendingQuestionStatus">-</p>
+                    </li>
+                  </ul>
+                  <label class="field-block" for="pendingQuestionEditor">
+                    <span class="field-label-row">問題本文</span>
+                    <textarea id="pendingQuestionEditor" rows="10"></textarea>
+                  </label>
+                  <div class="action-row">
+                    <button id="pendingQuestionSaveBtn" class="secondary white-button" type="button">編集を保存する</button>
+                    <button id="pendingQuestionApproveBtn" class="primary" type="button">承認する</button>
+                  </div>
+                  <p id="pendingQuestionFeedback" class="feedback" aria-live="polite"></p>
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="screen-store" class="screen" hidden>
+        <div class="page-title-row">
+          <h1 class="page-script-title">ストア</h1>
+        </div>
+        <div class="manager-store-tabs" role="tablist" aria-label="ストアメニュー">
+          <button class="manager-store-tab is-active" type="button" role="tab" aria-selected="true" data-store-tab="create">アイテムを作成する</button>
+          <button class="manager-store-tab" type="button" role="tab" aria-selected="false" data-store-tab="manage">アイテムを管理する</button>
+        </div>
+        <div class="manager-store-layout">
+          <section class="panel manager-published-items-panel" data-store-tab-panel="manage" hidden>
+            <div class="manager-title-row">
+              <h2>配信しているアイテム</h2>
+            </div>
+            <div id="managerAvaterItemList" class="manager-store-list manager-published-avater-list"></div>
+          </section>
+          <section class="panel manager-store-create-panel" data-store-tab-panel="create">
+            <div class="manager-title-row">
+              <h2>ストアを管理する</h2>
+              <span class="manager-role-tags" aria-label="対象ロール">
+                <span class="manager-role-tag">キャラクターデザイナー</span>
+              </span>
+            </div>
+            <div class="manager-field-grid">
+              <div class="field-block">
+                <span class="field-label-row">アイテム画像</span>
+                <div id="avaterItemImageDropzone" class="manager-image-dropzone" tabindex="0" role="button" aria-label="アイテム画像をアップロード">
+                  <input id="avaterItemImageInput" type="file" accept="image/*" hidden />
+                  <div id="avaterItemImageEmpty" class="manager-image-dropzone-empty">
+                    <span class="material-symbols-rounded" aria-hidden="true">upload</span>
+                    <strong>画像をアップロード</strong>
+                    <span>タップ、またはドラッグアンドドロップ</span>
+                  </div>
+                  <img id="avaterItemImagePreview" class="manager-image-dropzone-preview" alt="" hidden />
+                </div>
+                <div class="image-picker-actions">
+                  <button id="adjustAvaterItemImageBtn" class="secondary white-button" type="button" disabled>画像を調整</button>
+                  <button id="clearAvaterItemImageBtn" class="secondary white-button" type="button">画像を削除</button>
+                </div>
+                <p id="avaterItemImageMeta" class="image-picker-filename"></p>
+              </div>
+              <label class="field-block" for="avaterItemNameInput">
+                <span class="field-label-row">アイテム名</span>
+                <input id="avaterItemNameInput" type="text" maxlength="32" />
+              </label>
+              <label class="field-block" for="avaterItemCategorySelect">
+                <span class="field-label-row">カテゴリー</span>
+                <select id="avaterItemCategorySelect">
+                  <option value="clothes">うわぎ</option>
+                  <option value="glasses">めがね</option>
+                  <option value="accessory">アクセサリー</option>
+                </select>
+              </label>
+              <label class="field-block" for="avaterItemCostInput">
+                <span class="field-label-row">価格</span>
+                <span class="manager-price-field">
+                  <img src="./assets/icons/coin.png?v=20260326-1" alt="" aria-hidden="true" />
+                  <input id="avaterItemCostInput" type="number" inputmode="numeric" min="0" step="1" value="100" />
+                </span>
+              </label>
+              <div class="action-row">
+                <button id="addAvaterItemBtn" class="primary" type="button">アイテムを追加</button>
+              </div>
+              <p id="storeConfigFeedback" class="feedback" aria-live="polite"></p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+    </main>
+
+    <dialog id="avaterItemImageAdjustDialog" class="text-reset-dialog manager-image-adjust-dialog" aria-labelledby="avaterItemImageAdjustTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="avaterItemImageAdjustTitle">アイテム画像を調整</h3>
+        <div class="manager-image-adjust-preview" aria-label="調整プレビュー">
+          <div class="manager-image-adjust-stage">
+            <img class="manager-image-adjust-guide" src="./assets/avater/らーん1-1.png" alt="" aria-hidden="true" />
+            <img id="avaterItemAdjustImage" alt="" />
+          </div>
+        </div>
+        <div class="manager-image-adjust-controls">
+          <label>
+            <span>サイズ</span>
+            <input id="avaterItemImageScaleInput" type="range" min="40" max="220" value="100" />
+          </label>
+          <label>
+            <span>横の変形</span>
+            <input id="avaterItemImageScaleXInput" type="range" min="60" max="160" value="100" />
+          </label>
+          <label>
+            <span>縦の変形</span>
+            <input id="avaterItemImageScaleYInput" type="range" min="60" max="160" value="100" />
+          </label>
+          <label>
+            <span>横位置</span>
+            <input id="avaterItemImageOffsetXInput" type="range" min="-120" max="120" value="0" />
+          </label>
+          <label>
+            <span>縦位置</span>
+            <input id="avaterItemImageOffsetYInput" type="range" min="-120" max="120" value="0" />
+          </label>
+          <label>
+            <span>回転</span>
+            <input id="avaterItemImageRotateInput" type="range" min="-45" max="45" value="0" />
+          </label>
+        </div>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-avater-image-adjust-action="cancel">キャンセル</button>
+          <button class="primary" type="button" data-avater-image-adjust-action="apply">決定</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="vectorGraphDialog" class="text-reset-dialog vector-graph-dialog" aria-labelledby="vectorGraphDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="vectorGraphDialogTitle">グラフ・ベクトルを追加</h3>
+        <div class="vector-graph-tools">
+          <label class="field-block" for="vectorGraphModeSelect">
+            <span class="field-label-row">作図モード</span>
+            <select id="vectorGraphModeSelect">
+              <option value="vector">ベクトル</option>
+              <option value="answer">回答線</option>
+            </select>
+          </label>
+          <div class="vector-graph-tool-actions">
+            <button class="secondary white-button" type="button" data-vector-graph-action="undo">1本戻す</button>
+            <button class="secondary white-button" type="button" data-vector-graph-action="clear">クリア</button>
+          </div>
+        </div>
+        <div class="vector-graph-canvas-wrap">
+          <svg
+            id="vectorGraphSvg"
+            class="vector-graph-canvas"
+            viewBox="0 0 640 400"
+            role="application"
+            aria-label="始点から終点までドラッグして線を引く"
+          >
+            <defs>
+              <marker id="vectorGraphArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+                <path d="M 0 0 L 10 5 L 0 10 z"></path>
+              </marker>
+            </defs>
+            <g id="vectorGraphGrid"></g>
+            <g id="vectorGraphLines"></g>
+            <line id="vectorGraphPreview" class="vector-graph-preview" x1="0" y1="0" x2="0" y2="0" hidden></line>
+          </svg>
+        </div>
+        <p class="hint-text vector-graph-hint">方眼上をドラッグすると線を引けます。ベクトルは矢印つき、回答線は太線で入ります。</p>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-vector-graph-action="cancel">キャンセル</button>
+          <button class="primary" type="button" data-vector-graph-action="insert">挿入する</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="problemResetDialog" class="text-reset-dialog" aria-labelledby="problemResetDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="problemResetDialogTitle">入力をクリア</h3>
+        <p>入力中の内容を削除します。よろしいですか？</p>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-reset-dialog-action="cancel">キャンセル</button>
+          <button class="primary" type="button" data-reset-dialog-action="clear">クリア</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="managerMemberActionDialog" class="text-reset-dialog manager-member-action-dialog" aria-labelledby="managerMemberActionDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="managerMemberActionDialogTitle">確認</h3>
+        <p id="managerMemberActionDialogMessage">操作を続行しますか？</p>
+        <div class="manager-dialog-actions manager-member-action-dialog-actions">
+          <button class="secondary white-button" type="button" data-manager-member-dialog-action="cancel">キャンセル</button>
+          <button id="managerMemberActionConfirmBtn" class="primary" type="button" data-manager-member-dialog-action="confirm">実行する</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="problemConfirmDialog" class="text-reset-dialog" aria-labelledby="problemConfirmDialogTitle">
+      <form method="dialog" class="text-reset-dialog-body">
+        <h3 id="problemConfirmDialogTitle">問題の確認</h3>
+        <dl class="manager-dialog-summary">
+          <dt>ノート</dt>
+          <dd id="confirmProblemNote">-</dd>
+        </dl>
+        <p id="confirmProblemContent" class="manager-dialog-content"></p>
+        <div class="manager-dialog-actions">
+          <button class="secondary" type="button" data-confirm-dialog-action="cancel">戻る</button>
+          <button class="primary" type="button" data-confirm-dialog-action="submit">提出</button>
+        </div>
+      </form>
+    </dialog>

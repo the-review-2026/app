@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&icon_names=account_circle,arrow_back,arrow_forward,expand_less,expand_more,login,logout,menu&display=block"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&icon_names=account_circle,add,arrow_back,arrow_forward,build,expand_less,expand_more,login,logout,menu,sync&display=block"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -95,6 +95,16 @@
         <p class="visually-hidden" id="actionStatus" aria-live="polite"></p>
       </section>
 
+      <button
+        class="manager-launch-button manager-launch-home"
+        id="managerHomeButton"
+        type="button"
+        data-manager-screen="home"
+        aria-label="ダッシュボードを開く"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">build</span>
+      </button>
+
       <section class="review-screen review-library-screen" id="reviewLibraryScreen" aria-labelledby="reviewLibraryTitle" hidden>
         <header class="review-screen-header">
           <button
@@ -113,6 +123,15 @@
           >
             <span class="material-symbols-outlined" aria-hidden="true">expand_less</span>
             <span id="reviewLibraryTitle" role="heading" aria-level="1">リビューする</span>
+          </button>
+          <button
+            class="review-header-button review-header-button-right manager-header-button"
+            id="managerProblemButton"
+            type="button"
+            data-manager-screen="problem"
+            aria-label="問題を作成・管理する"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>
           </button>
           <button
             class="review-header-button review-header-button-right"
@@ -155,6 +174,23 @@
 
         <div class="review-library-content">
           <p class="review-screen-lead">リビューする教材を選んでください。</p>
+          <div class="review-practice-menu" aria-label="演習メニュー">
+            <button class="practice-notebook-card" id="notePracticeButton" type="button">
+              <span class="practice-notebook-spine" aria-hidden="true"></span>
+              <span class="practice-notebook-head">
+                <span>SS科学技術理論Ⅰ（1分野）</span>
+              </span>
+              <span class="practice-notebook-page">
+                <strong>地理総合</strong>
+                <span>ノートで演習</span>
+              </span>
+            </button>
+            <button class="home-action primary-action review-rhythm-action" id="rhythmPracticeButton" type="button">
+              <span>音ゲー</span>
+              <small>リズムに合わせてリビュー</small>
+            </button>
+          </div>
+          <p class="review-library-section-label">教材からリビュー</p>
           <p class="review-book-status" id="reviewBookStatus" aria-live="polite">教材を読み込んでいます…</p>
           <div class="review-book-empty" id="reviewBookEmpty" hidden>
             <img src="assets/avater/404.png" alt="" />
@@ -210,6 +246,15 @@
             <span class="material-symbols-outlined" aria-hidden="true">expand_less</span>
             <span id="storeScreenTitle" role="heading" aria-level="1">ストア</span>
           </button>
+          <button
+            class="review-header-button review-header-button-right manager-header-button"
+            id="managerStoreButton"
+            type="button"
+            data-manager-screen="store"
+            aria-label="アイテムを追加・管理する"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">add</span>
+          </button>
         </header>
         <div class="screen-header-drawer" id="storeHeaderDrawer" aria-hidden="true">
           <button
@@ -262,14 +307,17 @@
           <h1 id="noticeScreenTitle">お知らせ</h1>
         </header>
         <div class="utility-screen-content">
-          <article class="notice-detail-card">
+          <article class="notice-detail-card" id="noticeDetailCard">
             <div class="notice-detail-head">
               <span>お知らせ</span>
-              <time datetime="2026-07-04">2026.07.04</time>
+              <time id="noticeDetailDate" datetime=""></time>
             </div>
-            <h2>新しいお知らせがあります</h2>
-            <p>The Reviewの新しいホーム画面をご利用いただけます。今後のお知らせもこちらでご案内します。</p>
+            <h2 id="noticeDetailTitle"></h2>
+            <p id="noticeDetailBody"></p>
           </article>
+          <div class="utility-empty-card" id="noticeDetailEmpty" hidden>
+            <p>お知らせはありません。</p>
+          </div>
         </div>
       </section>
 
@@ -322,10 +370,7 @@
 
         <section class="panel-notices" aria-labelledby="noticesTitle">
           <h3 id="noticesTitle">お知らせ</h3>
-          <button type="button" class="notice-row" data-notice-unread data-utility-page="notice">
-            <span class="notice-title">新しいお知らせがあります</span>
-            <span class="notice-meta">未読</span>
-          </button>
+          <div id="noticeMenuList"></div>
         </section>
       </section>
 
@@ -339,7 +384,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">account_circle</span>
             <div>
               <strong id="authUserName">ログインしていません</strong>
-              <span id="authUserEmail">Guest Mode</span>
+              <span id="authUserEmail">Guest Modeでご利用中です。</span>
             </div>
           </div>
           <button class="profile-auth-button" id="authLoginButton" type="button">
@@ -412,6 +457,106 @@
             </div>
           </div>
         </section>
+      </section>
+
+      <section class="manager-screen" id="managerScreen" aria-labelledby="managerFeatureTitle" hidden>
+        <header class="review-screen-header manager-feature-header">
+          <button class="review-header-button review-header-button-left" id="managerCloseButton" type="button" aria-label="元の画面に戻る">
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          </button>
+          <h1 id="managerFeatureTitle">管理</h1>
+        </header>
+        <div class="manager-feature-content">
+          <iframe
+            class="manager-frame"
+            id="managerFrame"
+            title="管理機能"
+            src="about:blank"
+            allow="clipboard-read; clipboard-write"
+          ></iframe>
+          <section class="manager-dashboard" id="managerDashboard" aria-labelledby="managerDashboardTitle" hidden>
+            <div class="manager-dashboard-intro">
+              <div>
+                <p class="manager-dashboard-eyebrow">THE REVIEW MANAGER</p>
+                <h2 id="managerDashboardTitle">ダッシュボード</h2>
+                <p>サービスの状況と日々の管理を、ここでまとめて確認できます。</p>
+              </div>
+              <button class="manager-dashboard-refresh" id="managerDashboardRefreshButton" type="button">
+                <span class="material-symbols-outlined" aria-hidden="true">sync</span>
+                <span>更新</span>
+              </button>
+            </div>
+
+            <div class="manager-stat-grid" aria-label="サービス利用状況">
+              <article class="manager-stat-card">
+                <span class="manager-stat-label">ユーザー数</span>
+                <strong class="manager-stat-value" id="managerUserCount">—</strong>
+                <span class="manager-stat-unit">アカウント</span>
+              </article>
+              <article class="manager-stat-card">
+                <span class="manager-stat-label">メンバー数</span>
+                <strong class="manager-stat-value" id="managerMemberCount">—</strong>
+                <span class="manager-stat-unit">Manager権限</span>
+              </article>
+              <article class="manager-stat-card">
+                <span class="manager-stat-label">DB容量</span>
+                <strong class="manager-stat-value" id="managerDatabaseSize">—</strong>
+                <span class="manager-stat-unit" id="managerDatabaseSizeNote">確認中</span>
+              </article>
+            </div>
+            <p class="manager-dashboard-status" id="managerDashboardStatus" aria-live="polite"></p>
+
+            <section class="manager-dashboard-section manager-members-section" aria-labelledby="managerMembersTitle">
+              <div class="manager-section-heading">
+                <div>
+                  <span class="manager-section-number">01</span>
+                  <h2 id="managerMembersTitle">メンバー</h2>
+                </div>
+                <p>ユーザー情報とManager権限を管理します。</p>
+              </div>
+              <iframe
+                class="manager-members-frame"
+                id="managerMembersFrame"
+                title="メンバー管理"
+                src="about:blank"
+                allow="clipboard-read; clipboard-write"
+              ></iframe>
+            </section>
+
+            <section class="notice-manager manager-dashboard-section" id="noticeManager" aria-labelledby="noticeManagerTitle">
+              <div class="manager-section-heading notice-manager-toolbar">
+                <div>
+                  <span class="manager-section-number">02</span>
+                  <h2 id="noticeManagerTitle">お知らせ</h2>
+                </div>
+                <button class="notice-manager-new" id="noticeManagerNewButton" type="button">新規作成</button>
+              </div>
+              <div class="notice-manager-layout">
+                <div class="notice-manager-list" id="noticeManagerList" aria-label="お知らせ一覧"></div>
+                <form class="notice-manager-form" id="noticeManagerForm">
+                  <input id="noticeManagerId" type="hidden" />
+                  <label>
+                    <span>タイトル</span>
+                    <input id="noticeManagerTitleInput" type="text" maxlength="80" required />
+                  </label>
+                  <label>
+                    <span>日付</span>
+                    <input id="noticeManagerDateInput" type="date" required />
+                  </label>
+                  <label>
+                    <span>本文</span>
+                    <textarea id="noticeManagerBodyInput" rows="8" maxlength="2000" required></textarea>
+                  </label>
+                  <div class="notice-manager-actions">
+                    <button class="notice-manager-delete" id="noticeManagerDeleteButton" type="button">削除</button>
+                    <button class="notice-manager-save" type="submit">保存</button>
+                  </div>
+                  <p class="notice-manager-feedback" id="noticeManagerFeedback" aria-live="polite"></p>
+                </form>
+              </div>
+            </section>
+          </section>
+        </div>
       </section>
     </main>
   </body>

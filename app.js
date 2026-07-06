@@ -12,6 +12,35 @@ const homeReviewNext = document.querySelector("#homeReviewNext");
 const continueButton = document.querySelector("#continueButton");
 const storeButton = document.querySelector("#storeButton");
 const storeNext = document.querySelector("#storeNext");
+const managerScreen = document.querySelector("#managerScreen");
+const managerFrame = document.querySelector("#managerFrame");
+const managerCloseButton = document.querySelector("#managerCloseButton");
+const managerButtons = Array.from(document.querySelectorAll("[data-manager-screen]"));
+const managerFeatureTitle = document.querySelector("#managerFeatureTitle");
+const managerDashboard = document.querySelector("#managerDashboard");
+const managerDashboardRefreshButton = document.querySelector("#managerDashboardRefreshButton");
+const managerDashboardStatus = document.querySelector("#managerDashboardStatus");
+const managerUserCount = document.querySelector("#managerUserCount");
+const managerMemberCount = document.querySelector("#managerMemberCount");
+const managerDatabaseSize = document.querySelector("#managerDatabaseSize");
+const managerDatabaseSizeNote = document.querySelector("#managerDatabaseSizeNote");
+const managerMembersFrame = document.querySelector("#managerMembersFrame");
+const noticeManager = document.querySelector("#noticeManager");
+const noticeManagerList = document.querySelector("#noticeManagerList");
+const noticeManagerForm = document.querySelector("#noticeManagerForm");
+const noticeManagerId = document.querySelector("#noticeManagerId");
+const noticeManagerTitleInput = document.querySelector("#noticeManagerTitleInput");
+const noticeManagerDateInput = document.querySelector("#noticeManagerDateInput");
+const noticeManagerBodyInput = document.querySelector("#noticeManagerBodyInput");
+const noticeManagerNewButton = document.querySelector("#noticeManagerNewButton");
+const noticeManagerDeleteButton = document.querySelector("#noticeManagerDeleteButton");
+const noticeManagerFeedback = document.querySelector("#noticeManagerFeedback");
+const noticeMenuList = document.querySelector("#noticeMenuList");
+const noticeDetailCard = document.querySelector("#noticeDetailCard");
+const noticeDetailEmpty = document.querySelector("#noticeDetailEmpty");
+const noticeDetailDate = document.querySelector("#noticeDetailDate");
+const noticeDetailTitle = document.querySelector("#noticeDetailTitle");
+const noticeDetailBody = document.querySelector("#noticeDetailBody");
 const reviewLibraryScreen = document.querySelector("#reviewLibraryScreen");
 const reviewLibraryHeader = reviewLibraryScreen.querySelector(".review-screen-header");
 const reviewLibraryBack = document.querySelector("#reviewLibraryBack");
@@ -19,6 +48,8 @@ const reviewBookStatus = document.querySelector("#reviewBookStatus");
 const reviewBookEmpty = document.querySelector("#reviewBookEmpty");
 const reviewBookList = document.querySelector("#reviewBookList");
 const reviewStartButton = document.querySelector("#reviewStartButton");
+const notePracticeButton = document.querySelector("#notePracticeButton");
+const rhythmPracticeButton = document.querySelector("#rhythmPracticeButton");
 const reviewSessionScreen = document.querySelector("#reviewSessionScreen");
 const reviewSessionBack = document.querySelector("#reviewSessionBack");
 const reviewSessionTitle = document.querySelector("#reviewSessionTitle");
@@ -47,11 +78,20 @@ const performanceSetting = document.querySelector("#performanceSetting");
 const performanceRecommendation = document.querySelector("#performanceRecommendation");
 const REVIEW_API_URL = "https://api.the-review.net/flashcards";
 const REVIEW_ACCOUNT_API_URL = "https://api.the-review.net/me";
+const MANAGER_STATS_API_URL = "https://api.the-review.net/manager/stats";
 const AUTH0_CONFIG = window.AUTH0_CONFIG || {};
 const AUTH0_DEFAULT_SCOPE = "openid profile email";
 const NOTICE_READ_KEY = "the-review-notice-20260704-read";
+const NOTICE_STORAGE_KEY = "the-review-notices-v1";
 const APP_SETTINGS_KEY = "the-review-app-settings-v1";
 const REVIEW_PROGRESS_KEY = "the-review-progress";
+const DEFAULT_NOTICE = Object.freeze({
+  id: "home-update-20260704",
+  title: "新しいお知らせがあります",
+  body: "The Reviewの新しいホーム画面をご利用いただけます。今後のお知らせもこちらでご案内します。",
+  date: "2026-07-04",
+  isRead: false,
+});
 const REVIEW_SUBJECT_LABELS = {
   "reboot-modern-japanese": "現代の国語",
   "reboot-language-culture": "言語文化",
@@ -82,14 +122,78 @@ const REVIEW_SUBJECT_LABELS = {
   "reboot-information-study": "情報",
   "morning-test-1-10": "朝学習テスト①〜⑩",
 };
+const SAMPLE_REVIEW_ROWS = Object.freeze([
+  {
+    id: "sample-ss-1",
+    subject: "ss-tech-theory-1",
+    subjectLabel: "ＳＳ科学技術理論Ⅰ（1分野）",
+    questionName: "科学技術と社会",
+    questionText: "科学技術を社会で活用するとき、最も大切な視点はどれですか。",
+    choices: ["速さだけを優先する", "安全性・倫理・社会への影響を考える", "費用だけで決める"],
+    answer: ["安全性・倫理・社会への影響を考える"],
+    pageNumber: 1,
+    questionNumber: 1,
+  },
+  {
+    id: "sample-ss-2",
+    subject: "ss-tech-theory-1",
+    subjectLabel: "ＳＳ科学技術理論Ⅰ（1分野）",
+    questionName: "データの読み方",
+    questionText: "相関関係が見られる2つのデータについて、必ず言えることはどれですか。",
+    choices: ["一方が他方の原因である", "関係の有無を追加調査する必要がある", "偶然ではあり得ない"],
+    answer: ["関係の有無を追加調査する必要がある"],
+    pageNumber: 1,
+    questionNumber: 2,
+  },
+  {
+    id: "sample-geo-1",
+    subject: "refine-geography-general",
+    subjectLabel: "地理総合",
+    questionName: "日本の標準時",
+    questionText: "日本標準時の基準となる標準時子午線は、東経何度ですか。",
+    choices: ["東経120度", "東経135度", "東経150度"],
+    answer: ["東経135度"],
+    pageNumber: 1,
+    questionNumber: 1,
+  },
+  {
+    id: "sample-geo-2",
+    subject: "refine-geography-general",
+    subjectLabel: "地理総合",
+    questionName: "地理情報システム",
+    questionText: "位置情報と統計データなどを重ねて分析する仕組みを何といいますか。",
+    choices: ["GPS", "GIS", "SNS"],
+    answer: ["GIS"],
+    pageNumber: 1,
+    questionNumber: 2,
+  },
+  {
+    id: "sample-math-1",
+    subject: "math1",
+    subjectLabel: "数学Ⅰ",
+    questionName: "二次方程式",
+    questionText: "x² − 5x + 6 = 0 の解を選んでください。",
+    choices: ["x = 1, 6", "x = 2, 3", "x = −2, −3"],
+    answer: ["x = 2, 3"],
+    pageNumber: 1,
+    questionNumber: 1,
+  },
+]);
 let reviewDecks = [];
 let selectedReviewDeck = null;
 let reviewDeckLoadPromise = null;
 let activeReviewCardIndex = 0;
+let activeReviewMode = "standard";
+let reviewAudioContext = null;
 let auth0Client = null;
 let panelHistory = [];
 let reviewReturnPanel = "";
 let utilityReturnPanel = "";
+let managerReturnFocus = null;
+let activeManagerFeature = "";
+let managerStatsRequestId = 0;
+let notices = [];
+let selectedNoticeId = "";
 const panels = {
   menu: document.querySelector("#menuPanel"),
   profile: document.querySelector("#profilePanel"),
@@ -124,10 +228,131 @@ const PERFORMANCE_LEVEL_LABELS = {
 };
 
 function getUnreadNoticeCount() {
-  if (!appSettings.notifications || localStorage.getItem(NOTICE_READ_KEY) === "1") {
+  if (!appSettings.notifications) {
     return 0;
   }
-  return document.querySelectorAll("[data-notice-unread]").length;
+  return notices.filter((notice) => !notice.isRead).length;
+}
+
+function openManagerScreen(screen = "home", trigger = null) {
+  const featureSettings = {
+    home: { title: "ダッシュボード", screen: "members" },
+    problem: { title: "問題の作成・管理", screen: "problem" },
+    store: { title: "アイテムの追加・管理", screen: "store" },
+  };
+  const feature = Object.prototype.hasOwnProperty.call(featureSettings, screen) ? screen : "home";
+  const settings = featureSettings[feature];
+  closeHeaderDrawers();
+  closeRaanMenu();
+  closePanels();
+  managerReturnFocus = trigger instanceof HTMLElement ? trigger : document.activeElement;
+  activeManagerFeature = feature;
+  managerFeatureTitle.textContent = settings.title;
+  const isHomeManager = feature === "home";
+  managerDashboard.hidden = !isHomeManager;
+  managerFrame.hidden = isHomeManager;
+  managerFrame.src = isHomeManager
+    ? "about:blank"
+    : `manager.html?feature=1&screen=${encodeURIComponent(settings.screen)}`;
+  managerMembersFrame.src = isHomeManager
+    ? "manager.html?feature=1&dashboard=1&screen=members"
+    : "about:blank";
+  managerScreen.hidden = false;
+  if (isHomeManager) {
+    renderNoticeManager();
+    void loadManagerDashboardStats();
+  }
+  managerCloseButton.focus();
+}
+
+function closeManagerScreen() {
+  if (managerScreen.hidden) {
+    return;
+  }
+  managerScreen.hidden = true;
+  managerFrame.src = "about:blank";
+  managerMembersFrame.src = "about:blank";
+  managerFrame.hidden = false;
+  managerDashboard.hidden = true;
+  managerStatsRequestId += 1;
+  activeManagerFeature = "";
+  if (managerReturnFocus instanceof HTMLElement) {
+    managerReturnFocus.focus();
+  }
+  managerReturnFocus = null;
+}
+
+async function loadManagerDashboardStats() {
+  const requestId = ++managerStatsRequestId;
+  managerDashboardRefreshButton.disabled = true;
+  managerDashboardStatus.textContent = "利用状況を取得しています…";
+  managerUserCount.textContent = "—";
+  managerMemberCount.textContent = "—";
+  managerDatabaseSize.textContent = "—";
+  managerDatabaseSizeNote.textContent = "確認中";
+
+  try {
+    const accessToken = await getReviewAccessToken();
+    if (!accessToken) {
+      throw new Error("ログイン後に利用状況を確認できます。");
+    }
+    const response = await fetch(MANAGER_STATS_API_URL, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`利用状況を取得できませんでした（${response.status}）。`);
+    }
+    const stats = await response.json();
+    if (requestId !== managerStatsRequestId || activeManagerFeature !== "home") {
+      return;
+    }
+    managerUserCount.textContent = formatManagerCount(stats.userCount);
+    managerMemberCount.textContent = formatManagerCount(stats.memberCount);
+    managerDatabaseSize.textContent = formatManagerBytes(stats.databaseBytes);
+    managerDatabaseSizeNote.textContent =
+      stats.databaseSizeSource === "database" ? "データベース使用量" : "保存データからの推定値";
+    managerDashboardStatus.textContent = `最終更新 ${new Intl.DateTimeFormat("ja-JP", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date())}`;
+  } catch (error) {
+    if (requestId !== managerStatsRequestId) {
+      return;
+    }
+    managerDashboardStatus.textContent = error instanceof Error ? error.message : "利用状況を取得できませんでした。";
+    managerDatabaseSizeNote.textContent = "取得できませんでした";
+  } finally {
+    if (requestId === managerStatsRequestId) {
+      managerDashboardRefreshButton.disabled = false;
+    }
+  }
+}
+
+function formatManagerCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 0 ? new Intl.NumberFormat("ja-JP").format(Math.floor(count)) : "—";
+}
+
+function formatManagerBytes(value) {
+  const bytes = Number(value);
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return "—";
+  }
+  if (bytes < 1024) {
+    return `${Math.round(bytes)} B`;
+  }
+  const units = ["KB", "MB", "GB", "TB"];
+  let size = bytes / 1024;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size >= 100 ? size.toFixed(0) : size.toFixed(1)} ${units[unitIndex]}`;
 }
 
 function menuOpenLabel() {
@@ -234,30 +459,209 @@ function saveAppSettings() {
   panelButtons.menu.setAttribute("aria-label", menuOpenLabel());
 }
 
-function markNoticeAsRead() {
-  localStorage.setItem(NOTICE_READ_KEY, "1");
-  document.querySelectorAll("[data-notice-unread]").forEach((notice) => {
-    notice.removeAttribute("data-notice-unread");
-    const meta = notice.querySelector(".notice-meta");
-    if (meta) {
-      meta.textContent = "既読";
+function normalizeNotice(value, index = 0) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const title = String(value.title || "").trim();
+  const body = String(value.body || "").trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value.date || "")) ? String(value.date) : "";
+  if (!title || !body || !date) {
+    return null;
+  }
+  return {
+    id: String(value.id || `notice-${Date.now()}-${index}`).trim(),
+    title,
+    body,
+    date,
+    isRead: value.isRead === true,
+  };
+}
+
+function loadNotices() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(NOTICE_STORAGE_KEY) || "null");
+    notices = (Array.isArray(stored) ? stored : [DEFAULT_NOTICE]).map(normalizeNotice).filter(Boolean);
+  } catch {
+    notices = [{ ...DEFAULT_NOTICE }];
+  }
+  if (localStorage.getItem(NOTICE_READ_KEY) === "1") {
+    notices = notices.map((notice) =>
+      notice.id === DEFAULT_NOTICE.id ? { ...notice, isRead: true } : notice
+    );
+    localStorage.removeItem(NOTICE_READ_KEY);
+  }
+  notices.sort((left, right) => right.date.localeCompare(left.date));
+  selectedNoticeId = notices[0]?.id || "";
+  saveNotices();
+  renderNotices();
+}
+
+function saveNotices() {
+  localStorage.setItem(NOTICE_STORAGE_KEY, JSON.stringify(notices));
+}
+
+function formatNoticeDate(date) {
+  return String(date || "").replaceAll("-", ".");
+}
+
+function renderNotices() {
+  noticeMenuList.replaceChildren();
+  notices.forEach((notice) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "notice-row";
+    button.dataset.noticeId = notice.id;
+    if (!notice.isRead) {
+      button.dataset.noticeUnread = "";
     }
+
+    const title = document.createElement("span");
+    title.className = "notice-title";
+    title.textContent = notice.title;
+    const meta = document.createElement("span");
+    meta.className = "notice-meta";
+    meta.textContent = notice.isRead ? formatNoticeDate(notice.date) : "未読";
+    button.append(title, meta);
+    button.addEventListener("click", () => {
+      selectedNoticeId = notice.id;
+      openUtilityScreen("notice");
+    });
+    noticeMenuList.append(button);
   });
+
+  const selectedNotice = notices.find((notice) => notice.id === selectedNoticeId) || notices[0] || null;
+  selectedNoticeId = selectedNotice?.id || "";
+  noticeDetailCard.hidden = !selectedNotice;
+  noticeDetailEmpty.hidden = Boolean(selectedNotice);
+  if (selectedNotice) {
+    noticeDetailDate.dateTime = selectedNotice.date;
+    noticeDetailDate.textContent = formatNoticeDate(selectedNotice.date);
+    noticeDetailTitle.textContent = selectedNotice.title;
+    noticeDetailBody.textContent = selectedNotice.body;
+  }
   setupNotificationBadge();
   panelButtons.menu.setAttribute("aria-label", menuOpenLabel());
 }
 
-function syncNoticeReadState() {
-  if (localStorage.getItem(NOTICE_READ_KEY) !== "1") {
+function markNoticeAsRead(noticeId = selectedNoticeId) {
+  const target = notices.find((notice) => notice.id === noticeId);
+  if (!target || target.isRead) {
     return;
   }
-  document.querySelectorAll("[data-notice-unread]").forEach((notice) => {
-    notice.removeAttribute("data-notice-unread");
-    const meta = notice.querySelector(".notice-meta");
-    if (meta) {
-      meta.textContent = "既読";
-    }
+  target.isRead = true;
+  saveNotices();
+  renderNotices();
+}
+
+function resetNoticeManagerForm() {
+  const localNow = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000);
+  noticeManagerId.value = "";
+  noticeManagerTitleInput.value = "";
+  noticeManagerDateInput.value = localNow.toISOString().slice(0, 10);
+  noticeManagerBodyInput.value = "";
+  noticeManagerDeleteButton.hidden = true;
+  noticeManagerFeedback.textContent = "";
+  renderNoticeManagerList();
+  noticeManagerTitleInput.focus();
+}
+
+function selectNoticeForManagement(noticeId) {
+  const notice = notices.find((item) => item.id === noticeId);
+  if (!notice) {
+    resetNoticeManagerForm();
+    return;
+  }
+  noticeManagerId.value = notice.id;
+  noticeManagerTitleInput.value = notice.title;
+  noticeManagerDateInput.value = notice.date;
+  noticeManagerBodyInput.value = notice.body;
+  noticeManagerDeleteButton.hidden = false;
+  noticeManagerFeedback.textContent = "";
+  renderNoticeManagerList();
+}
+
+function renderNoticeManagerList() {
+  noticeManagerList.replaceChildren();
+  notices.forEach((notice) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "notice-manager-list-item";
+    button.classList.toggle("is-active", notice.id === noticeManagerId.value);
+    button.innerHTML = `<strong></strong><span></span>`;
+    button.querySelector("strong").textContent = notice.title;
+    button.querySelector("span").textContent = formatNoticeDate(notice.date);
+    button.addEventListener("click", () => selectNoticeForManagement(notice.id));
+    noticeManagerList.append(button);
   });
+}
+
+function renderNoticeManager() {
+  renderNoticeManagerList();
+  if (noticeManagerId.value) {
+    selectNoticeForManagement(noticeManagerId.value);
+  } else if (notices[0]) {
+    selectNoticeForManagement(notices[0].id);
+  } else {
+    resetNoticeManagerForm();
+  }
+}
+
+function saveNoticeFromManager() {
+  const id = noticeManagerId.value;
+  const title = noticeManagerTitleInput.value.trim();
+  const body = noticeManagerBodyInput.value.trim();
+  const date = noticeManagerDateInput.value;
+  if (!title || !body || !date) {
+    noticeManagerFeedback.textContent = "タイトル、日付、本文を入力してください。";
+    return;
+  }
+
+  const existing = notices.find((notice) => notice.id === id);
+  if (existing) {
+    existing.title = title;
+    existing.body = body;
+    existing.date = date;
+  } else {
+    const newNotice = {
+      id: `notice-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      title,
+      body,
+      date,
+      isRead: false,
+    };
+    notices.push(newNotice);
+    noticeManagerId.value = newNotice.id;
+  }
+  notices.sort((left, right) => right.date.localeCompare(left.date));
+  selectedNoticeId = noticeManagerId.value;
+  saveNotices();
+  renderNotices();
+  selectNoticeForManagement(noticeManagerId.value);
+  noticeManagerFeedback.textContent = existing ? "お知らせを更新しました。" : "お知らせを作成しました。";
+}
+
+function deleteNoticeFromManager() {
+  const id = noticeManagerId.value;
+  if (!id) {
+    return;
+  }
+  notices = notices.filter((notice) => notice.id !== id);
+  selectedNoticeId = notices[0]?.id || "";
+  saveNotices();
+  renderNotices();
+  if (notices[0]) {
+    selectNoticeForManagement(notices[0].id);
+  } else {
+    resetNoticeManagerForm();
+  }
+  noticeManagerFeedback.textContent = "お知らせを削除しました。";
+}
+
+function syncNoticeReadState() {
+  renderNotices();
+  setupNotificationBadge();
+  panelButtons.menu.setAttribute("aria-label", menuOpenLabel());
 }
 
 function isAuth0Configured() {
@@ -288,7 +692,7 @@ function setAuthStatus(message = "", isError = false) {
 
 function renderLoggedOutAuth() {
   authUserName.textContent = "ログインしていません";
-  authUserEmail.textContent = "Guest Mode";
+  authUserEmail.textContent = "Guest Modeでご利用になっています。";
   authLoginButton.hidden = false;
   authLoginButton.disabled = false;
   authLogoutButton.hidden = true;
@@ -325,6 +729,25 @@ async function ensureAuth0Client() {
   });
   return auth0Client;
 }
+
+async function getReviewAccessToken() {
+  const client = await ensureAuth0Client();
+  if (!client || !AUTH0_CONFIG.audience || !(await client.isAuthenticated())) {
+    return null;
+  }
+  try {
+    return await client.getTokenSilently({
+      authorizationParams: {
+        audience: AUTH0_CONFIG.audience,
+        scope: AUTH0_CONFIG.scope || AUTH0_DEFAULT_SCOPE,
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
+window.__THE_REVIEW_GET_ACCESS_TOKEN__ = getReviewAccessToken;
 
 async function syncReviewAccount(user) {
   if (!auth0Client || !AUTH0_CONFIG.audience) {
@@ -504,6 +927,8 @@ async function resumeReviewProgress() {
     selectedReviewDeck.cards.length - 1
   );
   reviewSessionTitle.textContent = selectedReviewDeck.label;
+  activeReviewMode = "standard";
+  reviewSessionScreen.dataset.reviewMode = activeReviewMode;
   reviewLibraryScreen.hidden = true;
   reviewSessionScreen.hidden = false;
   renderActiveReviewCard();
@@ -678,6 +1103,14 @@ function renderReviewBooks(decks) {
   });
 }
 
+function renderSampleReviewBooks(message = "サンプル教材を表示しています。Supabaseに接続すると教材データへ切り替わります。") {
+  const sampleDecks = buildReviewDecks(SAMPLE_REVIEW_ROWS);
+  renderReviewBooks(sampleDecks);
+  reviewBookStatus.hidden = false;
+  reviewBookStatus.textContent = message;
+  return sampleDecks;
+}
+
 async function loadReviewDecks() {
   if (reviewDecks.length > 0) {
     return reviewDecks;
@@ -701,16 +1134,15 @@ async function loadReviewDecks() {
     })
     .then((rows) => {
       const decks = buildReviewDecks(rows);
+      if (decks.length === 0) {
+        return renderSampleReviewBooks();
+      }
       renderReviewBooks(decks);
       return decks;
     })
     .catch((error) => {
       console.warn("教材データを読み込めませんでした。", error);
-      renderReviewBooks([]);
-      reviewBookEmpty.hidden = true;
-      reviewBookStatus.hidden = false;
-      reviewBookStatus.textContent = "教材データを読み込めませんでした。通信状態を確認して、もう一度お試しください。";
-      return [];
+      return renderSampleReviewBooks("オフライン用のサンプル教材を表示しています。");
     })
     .finally(() => {
       reviewDeckLoadPromise = null;
@@ -732,6 +1164,8 @@ function closeReviewLibrary() {
   closeHeaderDrawers();
   reviewLibraryScreen.hidden = true;
   reviewSessionScreen.hidden = true;
+  activeReviewMode = "standard";
+  reviewSessionScreen.dataset.reviewMode = activeReviewMode;
   reviewButton.setAttribute("aria-pressed", "false");
   homeReviewNext.hidden = true;
   reviewReturnPanel = "";
@@ -789,6 +1223,29 @@ function resolveReviewImageSource(value) {
   return source.startsWith("data/") ? `./${source}` : `./data/${source}`;
 }
 
+function playRhythmTone(index = 0) {
+  if (!appSettings.sound || activeReviewMode !== "rhythm") {
+    return;
+  }
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    return;
+  }
+  reviewAudioContext ||= new AudioContextClass();
+  const oscillator = reviewAudioContext.createOscillator();
+  const gain = reviewAudioContext.createGain();
+  const now = reviewAudioContext.currentTime;
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime([392, 523.25, 659.25][index % 3], now);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.14, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+  oscillator.connect(gain);
+  gain.connect(reviewAudioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.22);
+}
+
 function renderActiveReviewCard() {
   const cards = selectedReviewDeck?.cards || [];
   const card = cards[activeReviewCardIndex];
@@ -810,6 +1267,7 @@ function renderActiveReviewCard() {
       reviewChoiceList.querySelectorAll(".review-choice").forEach((item) => {
         item.setAttribute("aria-pressed", String(item === button));
       });
+      playRhythmTone(index);
     });
     reviewChoiceList.append(button);
   });
@@ -831,7 +1289,31 @@ function startSelectedReview() {
     return;
   }
   activeReviewCardIndex = 0;
+  activeReviewMode = "standard";
+  reviewSessionScreen.dataset.reviewMode = activeReviewMode;
   reviewSessionTitle.textContent = selectedReviewDeck.label;
+  reviewLibraryScreen.hidden = true;
+  reviewSessionScreen.hidden = false;
+  renderActiveReviewCard();
+}
+
+async function startPracticeReview(mode) {
+  const decks = await loadReviewDecks();
+  const preferredDeckId = mode === "note" ? "refine-geography-general" : "ss-tech-theory-1";
+  selectedReviewDeck =
+    decks.find((deck) => deck.id === preferredDeckId) ||
+    decks[0] ||
+    null;
+  if (!selectedReviewDeck || selectedReviewDeck.cards.length === 0) {
+    reviewBookStatus.hidden = false;
+    reviewBookStatus.textContent = "演習に使える教材がありません。";
+    return;
+  }
+
+  activeReviewMode = mode === "rhythm" ? "rhythm" : "note";
+  activeReviewCardIndex = 0;
+  reviewSessionScreen.dataset.reviewMode = activeReviewMode;
+  reviewSessionTitle.textContent = activeReviewMode === "note" ? "ノートで演習" : "音ゲー";
   reviewLibraryScreen.hidden = true;
   reviewSessionScreen.hidden = false;
   renderActiveReviewCard();
@@ -839,6 +1321,8 @@ function startSelectedReview() {
 
 function returnToReviewLibrary() {
   reviewSessionScreen.hidden = true;
+  activeReviewMode = "standard";
+  reviewSessionScreen.dataset.reviewMode = activeReviewMode;
   reviewLibraryScreen.hidden = false;
 }
 
@@ -1022,8 +1506,44 @@ performanceSetting.addEventListener("input", saveAppSettings);
 
 homeReviewNext.addEventListener("click", openReviewLibrary);
 storeNext.addEventListener("click", () => openUtilityScreen("store"));
+managerButtons.forEach((button) => {
+  button.addEventListener("click", () => openManagerScreen(button.dataset.managerScreen, button));
+});
+managerDashboardRefreshButton.addEventListener("click", () => {
+  managerMembersFrame.contentWindow?.location.reload();
+  void loadManagerDashboardStats();
+});
+noticeManagerNewButton.addEventListener("click", resetNoticeManagerForm);
+noticeManagerDeleteButton.addEventListener("click", deleteNoticeFromManager);
+noticeManagerForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveNoticeFromManager();
+});
+managerCloseButton.addEventListener("click", closeManagerScreen);
+window.addEventListener("message", (event) => {
+  if (
+    event.origin === window.location.origin &&
+    event.source === managerMembersFrame.contentWindow &&
+    event.data?.type === "the-review-manager-height"
+  ) {
+    const height = Number(event.data.height);
+    if (Number.isFinite(height) && height > 0) {
+      managerMembersFrame.style.height = `${Math.max(520, Math.ceil(height))}px`;
+    }
+    return;
+  }
+  if (
+    event.origin === window.location.origin &&
+    (event.source === managerFrame.contentWindow || event.source === managerMembersFrame.contentWindow) &&
+    event.data?.type === "the-review-manager-close"
+  ) {
+    closeManagerScreen();
+  }
+});
 reviewLibraryBack.addEventListener("click", navigateBackFromReviewLibrary);
 reviewStartButton.addEventListener("click", startSelectedReview);
+notePracticeButton.addEventListener("click", () => startPracticeReview("note"));
+rhythmPracticeButton.addEventListener("click", () => startPracticeReview("rhythm"));
 reviewSessionBack.addEventListener("click", returnToReviewLibrary);
 
 reviewRevealButton.addEventListener("click", () => {
@@ -1061,6 +1581,10 @@ authLogoutButton.addEventListener("click", logoutFromAuth0);
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (!managerScreen.hidden) {
+      closeManagerScreen();
+      return;
+    }
     const openUtility = Object.values(utilityScreens).find((screen) => !screen.hidden);
     if (openUtility) {
       closeUtilityScreens();
@@ -1080,7 +1604,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 loadAppSettings();
-syncNoticeReadState();
+loadNotices();
 setupNotificationBadge();
 setupContinueButton();
 panelButtons.menu.setAttribute("aria-label", menuOpenLabel());

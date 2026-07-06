@@ -1,0 +1,121 @@
+@font-face {
+  font-family: "cinecaption226";
+  src: url("assets/fonts/cinecaption226.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Corinthia-Regular";
+  src: url("assets/fonts/Corinthia-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: #1d1d1d;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#managerRoot {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.manager-loading-message,
+.manager-load-error {
+  margin: 0;
+  padding: 40px 24px;
+  color: #fff;
+  font-family: "Noto Sans JP", sans-serif;
+  text-align: center;
+}
+
+.manager-load-error {
+  color: #ffb0b0;
+}
+
+@media (max-width: 760px) {
+  .manager-migrated-root .app-header {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+body.manager-feature-page,
+body.manager-feature-page #managerRoot {
+  min-height: 100%;
+  background: #99a6af !important;
+}
+
+body.manager-feature-page .manager-migrated-root.is-embedded-manager {
+  min-height: 100%;
+  padding: 0;
+}
+
+body.manager-feature-page .manager-migrated-root .aurora,
+body.manager-feature-page .manager-migrated-root > .app-header,
+body.manager-feature-page .manager-migrated-root .screen > .page-title-row {
+  display: none !important;
+}
+
+body.manager-feature-page .manager-migrated-root .screens {
+  width: 100%;
+  max-width: 640px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 30px 28px 100px;
+  background: #99a6af !important;
+}
+
+body.manager-feature-page .manager-migrated-root .screen {
+  width: 100%;
+  max-width: none;
+}
+
+body.manager-feature-page .manager-migrated-root #screen-members .manager-members-panel {
+  margin: 0;
+}
+
+body.manager-dashboard-embed,
+body.manager-dashboard-embed #managerRoot,
+body.manager-dashboard-embed .manager-migrated-root,
+body.manager-dashboard-embed .manager-migrated-root .screens {
+  min-height: 0;
+  background: transparent !important;
+}
+
+body.manager-dashboard-embed {
+  overflow: hidden;
+}
+
+body.manager-dashboard-embed .manager-migrated-root .screens {
+  max-width: none;
+  padding: 0;
+}
+
+body.manager-dashboard-embed .manager-migrated-root #screen-members .manager-members-panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.manager-dashboard-embed .manager-migrated-root .manager-members-head {
+  justify-content: flex-end;
+}
+
+body.manager-dashboard-embed .manager-migrated-root .manager-members-head .manager-title-row {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  body.manager-feature-page:not(.manager-dashboard-embed) .manager-migrated-root .screens {
+    padding-inline: 20px;
+  }
+}
